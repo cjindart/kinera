@@ -4,30 +4,11 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
-// Dummy screens for now
-function HomeScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Home Tab</Text>
-    </View>
-  );
-}
+import HomeScreen from "./Home";
+import AvailabilityScreen from "./Availability";
+import ProfileScreen from "./Profile";
 
-function AvailabilityScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Availability Tab</Text>
-    </View>
-  );
-}
-
-function ProfileScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Profile Tab</Text>
-    </View>
-  );
-}
+import theme from "../assets/theme";
 
 const Tab = createBottomTabNavigator();
 
@@ -48,8 +29,11 @@ export default function TabNav() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#007BFF",
+        tabBarActiveTintColor: theme.colors.highlight,
         tabBarInactiveTintColor: "gray",
+        tabBarStyle: {
+          backgroundColor: theme.colors.background,
+        },
         headerShown: false,
       })}
     >
