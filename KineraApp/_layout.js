@@ -9,8 +9,29 @@ import ProfileScreen from "./tabs/Profile";
 import AvailabilityScreen from "./tabs/Availability";
 import CandidateProfile from "./tabs/CandidateProfile";
 
-const Tab = createBottomTabNavigator();
+// Create stack navigators for each tab to allow for nested navigation
+const HomeStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
 const AvailabilityStack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// Stack navigator for Home tab
+function HomeStackScreen() {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+    </HomeStack.Navigator>
+  );
+}
+
+// Stack navigator for Profile tab
+function ProfileStackScreen() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+    </ProfileStack.Navigator>
+  );
+}
 
 // Stack navigator for Availability tab
 function AvailabilityStackScreen() {
@@ -31,11 +52,11 @@ export default function Layout() {
           tabBarIcon: ({ focused, color, size }) => {
             let iconName;
 
-            if (route.name === "Home") {
+            if (route.name === "HomeTab") {
               iconName = focused ? "home" : "home-outline";
-            } else if (route.name === "Availability") {
+            } else if (route.name === "AvailabilityTab") {
               iconName = focused ? "calendar" : "calendar-outline";
-            } else if (route.name === "Profile") {
+            } else if (route.name === "ProfileTab") {
               iconName = focused ? "person" : "person-outline";
             }
 
@@ -45,9 +66,21 @@ export default function Layout() {
           tabBarInactiveTintColor: "gray",
         })}
       >
-        <Tab.Screen name="Home" component={HomeScreen} />
-        <Tab.Screen name="Availability" component={AvailabilityStackScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen 
+          name="HomeTab" 
+          component={HomeStackScreen} 
+          options={{ tabBarLabel: "Home" }}
+        />
+        <Tab.Screen 
+          name="AvailabilityTab" 
+          component={AvailabilityStackScreen} 
+          options={{ tabBarLabel: "Availability" }}
+        />
+        <Tab.Screen 
+          name="ProfileTab" 
+          component={ProfileStackScreen}
+          options={{ tabBarLabel: "Profile" }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
