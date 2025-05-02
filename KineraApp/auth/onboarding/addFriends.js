@@ -41,7 +41,7 @@ export default function ProfileSetupScreen({ navigation }) {
 
   return (
     <SafeAreaView>
-      <Text>Profile Setup</Text>
+      <Text>last step: add friends!</Text>
       {/* Add more fields as needed */}
       <Button title="Finish" onPress={handleFinish} />
     </SafeAreaView>

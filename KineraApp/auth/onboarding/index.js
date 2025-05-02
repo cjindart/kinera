@@ -3,12 +3,12 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import basicInfo from "./basicInfo";
 import photos from "./photos";
 import userType from "./userType";
-import lastStep from "./ProfileSetupScreen";
 import gender from "./gender";
 import ageAndHeight from "./ageAndHeight";
 import sexuality from "./sexuality";
 import activities from "./activities";
 import interests from "./interests";
+import addFriends from "./addFriends";
 const OnboardingStack = createNativeStackNavigator();
 
 export default function OnboardingNavigator() {
@@ -27,7 +27,8 @@ export default function OnboardingNavigator() {
       <OnboardingStack.Screen name="Step5" component={ageAndHeight} />
       <OnboardingStack.Screen name="Step6" component={activities} />
       <OnboardingStack.Screen name="Step7" component={interests} />
-      <OnboardingStack.Screen name="lastStep" component={sexuality} />
+      <OnboardingStack.Screen name="Step8" component={sexuality} />
+      <OnboardingStack.Screen name="lastStep" component={addFriends} />
     </OnboardingStack.Navigator>
   );
 }
