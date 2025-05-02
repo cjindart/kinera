@@ -4,6 +4,9 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import theme from "../assets/theme";
 
 export default function AvailabilityScreen({ navigation }) {
+  // Debug navigation object
+  console.log('Navigation in AvailabilityScreen:', navigation);
+  
   // Mock candidate data - in a real app this would come from an API or database
   const candidateInfo = {
     name: "Madison",
@@ -16,6 +19,8 @@ export default function AvailabilityScreen({ navigation }) {
   };
   
   const handleCardPress = () => {
+    console.log('Card pressed, attempting navigation');
+    // Navigate directly to the screen within the same stack navigator
     navigation.navigate('CandidateProfile', { candidateInfo });
   };
 
