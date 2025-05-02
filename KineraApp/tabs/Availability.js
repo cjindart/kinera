@@ -1,9 +1,13 @@
 import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { useNavigation } from '@react-navigation/native';
 import theme from "../assets/theme";
 
-export default function AvailabilityScreen({ navigation }) {
+export default function AvailabilityScreen() {
+  // Use the navigation hook instead of prop
+  const navigation = useNavigation();
+  
   // Debug navigation object
   console.log('Navigation in AvailabilityScreen:', navigation);
   
@@ -21,7 +25,11 @@ export default function AvailabilityScreen({ navigation }) {
   const handleCardPress = () => {
     console.log('Card pressed, attempting navigation');
     // Navigate directly to the screen within the same stack navigator
-    navigation.navigate('CandidateProfile', { candidateInfo });
+    if (navigation && navigation.navigate) {
+      navigation.navigate('CandidateProfile', { candidateInfo });
+    } else {
+      console.error('Navigation is not available:', navigation);
+    }
   };
 
   return (

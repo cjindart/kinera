@@ -107,7 +107,7 @@ export default function CandidateProfile({ route, navigation }) {
       </View>
 
       {/* Bottom Navigation - similar to the app's tab bar */}
-      <View style={styles.bottomNav}>
+      {/* <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navButton}>
           <Ionicons name="heart-outline" size={28} color="#000" />
         </TouchableOpacity>
@@ -117,7 +117,7 @@ export default function CandidateProfile({ route, navigation }) {
         <TouchableOpacity style={styles.navButton}>
           <Ionicons name="person-outline" size={28} color="#000" />
         </TouchableOpacity>
-      </View>
+      </View> */}
     </SafeAreaView>
   );
 }
