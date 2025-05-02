@@ -1,18 +1,10 @@
-import React, { useState } from "react";
-import { View, TextInput, Button, Text } from "react-native";
+import React from "react";
+import { View, Text, Button } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-export default function LoginScreen({ navigation }) {
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-
-  const handleOnboarding = () => {
-    // Save user info, then navigate to ProfileSetup
-    navigation.navigate("Onboarding");
-  };
-
-  const handleAuth = async () => {
+import { CommonActions } from "@react-navigation/native";
+export default function ProfileSetupScreen({ navigation }) {
+  const handleFinish = async () => {
     // Save profile setup, mark user as authenticated
     try {
       // Save user data in AsyncStorage
@@ -49,16 +41,9 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <SafeAreaView>
-      <Text>Phone Number</Text>
-      <TextInput
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
-      <Text>Name</Text>
-      <TextInput value={name} onChangeText={setName} />
-      <Button title="Login" onPress={handleAuth} />
-      <Button title="Sign Up" onPress={handleOnboarding} />
+      <Text>Last Step: Who are you looking for?</Text>
+      {/* Add more fields as needed */}
+      <Button title="Finish" onPress={handleFinish} />
     </SafeAreaView>
   );
 }

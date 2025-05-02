@@ -9,8 +9,7 @@ import HomeScreen from "./tabs/Home";
 import ProfileScreen from "./tabs/Profile";
 import AvailabilityScreen from "./tabs/Availability";
 import CandidateProfile from "./tabs/CandidateProfile";
-import LoginScreen from "./auth/LoginScreen";
-import ProfileSetupScreen from "./auth/ProfileSetupScreen";
+import AuthNavigator from "./auth/AuthNavigator";
 import tabNav from "./tabs/tabNav";
 
 // Create stack navigators for each tab to allow for nested navigation
@@ -51,15 +50,6 @@ function AvailabilityStackScreen() {
         component={CandidateProfile}
       />
     </AvailabilityStack.Navigator>
-  );
-}
-
-function AuthStackScreen() {
-  return (
-    <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      <RootStack.Screen name="LoginScreen" component={LoginScreen} />
-      <RootStack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
-    </RootStack.Navigator>
   );
 }
 
@@ -105,7 +95,6 @@ function TabNavigator() {
 }
 
 export default function Layout() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [initialRoute, setInitialRoute] = useState(null);
 
   useEffect(() => {
@@ -115,16 +104,14 @@ export default function Layout() {
   const checkAuthStatus = async () => {
     try {
       const user = await AsyncStorage.getItem("user");
-      setIsAuthenticated(!!user);
       setInitialRoute(!!user ? "Main" : "Auth");
     } catch (error) {
-      console.error("Error checking auth status:", error);
       setInitialRoute("Auth");
     }
   };
 
   if (initialRoute === null) {
-    return null; // or a loading screen
+    return null;
   }
 
   return (
@@ -133,20 +120,8 @@ export default function Layout() {
         initialRouteName={initialRoute}
         screenOptions={{ headerShown: false }}
       >
-        <RootStack.Screen
-          name="Auth"
-          component={AuthStackScreen}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <RootStack.Screen
-          name="Main"
-          component={TabNavigator}
-          options={{
-            headerShown: false,
-          }}
-        />
+        <RootStack.Screen name="Auth" component={AuthNavigator} />
+        <RootStack.Screen name="Main" component={TabNavigator} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
