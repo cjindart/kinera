@@ -1,14 +1,26 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-
 
 import HomeScreen from "./tabs/Home";
 import ProfileScreen from "./tabs/Profile";
 import AvailabilityScreen from "./tabs/Availability";
+import CandidateProfile from "./tabs/CandidateProfile";
 
 const Tab = createBottomTabNavigator();
+const AvailabilityStack = createNativeStackNavigator();
+
+// Stack navigator for Availability tab
+function AvailabilityStackScreen() {
+  return (
+    <AvailabilityStack.Navigator screenOptions={{ headerShown: false }}>
+      <AvailabilityStack.Screen name="AvailabilityMain" component={AvailabilityScreen} />
+      <AvailabilityStack.Screen name="CandidateProfile" component={CandidateProfile} />
+    </AvailabilityStack.Navigator>
+  );
+}
 
 export default function Layout() {
   return (
@@ -34,7 +46,7 @@ export default function Layout() {
         })}
       >
         <Tab.Screen name="Home" component={HomeScreen} />
-        <Tab.Screen name="Availability" component={AvailabilityScreen} />
+        <Tab.Screen name="Availability" component={AvailabilityStackScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </NavigationContainer>

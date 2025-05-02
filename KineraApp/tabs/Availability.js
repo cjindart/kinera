@@ -3,7 +3,22 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import theme from "../assets/theme";
 
-export default function AvailabilityScreen() {
+export default function AvailabilityScreen({ navigation }) {
+  // Mock candidate data - in a real app this would come from an API or database
+  const candidateInfo = {
+    name: "Madison",
+    age: 22,
+    location: "Los Angeles",
+    height: "5'7",
+    year: "Sophomore",
+    interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
+    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"]
+  };
+  
+  const handleCardPress = () => {
+    navigation.navigate('CandidateProfile', { candidateInfo });
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -20,11 +35,11 @@ export default function AvailabilityScreen() {
         </TouchableOpacity>
 
         <View style={styles.friendInfo}>
-          {/* <Image
-            source={{ uri: "https://link-to-daniel-image.jpg" }} // Replace with real image or static asset
-            style={styles.friendImage}
-          /> */}
-          <View style={styles.temp}></View>
+          <Image
+            source={require("../assets/photos/daniel.png")} // Replace with real image or static asset
+            style={styles.temp}
+          />
+          {/* <View style={styles.temp}></View> */}
           <Text>Daniel</Text>
         </View>
 
@@ -34,17 +49,21 @@ export default function AvailabilityScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Candidate Card */}
-      <View style={styles.cardContainer}>
+      {/* Candidate Card - Now Tappable */}
+      <TouchableOpacity 
+        style={styles.cardContainer}
+        onPress={handleCardPress}
+        activeOpacity={0.7}
+      >
         <View style={styles.card}>
-          <Text style={styles.cardText}>Madison 20</Text>
-          <Text style={styles.cardText}>Los Angeles</Text>
+          <Text style={styles.cardText}>{candidateInfo.name} {candidateInfo.age}</Text>
+          <Text style={styles.cardText}>{candidateInfo.location}</Text>
         </View>
         <View style={styles.approvalRow}>
           <Text style={styles.disapprove}>Friends who don't approve: Maya</Text>
           <Text style={styles.approve}>Friends who approved: CJ, Cole</Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Approve/Reject Buttons */}
       <View style={styles.buttonRow}>
@@ -119,6 +138,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
+    // Add shadow and styling to make it look more tappable
+    backgroundColor: "white",
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   cardText: {
     fontSize: 18,
