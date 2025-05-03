@@ -1,123 +1,175 @@
-import React from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  SafeAreaView 
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  SafeAreaView,
+  Dimensions,
+  Platform,
 } from "react-native";
-import Ionicons from "react-native-vector-icons/Ionicons";
-import theme from "../assets/theme";
+import { Ionicons } from "@expo/vector-icons";
+
+// Color constants based on the spec
+const COLORS = {
+  primaryNavy: "#325475",
+  mutedBlue: "#A9B7C5",
+  skyBlue: "#C2D7E5",
+  paleBlue: "#E6EEF4",
+  offWhite: "#FAEFE4",
+  accentOrange: "#ED7E31",
+  lightPeach: "#F6D3B7",
+  buttonPeach: "#F7D0B5",
+  buttonShadow: "#E98E42",
+};
+
+// Get device dimensions to use for more precise sizing
+const { width, height } = Dimensions.get('window');
 
 export default function CandidateProfile({ route, navigation }) {
-  // In a real app, you would get these details from route.params or API
+  // Get candidate info from route params or use default values
   const candidateInfo = route.params?.candidateInfo || {
     name: "Madison",
-    age: 22,
-    height: "5'7",
+    age: "22",
+    gender: "Woman",
+    height: "5'7\"",
     year: "Sophomore",
     interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
     dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"]
   };
 
+  // State for tracking selected interests
+  const [selectedInterests, setSelectedInterests] = useState(["Music"]);
+  
+  // Toggle function for interests (for highlighting/selecting)
+  const toggleInterest = (interest) => {
+    if (selectedInterests.includes(interest)) {
+      setSelectedInterests(selectedInterests.filter(item => item !== interest));
+    } else {
+      setSelectedInterests([...selectedInterests, interest]);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity 
-        style={styles.backButton} 
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} />
-        <Text style={styles.backText}>Back</Text>
-      </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Back Button */}
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.primaryNavy} />
+          <Text style={styles.backText}>Back</Text>
+        </TouchableOpacity>
 
-      {/* Profile Header with Name */}
-      <Text style={styles.name}>{candidateInfo.name}</Text>
+        {/* 1. Header Section */}
+        <View style={styles.headerSection}>
+          <View style={styles.headerContent}>
+            <View style={styles.nameContainer}>
+              <Text style={styles.headerTitle}>{candidateInfo.name}</Text>
+            </View>
+          </View>
+        </View>
 
-      {/* Profile Pictures Section */}
-      <View style={styles.picturesContainer}>
-        <View style={styles.mainPictureContainer}>
-          {/* This would be an Image component in a real app */}
-          <View style={styles.mainPicture}>
-            {/* Placeholder for profile image */}
-            <Text style={styles.placeholderText}>Main Picture</Text>
+        {/* 2. Photo Gallery Section */}
+        <View style={styles.photoGallerySection}>
+          <View style={styles.leftColumn}>
+            <View style={styles.mainPhotoContainer}>
+              <View style={styles.mainPhoto}>
+                {/* Placeholder for main profile picture */}
+                <Ionicons name="person" size={80} color={COLORS.mutedBlue} />
+              </View>
+            </View>
+          </View>
+          
+          <View style={styles.rightColumn}>
+            <View style={styles.additionalPhotosContainer}>
+              {/* Only show photos that exist */}
+              <View style={styles.additionalPhoto}>
+                <Ionicons name="image" size={32} color={COLORS.mutedBlue} />
+              </View>
+              
+              <View style={styles.additionalPhoto}>
+                <Ionicons name="image" size={32} color={COLORS.mutedBlue} />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* 3. Profile Summary Bar */}
+        <View style={styles.summaryBarSection}>
+          <View style={styles.summaryBlock}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="calendar-outline" size={24} color={COLORS.primaryNavy} />
+            </View>
+            <Text style={styles.summaryText}>{candidateInfo.age}</Text>
+          </View>
+          
+          <View style={styles.summaryBlock}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="person-outline" size={24} color={COLORS.primaryNavy} />
+            </View>
+            <Text style={styles.summaryText}>{candidateInfo.gender}</Text>
+          </View>
+          
+          <View style={styles.summaryBlock}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="resize-outline" size={24} color={COLORS.primaryNavy} />
+            </View>
+            <Text style={styles.summaryText}>{candidateInfo.height}</Text>
+          </View>
+          
+          <View style={styles.summaryBlock}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="school-outline" size={24} color={COLORS.primaryNavy} />
+            </View>
+            <Text style={styles.summaryText}>{candidateInfo.year}</Text>
+          </View>
+        </View>
+
+        {/* 4. Interest Tags Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionLabel}>Interests:</Text>
+          <View style={styles.tagsContainer}>
+            {candidateInfo.interests.map((interest, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.tagPill,
+                  selectedInterests.includes(interest) && styles.selectedTagPill,
+                ]}
+                onPress={() => toggleInterest(interest)}
+              >
+                <Text
+                  style={[
+                    styles.tagText,
+                    selectedInterests.includes(interest) && styles.selectedTagText,
+                  ]}
+                >
+                  {interest}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* 5. Favorite Date Activities Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionLabel}>Favorite date activities:</Text>
+          <View style={styles.tagsContainer}>
+            {candidateInfo.dateActivities.map((activity, index) => (
+              <View key={index} style={styles.tagPill}>
+                <Text style={styles.tagText}>{activity}</Text>
+              </View>
+            ))}
           </View>
         </View>
         
-        <View style={styles.secondaryPicturesContainer}>
-          <View style={styles.secondaryPicture}>
-            {/* Placeholder for additional images */}
-            <Text style={styles.placeholderText}>Picture</Text>
-          </View>
-          <View style={styles.secondaryPicture}>
-            {/* Placeholder for additional images */}
-            <Text style={styles.placeholderText}>Picture</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Profile Info Section */}
-      <View style={styles.infoSection}>
-        <View style={styles.infoRow}>
-          <View style={styles.infoItem}>
-            <Ionicons name="person" size={20} />
-            <Text style={styles.infoText}>{candidateInfo.age}</Text>
-          </View>
-          
-          <View style={styles.infoItem}>
-            <Ionicons name="woman" size={20} />
-            <Text style={styles.infoText}>Woman</Text>
-          </View>
-          
-          <View style={styles.infoItem}>
-            <Ionicons name="resize" size={20} />
-            <Text style={styles.infoText}>{candidateInfo.height}</Text>
-          </View>
-
-          <View style={styles.infoItem}>
-            <Ionicons name="school" size={20} />
-            <Text style={styles.infoText}>{candidateInfo.year}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Interests Section */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Interests:</Text>
-        <View style={styles.tagsContainer}>
-          {candidateInfo.interests.map((interest, index) => (
-            <View key={index} style={styles.tagButton}>
-              <Text style={styles.tagText}>{interest}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Favorite Date Activities Section */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Favorite date activities:</Text>
-        <View style={styles.tagsContainer}>
-          {candidateInfo.dateActivities.map((activity, index) => (
-            <View key={index} style={styles.tagButton}>
-              <Text style={styles.tagText}>{activity}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Bottom Navigation - similar to the app's tab bar */}
-      {/* <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navButton}>
-          <Ionicons name="heart-outline" size={28} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}>
-          <Ionicons name="copy-outline" size={28} color="#000" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}>
-          <Ionicons name="person-outline" size={28} color="#000" />
-        </TouchableOpacity>
-      </View> */}
+        {/* Add bottom padding to account for tab bar */}
+        <View style={styles.bottomPadding} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -126,112 +178,170 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "white",
-    padding: 15,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 70, // Add padding to account for tab bar
   },
   backButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginTop: 10,
+    marginLeft: 16,
+    marginBottom: 5,
   },
   backText: {
     fontSize: 16,
     marginLeft: 5,
+    color: COLORS.primaryNavy,
   },
-  name: {
+  
+  // 1. Header Section
+  headerSection: {
+    marginTop: 10,
+    marginBottom: 15,
+    paddingHorizontal: 16,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center", // Center the name
+    width: "100%",
+  },
+  nameContainer: {
+    flexDirection: "column",
+    alignItems: "center", // Center text
+  },
+  headerTitle: {
     fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 20,
+    fontWeight: "600",
+    color: COLORS.primaryNavy,
+    marginBottom: 2,
   },
-  picturesContainer: {
+  
+  // 2. Photo Gallery Section
+  photoGallerySection: {
     flexDirection: "row",
-    marginBottom: 20,
-    height: 220,
+    paddingHorizontal: 16,
+    marginVertical: 15,
   },
-  mainPictureContainer: {
-    flex: 1,
-    marginRight: 10,
+  leftColumn: {
+    width: "38%", // Reduced slightly to prevent overlap
+    position: "relative",
   },
-  mainPicture: {
+  mainPhotoContainer: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
+    marginRight: 12, // Increased margin to prevent overlap
+  },
+  mainPhoto: {
+    aspectRatio: 1,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: COLORS.primaryNavy,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: COLORS.paleBlue,
+    height: width * 0.35, // Fixed size based on screen width
+    overflow: 'hidden',
   },
-  secondaryPicturesContainer: {
-    width: "35%",
+  photoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  additionalPhotoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+    borderRadius: 10, // Slightly less than container's borderRadius
+  },
+  rightColumn: {
+    width: "62%", // Increased to match the reduction in leftColumn
+    alignItems: "center",
+    paddingLeft: 5, // Add padding to create more space between columns
+  },
+  additionalPhotosContainer: {
+    height: width * 0.35, // Match the height of mainPhoto
+    width: "100%",
     justifyContent: "space-between",
   },
-  secondaryPicture: {
-    height: "48%",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
+  additionalPhoto: {
+    height: "47%",
+    width: "100%", // Ensure full width
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: COLORS.skyBlue,
     justifyContent: "center",
     alignItems: "center",
+    overflow: 'hidden',
+    backgroundColor: COLORS.paleBlue,
   },
-  placeholderText: {
-    color: "#888",
-  },
-  infoSection: {
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 10,
-  },
-  infoRow: {
+  
+  // 3. Profile Summary Bar
+  summaryBarSection: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
+    paddingHorizontal: 16,
+    marginVertical: 15,
   },
-  infoItem: {
-    flexDirection: "row",
+  summaryBlock: {
+    flex: 1,
     alignItems: "center",
-    paddingVertical: 5,
   },
-  infoText: {
-    marginLeft: 5,
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.paleBlue,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  summaryText: {
     fontSize: 16,
+    fontWeight: "500",
+    color: COLORS.primaryNavy,
   },
+  
+  // 4 & 5. Section Containers (Interests & Date Activities)
   sectionContainer: {
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    marginBottom: 18,
   },
-  sectionTitle: {
-    fontSize: 18,
-    marginBottom: 10,
+  sectionLabel: {
+    fontSize: 14,
+    color: COLORS.primaryNavy,
+    marginBottom: 8,
   },
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
   },
-  tagButton: {
-    backgroundColor: "#f0f0f0",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 5,
-    margin: 5,
+  tagPill: {
+    backgroundColor: COLORS.offWhite,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: COLORS.primaryNavy,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    margin: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedTagPill: {
+    backgroundColor: COLORS.accentOrange,
+    borderColor: COLORS.accentOrange,
   },
   tagText: {
     fontSize: 14,
+    color: COLORS.primaryNavy,
   },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    backgroundColor: "#f5f5f5",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  selectedTagText: {
+    color: COLORS.offWhite,
   },
-  navButton: {
-    padding: 10,
-  },
+  
+  // Extra bottom padding
+  bottomPadding: {
+    height: 20,
+  }
 }); 
