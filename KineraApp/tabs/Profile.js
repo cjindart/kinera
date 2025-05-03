@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   SafeAreaView,
   Dimensions,
   Platform,
+  Animated,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -21,10 +23,56 @@ const COLORS = {
   offWhite: "#FAEFE4",
   accentOrange: "#ED7E31",
   lightPeach: "#F6D3B7",
+  buttonPeach: "#F7D0B5",
+  buttonShadow: "#E98E42",
 };
 
 // Get device dimensions to use for more precise sizing
 const { width, height } = Dimensions.get('window');
+
+// EditButton component with press animation
+const EditButton = () => {
+  const translateY = useRef(new Animated.Value(0)).current;
+  
+  const handlePressIn = () => {
+    Animated.timing(translateY, {
+      toValue: 3, // Reduced from 4 to match the new size
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <View style={styles.editButtonContainer}>
+      {/* Bottom layer - shadow/base */}
+      <View style={styles.editButtonShadow} />
+      
+      {/* Top layer - animated */}
+      <Animated.View 
+        style={[
+          styles.editButtonTop,
+          { transform: [{ translateY }] }
+        ]}
+      >
+        <Pressable
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={styles.editButtonPressable}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+};
 
 export default function ProfileScreen() {
   // Mock data for the profile
@@ -59,6 +107,11 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Edit button positioned in top right */}
+      <View style={styles.editButtonWrapper}>
+        <EditButton />
+      </View>
+      
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* 1. Header Section */}
         <View style={styles.headerSection}>
@@ -78,7 +131,7 @@ export default function ProfileScreen() {
           </View>
           
           <View style={styles.rightColumn}>
-            <Text style={styles.viewLabel}>View</Text>
+            {/* <Text style={styles.viewLabel}>View</Text> */}
             <View style={styles.additionalPhotosContainer}>
               <View style={styles.additionalPhoto}>
                 <Ionicons name="add" size={32} color={COLORS.primaryNavy} />
@@ -199,6 +252,48 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 70, // Add padding to account for tab bar
+  },
+  
+  // Edit Button Styles
+  editButtonWrapper: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 20,
+    zIndex: 999, // Ensure button stays on top
+  },
+  editButtonContainer: {
+    width: 88, // Reduced from 110 by 20%
+    height: 48, // Reduced from 60 by 20%
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editButtonShadow: {
+    position: 'absolute',
+    width: 80, // Reduced from 100 by 20%
+    height: 40, // Reduced from 50 by 20%
+    borderRadius: 20, // Adjusted for smaller size
+    backgroundColor: COLORS.buttonShadow,
+    bottom: 0,
+  },
+  editButtonTop: {
+    position: 'absolute',
+    width: 80, // Reduced from 100 by 20%
+    height: 40, // Reduced from 50 by 20%
+    borderRadius: 20, // Adjusted for smaller size
+    backgroundColor: COLORS.buttonPeach,
+    bottom: 3, // Adjusted from 4 for smaller size
+  },
+  editButtonPressable: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20, // Adjusted for smaller size
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editButtonText: {
+    fontSize: 19, // Reduced from 24 by 20%
+    fontWeight: 'bold',
+    color: '#000',
   },
   
   // 1. Header Section
