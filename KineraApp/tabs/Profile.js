@@ -107,16 +107,16 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Edit button positioned in top right */}
-      <View style={styles.editButtonWrapper}>
-        <EditButton />
-      </View>
-      
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* 1. Header Section */}
         <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>{profile.name}</Text>
-          <Text style={styles.roleText}>You are a :{profile.role}</Text>
+          <View style={styles.headerContent}>
+            <View style={styles.nameContainer}>
+              <Text style={styles.headerTitle}>{profile.name}</Text>
+              <Text style={styles.roleText}>You are a: {profile.role}</Text>
+            </View>
+            <EditButton />
+          </View>
         </View>
 
         {/* 2. Photo Gallery Section */}
@@ -255,62 +255,68 @@ const styles = StyleSheet.create({
   },
   
   // Edit Button Styles
-  editButtonWrapper: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
-    right: 20,
-    zIndex: 999, // Ensure button stays on top
-  },
   editButtonContainer: {
-    width: 88, // Reduced from 110 by 20%
-    height: 48, // Reduced from 60 by 20%
+    width: 80, // Adjusted for inline placement
+    height: 40, // Adjusted for inline placement
     justifyContent: 'center',
     alignItems: 'center',
   },
   editButtonShadow: {
     position: 'absolute',
-    width: 80, // Reduced from 100 by 20%
-    height: 40, // Reduced from 50 by 20%
-    borderRadius: 20, // Adjusted for smaller size
+    width: 70, // Adjusted for inline placement
+    height: 35, // Adjusted for inline placement
+    borderRadius: 18, // Adjusted for smaller size
     backgroundColor: COLORS.buttonShadow,
     bottom: 0,
   },
   editButtonTop: {
     position: 'absolute',
-    width: 80, // Reduced from 100 by 20%
-    height: 40, // Reduced from 50 by 20%
-    borderRadius: 20, // Adjusted for smaller size
+    width: 70, // Adjusted for inline placement
+    height: 35, // Adjusted for inline placement
+    borderRadius: 18, // Adjusted for smaller size
     backgroundColor: COLORS.buttonPeach,
     bottom: 3, // Adjusted from 4 for smaller size
   },
   editButtonPressable: {
     width: '100%',
     height: '100%',
-    borderRadius: 20, // Adjusted for smaller size
+    borderRadius: 18, // Adjusted for smaller size
     justifyContent: 'center',
     alignItems: 'center',
   },
   editButtonText: {
-    fontSize: 19, // Reduced from 24 by 20%
+    fontSize: 17, // Adjusted for inline placement
     fontWeight: 'bold',
     color: '#000',
   },
   
   // 1. Header Section
   headerSection: {
+    marginTop: 20,
+    marginBottom: 15,
+    paddingHorizontal: 16,
+  },
+  headerContent: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
-    marginBottom: 10,
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  nameContainer: {
+    flexDirection: "column",
+    alignItems: "flex-start",
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: "600",
     color: COLORS.primaryNavy,
+    marginBottom: 2,
   },
   roleText: {
     fontSize: 14,
     fontStyle: "italic",
     color: COLORS.mutedBlue,
+    marginTop: 0,
   },
   
   // 2. Photo Gallery Section
