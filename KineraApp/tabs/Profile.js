@@ -11,6 +11,8 @@ import {
   Platform,
   Animated,
   Pressable,
+  TextInput,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -31,7 +33,7 @@ const COLORS = {
 const { width, height } = Dimensions.get('window');
 
 // EditButton component with press animation
-const EditButton = () => {
+const EditButton = ({ isEditing, onToggleEdit }) => {
   const translateY = useRef(new Animated.Value(0)).current;
   
   const handlePressIn = () => {
@@ -48,6 +50,9 @@ const EditButton = () => {
       duration: 100,
       useNativeDriver: true,
     }).start();
+    
+    // Toggle edit mode when button is released
+    onToggleEdit();
   };
 
   return (
@@ -67,7 +72,7 @@ const EditButton = () => {
           onPressOut={handlePressOut}
           style={styles.editButtonPressable}
         >
-          <Text style={styles.editButtonText}>Edit</Text>
+          <Text style={styles.editButtonText}>{isEditing ? "Done" : "Edit"}</Text>
         </Pressable>
       </Animated.View>
     </View>
@@ -75,6 +80,9 @@ const EditButton = () => {
 };
 
 export default function ProfileScreen() {
+  // State to track whether profile is in edit mode
+  const [isEditing, setIsEditing] = useState(false);
+  
   // Mock data for the profile
   const profile = {
     name: "Gavin",
@@ -93,15 +101,82 @@ export default function ProfileScreen() {
     ]
   };
 
-  // State for tracking selected interests
+  // State for photos
+  const [mainPhoto, setMainPhoto] = useState(null);
+  const [additionalPhotos, setAdditionalPhotos] = useState([null, null]);
+
+  // State for tracking selected interests and edited data
   const [selectedInterests, setSelectedInterests] = useState(["Music"]);
+  const [interests, setInterests] = useState(profile.interests);
+  const [dateActivities, setDateActivities] = useState(profile.dateActivities);
+  const [newInterestText, setNewInterestText] = useState("");
+  const [newActivityText, setNewActivityText] = useState("");
+  
+  // Toggle edit mode
+  const toggleEditMode = () => {
+    setIsEditing(!isEditing);
+    
+    // Clear input fields when exiting edit mode
+    if (isEditing) {
+      setNewInterestText("");
+      setNewActivityText("");
+    }
+  };
   
   // Toggle function for interests
   const toggleInterest = (interest) => {
-    if (selectedInterests.includes(interest)) {
-      setSelectedInterests(selectedInterests.filter(item => item !== interest));
+    if (isEditing) {
+      // In edit mode, remove the interest
+      setInterests(interests.filter(item => item !== interest));
     } else {
-      setSelectedInterests([...selectedInterests, interest]);
+      // In view mode, select/deselect the interest
+      if (selectedInterests.includes(interest)) {
+        setSelectedInterests(selectedInterests.filter(item => item !== interest));
+      } else {
+        setSelectedInterests([...selectedInterests, interest]);
+      }
+    }
+  };
+  
+  // Function to add a new interest
+  const addNewInterest = () => {
+    if (newInterestText.trim() === "") return;
+    
+    if (!interests.includes(newInterestText.trim())) {
+      setInterests([...interests, newInterestText.trim()]);
+      setNewInterestText("");
+    } else {
+      Alert.alert("Duplicate", "This interest already exists!");
+    }
+  };
+  
+  // Function to add a new date activity
+  const addNewActivity = () => {
+    if (newActivityText.trim() === "") return;
+    
+    if (!dateActivities.includes(newActivityText.trim())) {
+      setDateActivities([...dateActivities, newActivityText.trim()]);
+      setNewActivityText("");
+    } else {
+      Alert.alert("Duplicate", "This activity already exists!");
+    }
+  };
+  
+  // Function to remove a date activity
+  const removeActivity = (activity) => {
+    setDateActivities(dateActivities.filter(item => item !== activity));
+  };
+  
+  // Function to handle photo selection (mock)
+  const handlePhotoSelection = (type, index = 0) => {
+    if (type === 'main') {
+      // This would be replaced with actual image picking code
+      Alert.alert("Replace Photo", "Photo selection would open here");
+      setMainPhoto('https://via.placeholder.com/300');
+    } else if (type === 'additional') {
+      const newPhotos = [...additionalPhotos];
+      newPhotos[index] = 'https://via.placeholder.com/300';
+      setAdditionalPhotos(newPhotos);
     }
   };
 
@@ -115,30 +190,90 @@ export default function ProfileScreen() {
               <Text style={styles.headerTitle}>{profile.name}</Text>
               <Text style={styles.roleText}>You are a: {profile.role}</Text>
             </View>
-            <EditButton />
+            <EditButton isEditing={isEditing} onToggleEdit={toggleEditMode} />
           </View>
         </View>
 
         {/* 2. Photo Gallery Section */}
         <View style={styles.photoGallerySection}>
           <View style={styles.leftColumn}>
-            <Text style={styles.editLabel}>Edit</Text>
+            {isEditing && <Text style={styles.editLabel}>Edit</Text>}
             <View style={styles.mainPhotoContainer}>
               <View style={styles.mainPhoto}>
-                <Ionicons name="person" size={80} color={COLORS.mutedBlue} />
+                {isEditing ? (
+                  <TouchableOpacity 
+                    style={styles.editPhotoButton} 
+                    onPress={() => handlePhotoSelection('main')}
+                  >
+                    {mainPhoto ? (
+                      <Image source={{ uri: mainPhoto }} style={styles.photoImage} />
+                    ) : (
+                      <>
+                        <Ionicons name="camera" size={40} color={COLORS.primaryNavy} />
+                        <Text style={styles.editPhotoText}>Replace</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  mainPhoto ? (
+                    <Image source={{ uri: mainPhoto }} style={styles.photoImage} />
+                  ) : (
+                    <Ionicons name="person" size={80} color={COLORS.mutedBlue} />
+                  )
+                )}
               </View>
             </View>
           </View>
           
           <View style={styles.rightColumn}>
-            {/* <Text style={styles.viewLabel}>View</Text> */}
             <View style={styles.additionalPhotosContainer}>
-              <View style={styles.additionalPhoto}>
-                <Ionicons name="add" size={32} color={COLORS.primaryNavy} />
-              </View>
-              <View style={styles.additionalPhoto}>
-                <Ionicons name="add" size={32} color={COLORS.primaryNavy} />
-              </View>
+              {isEditing ? (
+                <>
+                  <TouchableOpacity 
+                    style={styles.additionalPhoto} 
+                    onPress={() => handlePhotoSelection('additional', 0)}
+                  >
+                    {additionalPhotos[0] ? (
+                      <Image source={{ uri: additionalPhotos[0] }} style={styles.additionalPhotoImage} />
+                    ) : (
+                      <>
+                        <Ionicons name="add-circle" size={32} color={COLORS.primaryNavy} />
+                        <Text style={styles.smallEditText}>Add</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.additionalPhoto}
+                    onPress={() => handlePhotoSelection('additional', 1)}
+                  >
+                    {additionalPhotos[1] ? (
+                      <Image source={{ uri: additionalPhotos[1] }} style={styles.additionalPhotoImage} />
+                    ) : (
+                      <>
+                        <Ionicons name="add-circle" size={32} color={COLORS.primaryNavy} />
+                        <Text style={styles.smallEditText}>Add</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <View style={styles.additionalPhoto}>
+                    {additionalPhotos[0] ? (
+                      <Image source={{ uri: additionalPhotos[0] }} style={styles.additionalPhotoImage} />
+                    ) : (
+                      <Ionicons name="add" size={32} color={COLORS.primaryNavy} />
+                    )}
+                  </View>
+                  <View style={styles.additionalPhoto}>
+                    {additionalPhotos[1] ? (
+                      <Image source={{ uri: additionalPhotos[1] }} style={styles.additionalPhotoImage} />
+                    ) : (
+                      <Ionicons name="add" size={32} color={COLORS.primaryNavy} />
+                    )}
+                  </View>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -176,25 +311,63 @@ export default function ProfileScreen() {
 
         {/* 4. Interest Tags Section */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionLabel}>Interests:</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionLabel}>Interests:</Text>
+            {isEditing && (
+              <TouchableOpacity 
+                style={styles.addCircleButton}
+                onPress={() => {
+                  if (newInterestText.trim() !== "") {
+                    addNewInterest();
+                  } else {
+                    Alert.alert("Please enter an interest in the field below");
+                  }
+                }}
+              >
+                <Ionicons name="add" size={20} color={COLORS.offWhite} />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {isEditing && (
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Add a new interest..."
+                value={newInterestText}
+                onChangeText={setNewInterestText}
+                onSubmitEditing={addNewInterest}
+              />
+            </View>
+          )}
+          
           <View style={styles.tagsContainer}>
-            {profile.interests.map((interest, index) => (
+            {interests.map((interest, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
                   styles.tagPill,
-                  selectedInterests.includes(interest) && styles.selectedTagPill,
+                  isEditing ? styles.editableTagPill : null,
+                  !isEditing && selectedInterests.includes(interest) && styles.selectedTagPill,
                 ]}
                 onPress={() => toggleInterest(interest)}
               >
                 <Text
                   style={[
                     styles.tagText,
-                    selectedInterests.includes(interest) && styles.selectedTagText,
+                    !isEditing && selectedInterests.includes(interest) && styles.selectedTagText,
                   ]}
                 >
                   {interest}
                 </Text>
+                {isEditing && (
+                  <TouchableOpacity
+                    style={styles.removeIconContainer}
+                    onPress={() => toggleInterest(interest)}
+                  >
+                    <Ionicons name="close-circle" size={18} color={COLORS.primaryNavy} />
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -202,11 +375,48 @@ export default function ProfileScreen() {
 
         {/* 5. Favorite Date Activities Section */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionLabel}>Favorite date activities:</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionLabel}>Favorite date activities:</Text>
+            {isEditing && (
+              <TouchableOpacity 
+                style={styles.addCircleButton}
+                onPress={() => {
+                  if (newActivityText.trim() !== "") {
+                    addNewActivity();
+                  } else {
+                    Alert.alert("Please enter an activity in the field below");
+                  }
+                }}
+              >
+                <Ionicons name="add" size={20} color={COLORS.offWhite} />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {isEditing && (
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Add a new date activity..."
+                value={newActivityText}
+                onChangeText={setNewActivityText}
+                onSubmitEditing={addNewActivity}
+              />
+            </View>
+          )}
+          
           <View style={styles.tagsContainer}>
-            {profile.dateActivities.map((activity, index) => (
-              <View key={index} style={styles.tagPill}>
+            {dateActivities.map((activity, index) => (
+              <View key={index} style={[styles.tagPill, isEditing ? styles.editableTagPill : null]}>
                 <Text style={styles.tagText}>{activity}</Text>
+                {isEditing && (
+                  <TouchableOpacity
+                    style={styles.removeIconContainer}
+                    onPress={() => removeActivity(activity)}
+                  >
+                    <Ionicons name="close-circle" size={18} color={COLORS.primaryNavy} />
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
@@ -350,6 +560,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: COLORS.paleBlue,
     height: width * 0.35, // Fixed size based on screen width
+    overflow: 'hidden',
+  },
+  editPhotoButton: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(196, 215, 229, 0.7)', // Semi-transparent skyBlue
+  },
+  editPhotoText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.primaryNavy,
+    marginTop: 8,
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  additionalPhotoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+    borderRadius: 10, // Slightly less than container's borderRadius
+  },
+  smallEditText: {
+    fontSize: 12,
+    color: COLORS.primaryNavy,
+    marginTop: 4,
   },
   rightColumn: {
     width: "62%", // Increased to match the reduction in leftColumn
@@ -375,6 +615,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.skyBlue,
     justifyContent: "center",
     alignItems: "center",
+    overflow: 'hidden',
   },
   
   // 3. Profile Summary Bar
@@ -407,10 +648,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 18,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   sectionLabel: {
     fontSize: 14,
-    marginBottom: 8,
     color: COLORS.primaryNavy,
+  },
+  addCircleButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.accentOrange,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+  },
+  inputContainer: {
+    marginBottom: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.mutedBlue,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    backgroundColor: COLORS.paleBlue,
   },
   tagsContainer: {
     flexDirection: "row",
@@ -424,6 +695,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     margin: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editableTagPill: {
+    paddingRight: 25, // Make room for the remove icon
+    backgroundColor: COLORS.paleBlue,
+    borderColor: COLORS.mutedBlue,
   },
   selectedTagPill: {
     backgroundColor: COLORS.accentOrange,
@@ -435,6 +713,20 @@ const styles = StyleSheet.create({
   },
   selectedTagText: {
     color: COLORS.offWhite,
+  },
+  removeIconContainer: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
   
   // 6. Divider
