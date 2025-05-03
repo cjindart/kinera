@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from 'expo-image-picker';
 
 // Color constants based on the spec
 const COLORS = {
@@ -112,6 +113,26 @@ export default function ProfileScreen() {
   const [newInterestText, setNewInterestText] = useState("");
   const [newActivityText, setNewActivityText] = useState("");
   
+  // Request camera and media library permissions on component mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+        const mediaLibraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        
+        if (!cameraPermission.granted) {
+          Alert.alert("Permission Required", "Camera access is needed to take photos");
+        }
+        
+        if (!mediaLibraryPermission.granted) {
+          Alert.alert("Permission Required", "Media library access is needed to pick photos");
+        }
+      } catch (error) {
+        console.error("Error requesting permissions:", error);
+      }
+    })();
+  }, []);
+  
   // Toggle edit mode
   const toggleEditMode = () => {
     setIsEditing(!isEditing);
@@ -167,16 +188,76 @@ export default function ProfileScreen() {
     setDateActivities(dateActivities.filter(item => item !== activity));
   };
   
-  // Function to handle photo selection (mock)
-  const handlePhotoSelection = (type, index = 0) => {
-    if (type === 'main') {
-      // This would be replaced with actual image picking code
-      Alert.alert("Replace Photo", "Photo selection would open here");
-      setMainPhoto('https://via.placeholder.com/300');
-    } else if (type === 'additional') {
-      const newPhotos = [...additionalPhotos];
-      newPhotos[index] = 'https://via.placeholder.com/300';
-      setAdditionalPhotos(newPhotos);
+  // Function to pick an image from the media library
+  const pickImage = async (type, index = 0) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        if (type === 'main') {
+          setMainPhoto(result.assets[0].uri);
+        } else if (type === 'additional') {
+          const newPhotos = [...additionalPhotos];
+          newPhotos[index] = result.assets[0].uri;
+          setAdditionalPhotos(newPhotos);
+        }
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to pick an image: " + error.message);
+    }
+  };
+  
+  // Function to take a photo with the camera
+  const takePhoto = async (type, index = 0) => {
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        if (type === 'main') {
+          setMainPhoto(result.assets[0].uri);
+        } else if (type === 'additional') {
+          const newPhotos = [...additionalPhotos];
+          newPhotos[index] = result.assets[0].uri;
+          setAdditionalPhotos(newPhotos);
+        }
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to take a photo: " + error.message);
+    }
+  };
+  
+  // Function to show image picker options
+  const showImagePickerOptions = (type, index = 0) => {
+    if (Platform.OS === 'ios') {
+      Alert.alert(
+        "Choose Photo",
+        "Select a photo from your library or take a new one",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Take Photo", onPress: () => takePhoto(type, index) },
+          { text: "Choose from Library", onPress: () => pickImage(type, index) },
+        ]
+      );
+    } else {
+      // For Android, show an ActionSheet or similar component
+      Alert.alert(
+        "Choose Photo",
+        "Select a photo from your library or take a new one",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Take Photo", onPress: () => takePhoto(type, index) },
+          { text: "Choose from Library", onPress: () => pickImage(type, index) },
+        ]
+      );
     }
   };
 
@@ -203,7 +284,7 @@ export default function ProfileScreen() {
                 {isEditing ? (
                   <TouchableOpacity 
                     style={styles.editPhotoButton} 
-                    onPress={() => handlePhotoSelection('main')}
+                    onPress={() => showImagePickerOptions('main')}
                   >
                     {mainPhoto ? (
                       <Image source={{ uri: mainPhoto }} style={styles.photoImage} />
@@ -228,10 +309,12 @@ export default function ProfileScreen() {
           <View style={styles.rightColumn}>
             <View style={styles.additionalPhotosContainer}>
               {isEditing ? (
+                // Edit mode logic - dynamically display add buttons based on how many photos exist
                 <>
+                  {/* First additional photo slot */}
                   <TouchableOpacity 
                     style={styles.additionalPhoto} 
-                    onPress={() => handlePhotoSelection('additional', 0)}
+                    onPress={() => showImagePickerOptions('additional', 0)}
                   >
                     {additionalPhotos[0] ? (
                       <Image source={{ uri: additionalPhotos[0] }} style={styles.additionalPhotoImage} />
@@ -242,36 +325,38 @@ export default function ProfileScreen() {
                       </>
                     )}
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.additionalPhoto}
-                    onPress={() => handlePhotoSelection('additional', 1)}
-                  >
-                    {additionalPhotos[1] ? (
-                      <Image source={{ uri: additionalPhotos[1] }} style={styles.additionalPhotoImage} />
-                    ) : (
-                      <>
-                        <Ionicons name="add-circle" size={32} color={COLORS.primaryNavy} />
-                        <Text style={styles.smallEditText}>Add</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                  
+                  {/* Second additional photo slot - only show if the first photo exists */}
+                  {(additionalPhotos[0] || additionalPhotos[1]) && (
+                    <TouchableOpacity 
+                      style={styles.additionalPhoto}
+                      onPress={() => showImagePickerOptions('additional', 1)}
+                    >
+                      {additionalPhotos[1] ? (
+                        <Image source={{ uri: additionalPhotos[1] }} style={styles.additionalPhotoImage} />
+                      ) : (
+                        <>
+                          <Ionicons name="add-circle" size={32} color={COLORS.primaryNavy} />
+                          <Text style={styles.smallEditText}>Add</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </>
               ) : (
+                // View mode - only show photos that exist, no empty containers
                 <>
-                  <View style={styles.additionalPhoto}>
-                    {additionalPhotos[0] ? (
+                  {additionalPhotos[0] && (
+                    <View style={styles.additionalPhoto}>
                       <Image source={{ uri: additionalPhotos[0] }} style={styles.additionalPhotoImage} />
-                    ) : (
-                      <Ionicons name="add" size={32} color={COLORS.primaryNavy} />
-                    )}
-                  </View>
-                  <View style={styles.additionalPhoto}>
-                    {additionalPhotos[1] ? (
+                    </View>
+                  )}
+                  
+                  {additionalPhotos[1] && (
+                    <View style={styles.additionalPhoto}>
                       <Image source={{ uri: additionalPhotos[1] }} style={styles.additionalPhotoImage} />
-                    ) : (
-                      <Ionicons name="add" size={32} color={COLORS.primaryNavy} />
-                    )}
-                  </View>
+                    </View>
+                  )}
                 </>
               )}
             </View>
@@ -606,9 +691,12 @@ const styles = StyleSheet.create({
     height: width * 0.35, // Match the height of mainPhoto
     width: "100%",
     justifyContent: "space-between",
+    flexGrow: 1,
+    alignItems: "center"
   },
   additionalPhoto: {
     height: "47%",
+    width: "100%", // Ensure full width
     borderRadius: 12,
     borderWidth: 2,
     borderStyle: "dashed",
@@ -616,6 +704,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     overflow: 'hidden',
+    marginBottom: 10, // Add spacing between photos
   },
   
   // 3. Profile Summary Bar
