@@ -117,10 +117,11 @@ export default function ProfileScreen() {
     ]
   };
 
-  // State for photos
+  // State for photos - update to support more photos
   const [mainPhoto, setMainPhoto] = useState(null);
-  const [additionalPhotos, setAdditionalPhotos] = useState([null, null]);
-
+  const [additionalPhotos, setAdditionalPhotos] = useState([null, null, null]);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
   // State for tracking selected interests and edited data
   const [selectedInterests, setSelectedInterests] = useState(["Music"]);
   const [interests, setInterests] = useState(profile.interests);
@@ -210,8 +211,8 @@ export default function ProfileScreen() {
     setDateActivities(dateActivities.filter(item => item !== activity));
   };
   
-  // Function to pick an image from the media library
-  const pickImage = async (type, index = 0) => {
+  // Updated function to pick an image
+  const pickImage = async (index = 0) => {
     try {
       // Check if ImagePicker is properly available
       if (!ImagePicker.launchImageLibraryAsync) {
@@ -227,11 +228,11 @@ export default function ProfileScreen() {
       });
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        if (type === 'main') {
+        if (index === 0) {
           setMainPhoto(result.assets[0].uri);
-        } else if (type === 'additional') {
+        } else {
           const newPhotos = [...additionalPhotos];
-          newPhotos[index] = result.assets[0].uri;
+          newPhotos[index - 1] = result.assets[0].uri;
           setAdditionalPhotos(newPhotos);
         }
       }
@@ -241,8 +242,8 @@ export default function ProfileScreen() {
     }
   };
   
-  // Function to take a photo with the camera
-  const takePhoto = async (type, index = 0) => {
+  // Updated function to take a photo
+  const takePhoto = async (index = 0) => {
     try {
       // Check if ImagePicker is properly available
       if (!ImagePicker.launchCameraAsync) {
@@ -257,11 +258,11 @@ export default function ProfileScreen() {
       });
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        if (type === 'main') {
+        if (index === 0) {
           setMainPhoto(result.assets[0].uri);
-        } else if (type === 'additional') {
+        } else {
           const newPhotos = [...additionalPhotos];
-          newPhotos[index] = result.assets[0].uri;
+          newPhotos[index - 1] = result.assets[0].uri;
           setAdditionalPhotos(newPhotos);
         }
       }
@@ -271,16 +272,16 @@ export default function ProfileScreen() {
     }
   };
   
-  // Function to show image picker options
-  const showImagePickerOptions = (type, index = 0) => {
+  // Updated function to show image picker options
+  const showImagePickerOptions = (index = 0) => {
     if (Platform.OS === 'ios') {
       Alert.alert(
         "Choose Photo",
         "Select a photo from your library or take a new one",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Take Photo", onPress: () => takePhoto(type, index) },
-          { text: "Choose from Library", onPress: () => pickImage(type, index) },
+          { text: "Take Photo", onPress: () => takePhoto(index) },
+          { text: "Choose from Library", onPress: () => pickImage(index) },
         ]
       );
     } else {
@@ -290,11 +291,21 @@ export default function ProfileScreen() {
         "Select a photo from your library or take a new one",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Take Photo", onPress: () => takePhoto(type, index) },
-          { text: "Choose from Library", onPress: () => pickImage(type, index) },
+          { text: "Take Photo", onPress: () => takePhoto(index) },
+          { text: "Choose from Library", onPress: () => pickImage(index) },
         ]
       );
     }
+  };
+
+  // Function to handle scroll end for photo indicators
+  const handleScrollEnd = (event) => {
+    const contentOffset = event.nativeEvent.contentOffset;
+    const viewSize = event.nativeEvent.layoutMeasurement;
+    
+    // Calculate which page is visible
+    const pageNum = Math.floor(contentOffset.x / viewSize.width);
+    setCurrentPhotoIndex(pageNum);
   };
 
   return (
@@ -311,91 +322,92 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* 2. Photo Gallery Section */}
-        <View style={styles.photoGallerySection}>
-          <View style={styles.leftColumn}>
-            {isEditing && <Text style={styles.editLabel}>Edit</Text>}
-            <View style={styles.mainPhotoContainer}>
-              <View style={styles.mainPhoto}>
+        {/* 2. Photo Gallery Section - Horizontal Scrolling */}
+        <View style={styles.photoSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.photoScrollContainer}
+            pagingEnabled
+            decelerationRate="fast"
+            onMomentumScrollEnd={handleScrollEnd}
+          >
+            {/* Main profile photo */}
+            <View style={styles.photoCard}>
+              {isEditing ? (
+                <TouchableOpacity 
+                  style={styles.photoFrame} 
+                  onPress={() => showImagePickerOptions(0)}
+                >
+                  {mainPhoto ? (
+                    <Image source={{ uri: mainPhoto }} style={styles.photoImage} />
+                  ) : (
+                    <View style={styles.editPhotoPlaceholder}>
+                      <Ionicons name="camera" size={50} color={COLORS.primaryNavy} />
+                      <Text style={styles.editPhotoText}>Add Profile Photo</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.photoFrame}>
+                  {mainPhoto ? (
+                    <Image source={{ uri: mainPhoto }} style={styles.photoImage} />
+                  ) : (
+                    <Ionicons name="person" size={100} color={COLORS.mutedBlue} />
+                  )}
+                </View>
+              )}
+            </View>
+            
+            {/* Additional photos */}
+            {additionalPhotos.map((photo, index) => (
+              <View key={`additional-photo-${index}`} style={styles.photoCard}>
                 {isEditing ? (
                   <TouchableOpacity 
-                    style={styles.editPhotoButton} 
-                    onPress={() => showImagePickerOptions('main')}
+                    style={styles.photoFrame} 
+                    onPress={() => showImagePickerOptions(index + 1)}
                   >
-                    {mainPhoto ? (
-                      <Image source={{ uri: mainPhoto }} style={styles.photoImage} />
+                    {photo ? (
+                      <Image source={{ uri: photo }} style={styles.photoImage} />
                     ) : (
-                      <>
-                        <Ionicons name="camera" size={40} color={COLORS.primaryNavy} />
-                        <Text style={styles.editPhotoText}>Replace</Text>
-                      </>
+                      <View style={styles.editPhotoPlaceholder}>
+                        <Ionicons name="add-circle" size={50} color={COLORS.primaryNavy} />
+                        <Text style={styles.editPhotoText}>Add Photo {index + 1}</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
                 ) : (
-                  mainPhoto ? (
-                    <Image source={{ uri: mainPhoto }} style={styles.photoImage} />
-                  ) : (
-                    <Ionicons name="person" size={80} color={COLORS.mutedBlue} />
-                  )
+                  photo ? (
+                    <View style={styles.photoFrame}>
+                      <Image source={{ uri: photo }} style={styles.photoImage} />
+                    </View>
+                  ) : null // Don't show empty photo slots in view mode
                 )}
               </View>
-            </View>
-          </View>
+            ))}
+          </ScrollView>
           
-          <View style={styles.rightColumn}>
-            <View style={styles.additionalPhotosContainer}>
-              {isEditing ? (
-                // Edit mode logic - dynamically display add buttons based on how many photos exist
-                <>
-                  {/* First additional photo slot */}
-                  <TouchableOpacity 
-                    style={styles.additionalPhoto} 
-                    onPress={() => showImagePickerOptions('additional', 0)}
-                  >
-                    {additionalPhotos[0] ? (
-                      <Image source={{ uri: additionalPhotos[0] }} style={styles.additionalPhotoImage} />
-                    ) : (
-                      <>
-                        <Ionicons name="add-circle" size={32} color={COLORS.primaryNavy} />
-                        <Text style={styles.smallEditText}>Add</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  
-                  {/* Second additional photo slot - only show if the first photo exists */}
-                  {(additionalPhotos[0] || additionalPhotos[1]) && (
-                    <TouchableOpacity 
-                      style={styles.additionalPhoto}
-                      onPress={() => showImagePickerOptions('additional', 1)}
-                    >
-                      {additionalPhotos[1] ? (
-                        <Image source={{ uri: additionalPhotos[1] }} style={styles.additionalPhotoImage} />
-                      ) : (
-                        <>
-                          <Ionicons name="add-circle" size={32} color={COLORS.primaryNavy} />
-                          <Text style={styles.smallEditText}>Add</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </>
-              ) : (
-                // View mode - only show photos that exist, no empty containers
-                <>
-                  {additionalPhotos[0] && (
-                    <View style={styles.additionalPhoto}>
-                      <Image source={{ uri: additionalPhotos[0] }} style={styles.additionalPhotoImage} />
-                    </View>
-                  )}
-                  
-                  {additionalPhotos[1] && (
-                    <View style={styles.additionalPhoto}>
-                      <Image source={{ uri: additionalPhotos[1] }} style={styles.additionalPhotoImage} />
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
+          {/* Photo indicator dots */}
+          <View style={styles.photoIndicators}>
+            <View 
+              key="main-photo-indicator"
+              style={[
+                styles.indicatorDot, 
+                currentPhotoIndex === 0 && styles.activeDot
+              ]} 
+            />
+            {additionalPhotos.map((photo, index) => (
+              // Only show indicator for photos that exist in view mode
+              (!isEditing && !photo) ? null : (
+                <View 
+                  key={`photo-indicator-${index}`}
+                  style={[
+                    styles.indicatorDot, 
+                    currentPhotoIndex === index + 1 && styles.activeDot
+                  ]} 
+                />
+              )
+            ))}
           </View>
         </View>
 
@@ -651,39 +663,33 @@ const styles = StyleSheet.create({
   },
   
   // 2. Photo Gallery Section
-  photoGallerySection: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
+  photoSection: {
     marginVertical: 15,
   },
-  leftColumn: {
-    width: "38%", // Reduced slightly to prevent overlap
-    position: "relative",
+  photoScrollContainer: {
+    // No horizontal padding to allow full width
   },
-  editLabel: {
-    position: "absolute",
-    top: 0,
-    left: 5,
-    fontSize: 12,
-    color: COLORS.mutedBlue,
-    zIndex: 1,
+  photoCard: {
+    width: width, // Full screen width
   },
-  mainPhotoContainer: {
-    flex: 1,
-    marginRight: 12, // Increased margin to prevent overlap
-  },
-  mainPhoto: {
-    aspectRatio: 1,
-    borderRadius: 16,
+  photoFrame: {
+    width: '92%', // Slightly less than full width to provide some margin
+    height: width * 0.6, // Larger images
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: COLORS.primaryNavy,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: COLORS.paleBlue,
-    height: width * 0.35, // Fixed size based on screen width
     overflow: 'hidden',
+    marginHorizontal: '4%', // Center the frame
   },
-  editPhotoButton: {
+  photoImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  editPhotoPlaceholder: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
@@ -691,56 +697,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(196, 215, 229, 0.7)', // Semi-transparent skyBlue
   },
   editPhotoText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     color: COLORS.primaryNavy,
-    marginTop: 8,
+    marginTop: 12,
   },
-  photoImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  photoIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
   },
-  additionalPhotoImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-    borderRadius: 10, // Slightly less than container's borderRadius
+  indicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.skyBlue,
+    marginHorizontal: 4,
   },
-  smallEditText: {
-    fontSize: 12,
-    color: COLORS.primaryNavy,
-    marginTop: 4,
-  },
-  rightColumn: {
-    width: "62%", // Increased to match the reduction in leftColumn
-    alignItems: "center",
-    paddingLeft: 5, // Add padding to create more space between columns
-  },
-  viewLabel: {
-    fontSize: 14,
-    textDecorationLine: "underline",
-    color: COLORS.primaryNavy,
-    marginBottom: 5,
-  },
-  additionalPhotosContainer: {
-    height: width * 0.35, // Match the height of mainPhoto
-    width: "100%",
-    justifyContent: "space-between",
-    flexGrow: 1,
-    alignItems: "center"
-  },
-  additionalPhoto: {
-    height: "47%",
-    width: "100%", // Ensure full width
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: COLORS.skyBlue,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: 'hidden',
-    marginBottom: 10, // Add spacing between photos
+  activeDot: {
+    backgroundColor: COLORS.accentOrange,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   
   // 3. Profile Summary Bar

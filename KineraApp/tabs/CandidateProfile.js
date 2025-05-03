@@ -52,6 +52,9 @@ export default function CandidateProfile({ route, navigation }) {
     }
   };
 
+  // Mock images array for demonstration
+  const profileImages = [null, null, null]; // Placeholders for demo images
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -73,28 +76,48 @@ export default function CandidateProfile({ route, navigation }) {
           </View>
         </View>
 
-        {/* 2. Photo Gallery Section */}
-        <View style={styles.photoGallerySection}>
-          <View style={styles.leftColumn}>
-            <View style={styles.mainPhotoContainer}>
-              <View style={styles.mainPhoto}>
-                {/* Placeholder for main profile picture */}
-                <Ionicons name="person" size={80} color={COLORS.mutedBlue} />
+        {/* 2. Photo Gallery Section - Horizontal Scrolling */}
+        <View style={styles.photoSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.photoScrollContainer}
+            pagingEnabled
+            decelerationRate="fast"
+          >
+            {/* Main profile picture */}
+            <View style={styles.photoCard}>
+              <View style={styles.photoFrame}>
+                <Ionicons name="person" size={100} color={COLORS.mutedBlue} />
               </View>
             </View>
-          </View>
+
+            {/* Additional photos */}
+            {profileImages.map((image, index) => (
+              <View key={`additional-photo-${index}`} style={styles.photoCard}>
+                <View style={styles.photoFrame}>
+                  <Ionicons name="image" size={60} color={COLORS.mutedBlue} />
+                  <Text style={styles.photoText}>Photo {index + 1}</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
           
-          <View style={styles.rightColumn}>
-            <View style={styles.additionalPhotosContainer}>
-              {/* Only show photos that exist */}
-              <View style={styles.additionalPhoto}>
-                <Ionicons name="image" size={32} color={COLORS.mutedBlue} />
-              </View>
-              
-              <View style={styles.additionalPhoto}>
-                <Ionicons name="image" size={32} color={COLORS.mutedBlue} />
-              </View>
-            </View>
+          {/* Photo indicator dots */}
+          <View style={styles.photoIndicators}>
+            <View 
+              key="main-photo-indicator"
+              style={[
+                styles.indicatorDot, 
+                styles.activeDot
+              ]} 
+            />
+            {profileImages.map((_, index) => (
+              <View 
+                key={`photo-indicator-${index}`} 
+                style={styles.indicatorDot}
+              />
+            ))}
           </View>
         </View>
 
@@ -219,63 +242,51 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   
-  // 2. Photo Gallery Section
-  photoGallerySection: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
+  // 2. Photo Gallery Section with Horizontal Scrolling
+  photoSection: {
     marginVertical: 15,
   },
-  leftColumn: {
-    width: "38%", // Reduced slightly to prevent overlap
-    position: "relative",
+  photoScrollContainer: {
+    // Remove horizontal padding to allow full width
   },
-  mainPhotoContainer: {
-    flex: 1,
-    marginRight: 12, // Increased margin to prevent overlap
+  photoCard: {
+    width: width, // Full screen width
   },
-  mainPhoto: {
-    aspectRatio: 1,
-    borderRadius: 16,
+  photoFrame: {
+    width: '92%', // Slightly less than full width to provide some margin
+    height: width * 0.6, // Larger images
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: COLORS.primaryNavy,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: COLORS.paleBlue,
-    height: width * 0.35, // Fixed size based on screen width
     overflow: 'hidden',
+    marginHorizontal: '4%', // Center the frame
   },
-  photoImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  photoText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: COLORS.mutedBlue,
   },
-  additionalPhotoImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-    borderRadius: 10, // Slightly less than container's borderRadius
+  photoIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
   },
-  rightColumn: {
-    width: "62%", // Increased to match the reduction in leftColumn
-    alignItems: "center",
-    paddingLeft: 5, // Add padding to create more space between columns
+  indicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.skyBlue,
+    marginHorizontal: 4,
   },
-  additionalPhotosContainer: {
-    height: width * 0.35, // Match the height of mainPhoto
-    width: "100%",
-    justifyContent: "space-between",
-  },
-  additionalPhoto: {
-    height: "47%",
-    width: "100%", // Ensure full width
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: COLORS.skyBlue,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: 'hidden',
-    backgroundColor: COLORS.paleBlue,
+  activeDot: {
+    backgroundColor: COLORS.accentOrange,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   
   // 3. Profile Summary Bar
