@@ -15,7 +15,22 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from 'expo-image-picker';
+
+// Use try-catch for imports that might not be available
+let ImagePicker;
+try {
+  ImagePicker = require('expo-image-picker');
+} catch (error) {
+  console.warn('expo-image-picker is not available:', error.message);
+  // Create a mock ImagePicker to prevent crashes
+  ImagePicker = {
+    MediaTypeOptions: { Images: 'images' },
+    requestCameraPermissionsAsync: async () => ({ granted: false }),
+    requestMediaLibraryPermissionsAsync: async () => ({ granted: false }),
+    launchImageLibraryAsync: async () => ({ canceled: true }),
+    launchCameraAsync: async () => ({ canceled: true }),
+  };
+}
 
 // Color constants based on the spec
 const COLORS = {
@@ -116,16 +131,23 @@ export default function ProfileScreen() {
   // Request camera and media library permissions on component mount
   useEffect(() => {
     (async () => {
+      // Skip permission requests if ImagePicker is not available
+      if (!ImagePicker.requestCameraPermissionsAsync || 
+          !ImagePicker.requestMediaLibraryPermissionsAsync) {
+        console.warn('Skipping camera permissions - ImagePicker not fully available');
+        return;
+      }
+      
       try {
         const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
         const mediaLibraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         
         if (!cameraPermission.granted) {
-          Alert.alert("Permission Required", "Camera access is needed to take photos");
+          console.warn("Camera permission not granted");
         }
         
         if (!mediaLibraryPermission.granted) {
-          Alert.alert("Permission Required", "Media library access is needed to pick photos");
+          console.warn("Media library permission not granted");
         }
       } catch (error) {
         console.error("Error requesting permissions:", error);
@@ -191,6 +213,12 @@ export default function ProfileScreen() {
   // Function to pick an image from the media library
   const pickImage = async (type, index = 0) => {
     try {
+      // Check if ImagePicker is properly available
+      if (!ImagePicker.launchImageLibraryAsync) {
+        Alert.alert("Feature Unavailable", "Image picking is not available in this build.");
+        return;
+      }
+      
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -208,13 +236,20 @@ export default function ProfileScreen() {
         }
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick an image: " + error.message);
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick an image. Please try again.");
     }
   };
   
   // Function to take a photo with the camera
   const takePhoto = async (type, index = 0) => {
     try {
+      // Check if ImagePicker is properly available
+      if (!ImagePicker.launchCameraAsync) {
+        Alert.alert("Feature Unavailable", "Camera is not available in this build.");
+        return;
+      }
+      
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
@@ -231,7 +266,8 @@ export default function ProfileScreen() {
         }
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to take a photo: " + error.message);
+      console.error("Error taking photo:", error);
+      Alert.alert("Error", "Failed to take a photo. Please try again.");
     }
   };
   
