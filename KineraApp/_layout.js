@@ -24,6 +24,7 @@ function HomeStackScreen() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen name="CandidateProfile" component={CandidateProfile} />
     </HomeStack.Navigator>
   );
 }
