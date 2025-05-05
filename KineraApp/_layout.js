@@ -7,7 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import HomeScreen from "./tabs/Home";
 import ProfileScreen from "./tabs/Profile";
-import AvailabilityScreen from "./tabs/Availability";
+import AvailabilityScreen from "./tabs/Home";
 import CandidateProfile from "./tabs/CandidateProfile";
 import AuthNavigator from "./auth/AuthNavigator";
 import tabNav from "./tabs/tabNav";
@@ -54,46 +54,46 @@ function AvailabilityStackScreen() {
   );
 }
 
-function TabNavigator() {
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
+// function TabNavigator() {
+//   return (
+//     <Tab.Navigator
+//       screenOptions={({ route }) => ({
+//         headerShown: false,
+//         tabBarIcon: ({ focused, color, size }) => {
+//           let iconName;
 
-          if (route.name === "HomeTab") {
-            iconName = focused ? "home" : "home-outline";
-          } else if (route.name === "AvailabilityTab") {
-            iconName = focused ? "calendar" : "calendar-outline";
-          } else if (route.name === "ProfileTab") {
-            iconName = focused ? "person" : "person-outline";
-          }
+//           if (route.name === "HomeTab") {
+//             iconName = focused ? "home" : "home-outline";
+//           } else if (route.name === "AvailabilityTab") {
+//             iconName = focused ? "calendar" : "calendar-outline";
+//           } else if (route.name === "ProfileTab") {
+//             iconName = focused ? "person" : "person-outline";
+//           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: "orange",
-        tabBarInactiveTintColor: "gray",
-      })}
-    >
-      <Tab.Screen
-        name="HomeTab"
-        component={HomeStackScreen}
-        options={{ tabBarLabel: "Home" }}
-      />
-      <Tab.Screen
-        name="AvailabilityTab"
-        component={AvailabilityStackScreen}
-        options={{ tabBarLabel: "Availability" }}
-      />
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackScreen}
-        options={{ tabBarLabel: "Profile" }}
-      />
-    </Tab.Navigator>
-  );
-}
+//           return <Ionicons name={iconName} size={size} color={color} />;
+//         },
+//         tabBarActiveTintColor: "orange",
+//         tabBarInactiveTintColor: "gray",
+//       })}
+//     >
+//       <Tab.Screen
+//         name="HomeTab"
+//         component={HomeStackScreen}
+//         options={{ tabBarLabel: "Home" }}
+//       />
+//       <Tab.Screen
+//         name="AvailabilityTab"
+//         component={AvailabilityStackScreen}
+//         options={{ tabBarLabel: "Availability" }}
+//       />
+//       <Tab.Screen
+//         name="ProfileTab"
+//         component={ProfileStackScreen}
+//         options={{ tabBarLabel: "Profile" }}
+//       />
+//     </Tab.Navigator>
+//   );
+// }
 
 export default function Layout() {
   const [initialRoute, setInitialRoute] = useState(null);
@@ -122,7 +122,7 @@ export default function Layout() {
         screenOptions={{ headerShown: false }}
       >
         <RootStack.Screen name="Auth" component={AuthNavigator} />
-        <RootStack.Screen name="Main" component={TabNavigator} />
+        <RootStack.Screen name="Main" component={tabNav} />
       </RootStack.Navigator>
     </NavigationContainer>
   );

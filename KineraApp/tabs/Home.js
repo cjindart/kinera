@@ -1,81 +1,92 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import { useNavigation } from '@react-navigation/native';
 import theme from "../assets/theme";
 
-// Color constants based on the spec
-const COLORS = {
-  primaryNavy: "#325475",
-  mutedBlue: "#A9B7C5",
-  skyBlue: "#C2D7E5",
-  paleBlue: "#E6EEF4",
-  offWhite: "#FAEFE4",
-  accentOrange: "#ED7E31",
-  lightPeach: "#F6D3B7",
-  buttonPeach: "#F7D0B5",
-  buttonShadow: "#E98E42",
-};
-
-export default function Home() {
+export default function AvailabilityScreen() {
+  // Use the navigation hook instead of prop
   const navigation = useNavigation();
-
-  // Madison's profile data - this would normally come from an API or database
-  const madisonProfile = {
+  
+  // Debug navigation object
+  console.log('Navigation in AvailabilityScreen:', navigation);
+  
+  // Mock candidate data - in a real app this would come from an API or database
+  const candidateInfo = {
     name: "Madison",
-    age: "22",
-    gender: "Woman",
-    height: "5'7\"",
+    age: 22,
+    location: "Los Angeles",
+    height: "5'7",
     year: "Sophomore",
     interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
     dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"]
   };
-
-  const handleViewProfile = () => {
-    navigation.navigate('CandidateProfile', { candidateInfo: madisonProfile });
+  
+  const handleCardPress = () => {
+    console.log('Card pressed, attempting navigation');
+    // Navigate directly to the screen within the same stack navigator
+    if (navigation && navigation.navigate) {
+      navigation.navigate('CandidateProfile', { candidateInfo });
+    } else {
+      console.error('Navigation is not available:', navigation);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerText}>Home</Text>
-      
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.sectionTitle}>Featured Profiles</Text>
-        
-        {/* Madison's Profile Card */}
-        <TouchableOpacity style={styles.profileCard} onPress={handleViewProfile}>
-          <View style={styles.cardHeader}>
-            <View style={styles.profileImageContainer}>
-              <Ionicons name="person-circle" size={60} color={COLORS.mutedBlue} />
-            </View>
-            <View style={styles.profileDetails}>
-              <Text style={styles.profileName}>{madisonProfile.name}</Text>
-              <Text style={styles.profileSubtitle}>{madisonProfile.age} • {madisonProfile.year}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.interestsContainer}>
-            <Text style={styles.interestsLabel}>Interests:</Text>
-            <View style={styles.interestTags}>
-              {madisonProfile.interests.slice(0, 3).map((interest, index) => (
-                <View key={index} style={styles.interestTag}>
-                  <Text style={styles.interestText}>{interest}</Text>
-                </View>
-              ))}
-              {madisonProfile.interests.length > 3 && (
-                <Text style={styles.moreText}>+{madisonProfile.interests.length - 3} more</Text>
-              )}
-            </View>
-          </View>
-          
-          <View style={styles.cardFooter}>
-            <Text style={styles.viewProfileText}>View Full Profile</Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.accentOrange} />
-          </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Set Up</Text>
+        <Text>You're Swiping for:</Text>
+      </View>
+
+      {/* Friend Selector */}
+      <View style={styles.friendSelector}>
+        <TouchableOpacity>
+          <Ionicons name="chevron-back" size={40} />
+          <Text style={styles.friendText}>Previous{"\n"}friend</Text>
         </TouchableOpacity>
-        
-        <Text style={styles.helperText}>Tap on Madison's card to view her profile</Text>
-      </ScrollView>
+
+        <View style={styles.friendInfo}>
+          <Image
+            source={require("../assets/photos/daniel.png")} // Replace with real image or static asset
+            style={styles.temp}
+          />
+          {/* <View style={styles.temp}></View> */}
+          <Text>Daniel</Text>
+        </View>
+
+        <TouchableOpacity>
+          <Ionicons name="chevron-forward" size={40} />
+          <Text style={styles.friendText}>Next{"\n"}friend</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Candidate Card - Now Tappable */}
+      <TouchableOpacity 
+        style={styles.cardContainer}
+        onPress={handleCardPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.card}>
+          <Text style={styles.cardText}>{candidateInfo.name} {candidateInfo.age}</Text>
+          <Text style={styles.cardText}>{candidateInfo.location}</Text>
+        </View>
+        <View style={styles.approvalRow}>
+          <Text style={styles.disapprove}>Friends who don't approve: Maya</Text>
+          <Text style={styles.approve}>Friends who approved: CJ, Cole</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Approve/Reject Buttons */}
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.rejectButton}>
+          <Text style={styles.buttonText}>✕</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.acceptButton}>
+          <Text style={styles.buttonText}>✓</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -83,108 +94,116 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // backgroundColor: theme.colors.background,
     backgroundColor: "white",
-    paddingTop: 50,
+    paddingTop: 40,
+    paddingHorizontal: 20,
+    justifyContent: "space-between",
   },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "600",
-    marginHorizontal: 16,
+  header: {
+    alignItems: "center",
     marginBottom: 20,
-    color: COLORS.primaryNavy,
   },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#4B5C6B",
+    paddingTop: 20,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "500",
-    marginBottom: 12,
-    color: COLORS.primaryNavy,
+  temp: {
+    height: 180,
+    width: 140,
+    backgroundColor: "black",
   },
-  profileCard: {
-    backgroundColor: COLORS.paleBlue,
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 10,
+  friendSelector: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  friendText: {
+    textAlign: "center",
+    fontSize: 14,
+  },
+  friendInfo: {
+    width: 140,
+    height: 180,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  friendImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 5,
+  },
+  cardContainer: {
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  questionMark: {
+    fontSize: 24,
+    marginBottom: 10,
+  },
+  card: {
+    width: 200,
+    height: 200,
     borderWidth: 1,
-    borderColor: COLORS.skyBlue,
+    borderColor: "#ccc",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+    // Add shadow and styling to make it look more tappable
+    backgroundColor: "white",
+    borderRadius: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  cardHeader: {
+  cardText: {
+    fontSize: 18,
+  },
+  approvalRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 10,
   },
-  profileImageContainer: {
-    marginRight: 12,
-  },
-  profileDetails: {
+  disapprove: {
+    color: "#F7C4A5",
+    fontSize: 14,
+    fontWeight: 600,
     flex: 1,
   },
-  profileName: {
+  approve: {
+    color: "#4B5C6B",
+    flex: 1,
+    textAlign: "right",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 20,
+  },
+  rejectButton: {
+    backgroundColor: "#F7C4A5",
+    width: 75,
+    height: 75,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  acceptButton: {
+    backgroundColor: "#A9B9CC",
+    width: 75,
+    height: 75,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  buttonText: {
     fontSize: 20,
-    fontWeight: "600",
-    color: COLORS.primaryNavy,
-  },
-  profileSubtitle: {
-    fontSize: 14,
-    color: COLORS.primaryNavy,
-    opacity: 0.8,
-  },
-  interestsContainer: {
-    marginVertical: 8,
-  },
-  interestsLabel: {
-    fontSize: 14,
-    color: COLORS.primaryNavy,
-    marginBottom: 6,
-  },
-  interestTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-  },
-  interestTag: {
-    backgroundColor: COLORS.offWhite,
-    borderRadius: 16,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    marginRight: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: COLORS.primaryNavy,
-  },
-  interestText: {
-    fontSize: 12,
-    color: COLORS.primaryNavy,
-  },
-  moreText: {
-    fontSize: 12,
-    color: COLORS.accentOrange,
-    fontWeight: "500",
-  },
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    marginTop: 8,
-  },
-  viewProfileText: {
-    fontSize: 14,
-    color: COLORS.accentOrange,
-    fontWeight: "500",
-    marginRight: 4,
-  },
-  helperText: {
-    textAlign: "center",
-    marginTop: 20,
-    color: COLORS.mutedBlue,
-    fontStyle: "italic",
+    color: "white",
   },
 });

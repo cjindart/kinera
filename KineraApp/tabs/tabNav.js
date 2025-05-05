@@ -21,8 +21,8 @@ export default function TabNav() {
 
           if (route.name === "Home") {
             iconName = focused ? "home" : "home-outline";
-          } else if (route.name === "Availability") {
-            iconName = focused ? "calendar" : "calendar-outline";
+          } else if (route.name === "Match Portal") {
+            iconName = focused ? "heart" : "heart-outline";
           } else if (route.name === "Profile") {
             iconName = focused ? "person" : "person-outline";
           }
@@ -31,14 +31,20 @@ export default function TabNav() {
         },
         tabBarActiveTintColor: theme.colors.highlight,
         tabBarInactiveTintColor: "gray",
-        tabBarStyle: {
-          backgroundColor: theme.colors.background,
-        },
+        // tabBarStyle: {
+        //   backgroundColor: theme.colors.background,
+        // },
         headerShown: false,
+        tabBarStyle: {
+          shadowColor: "#000000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 3,
+        },
       })}
     >
+      <Tab.Screen name="Match Portal" component={AvailabilityScreen} />
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Availability" component={AvailabilityScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
