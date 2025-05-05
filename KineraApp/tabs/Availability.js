@@ -94,7 +94,8 @@ export default function AvailabilityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    // backgroundColor: theme.colors.background,
+    backgroundColor: "white",
     paddingTop: 40,
     paddingHorizontal: 20,
     justifyContent: "space-between",
