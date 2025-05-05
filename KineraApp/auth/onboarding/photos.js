@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
   Alert,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,50 +16,85 @@ export default function Step2UploadPhotos({ navigation, route }) {
 
   useEffect(() => {
     (async () => {
-      const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-      const mediaStatus =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      // Optionally, check cameraStatus.status and mediaStatus.status === 'granted'
+      try {
+        const cameraPermission =
+          await ImagePicker.requestCameraPermissionsAsync();
+        const mediaLibraryPermission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (!cameraPermission.granted) {
+          console.warn("Camera permission not granted");
+        }
+
+        if (!mediaLibraryPermission.granted) {
+          console.warn("Media library permission not granted");
+        }
+      } catch (error) {
+        console.error("Error requesting permissions:", error);
+      }
     })();
   }, []);
 
-  // Helper to pick or take a photo
   const pickImage = async (index) => {
+    try {
+      if (!ImagePicker.launchImageLibraryAsync) {
+        Alert.alert(
+          "Feature Unavailable",
+          "Image picking is not available in this build."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        updatePhoto(index, result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick an image. Please try again.");
+    }
+  };
+
+  const takePhoto = async (index) => {
+    try {
+      if (!ImagePicker.launchCameraAsync) {
+        Alert.alert(
+          "Feature Unavailable",
+          "Camera is not available in this build."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        updatePhoto(index, result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+      Alert.alert("Error", "Failed to take a photo. Please try again.");
+    }
+  };
+
+  const showImagePickerOptions = (index) => {
     Alert.alert(
-      "Add Photo",
-      "Choose an option",
+      "Choose Photo",
+      "Select a photo from your library or take a new one",
       [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            let result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaType.Image,
-              allowsEditing: true,
-              aspect: [4, 5],
-              quality: 0.7,
-            });
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-              updatePhoto(index, result.assets[0].uri);
-            }
-          },
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            let result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaType.Image,
-              allowsEditing: true,
-              aspect: [4, 5],
-              quality: 0.7,
-            });
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-              updatePhoto(index, result.assets[0].uri);
-            }
-          },
-        },
         { text: "Cancel", style: "cancel" },
-      ],
-      { cancelable: true }
+        { text: "Take Photo", onPress: () => takePhoto(index) },
+        { text: "Choose from Library", onPress: () => pickImage(index) },
+      ]
     );
   };
 
@@ -96,7 +132,7 @@ export default function Step2UploadPhotos({ navigation, route }) {
           <TouchableOpacity
             key={i}
             style={styles.photoBox}
-            onPress={() => pickImage(i)}
+            onPress={() => showImagePickerOptions(i)}
           >
             {photos[i] ? (
               <Image source={{ uri: photos[i] }} style={styles.photo} />

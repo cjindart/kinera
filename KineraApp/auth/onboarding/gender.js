@@ -103,17 +103,14 @@ export default function GenderScreen({ navigation, route }) {
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            !isContinueEnabled && { opacity: 0.5 },
-          ]}
-          onPress={handleNext}
-          disabled={!isContinueEnabled}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-        </TouchableOpacity>
       </ScrollView>
+      <TouchableOpacity
+        style={[styles.continueButton, !isContinueEnabled && { opacity: 0.5 }]}
+        onPress={handleNext}
+        disabled={!isContinueEnabled}
+      >
+        <Text style={styles.continueText}>Continue</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

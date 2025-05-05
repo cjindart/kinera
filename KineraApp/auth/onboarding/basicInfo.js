@@ -5,7 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -24,45 +25,47 @@ export default function Step1Screen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TouchableOpacity
-        style={styles.backArrow}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.arrowText}>←</Text>
-      </TouchableOpacity>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.container}>
+        <TouchableOpacity
+          style={styles.backArrow}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.arrowText}>←</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.title}>Enter your phone number</Text>
+        <Text style={styles.title}>Enter your phone number</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your number here"
-        placeholderTextColor="#B0B0B0"
-        keyboardType="phone-pad"
-        value={phone}
-        onChangeText={setPhone}
-      />
-      <Text style={styles.title}>What's Your Phone Number?</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your name"
-        placeholderTextColor="#B0B0B0"
-        value={name}
-        onChangeText={setName}
-      />
-      <Text style={styles.title}>Where are you from?</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter as 'City, State' or Country"
-        placeholderTextColor="#B0B0B0"
-        value={city}
-        onChangeText={setCity}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your number here"
+          placeholderTextColor="#B0B0B0"
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
+        />
+        <Text style={styles.title}>What's Your Name?</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your name first last"
+          placeholderTextColor="#B0B0B0"
+          value={name}
+          onChangeText={setName}
+        />
+        <Text style={styles.title}>Where are you from?</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter as 'City, State' or Country"
+          placeholderTextColor="#B0B0B0"
+          value={city}
+          onChangeText={setCity}
+        />
 
-      <TouchableOpacity style={styles.button} onPress={handleContinue}>
-        <Text style={styles.buttonText}>Continue</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
+        <TouchableOpacity style={styles.button} onPress={handleContinue}>
+          <Text style={styles.buttonText}>Continue</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
