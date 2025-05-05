@@ -37,7 +37,7 @@ export default function Step3PurposeScreen({ navigation, route }) {
         <Text style={styles.arrowText}>←</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>What are you{"\n"}doing on setup?</Text>
+      <Text style={styles.title}>What are you{"\n"}doing on the SetUp?</Text>
 
       <View style={{ marginTop: 32, marginBottom: 24 }}>
         {OPTIONS.map((option, idx) => (
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
   },
   backArrow: {
     position: "absolute",
-    top: 20,
-    left: 10,
+    top: "5%",
+    left: "5%",
     zIndex: 1,
   },
   arrowText: {
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 40,
     marginBottom: 32,
-    fontFamily: "Noteworthy-Bold",
+    //fontFamily: "Noteworthy-Bold",
   },
   optionButton: {
     backgroundColor: "#E6EEF3",
@@ -135,6 +135,6 @@ const styles = StyleSheet.create({
   continueText: {
     color: "#3A5A6A",
     fontSize: 24,
-    fontFamily: "Noteworthy-Bold",
+    //fontFamily: "Noteworthy-Bold",
   },
 });
