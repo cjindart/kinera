@@ -43,6 +43,9 @@ export default function CandidateProfile({ route, navigation }) {
   // State for tracking selected interests
   const [selectedInterests, setSelectedInterests] = useState(["Music"]);
   
+  // State for tracking which photo is currently being viewed
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  
   // Toggle function for interests (for highlighting/selecting)
   const toggleInterest = (interest) => {
     if (selectedInterests.includes(interest)) {
@@ -52,8 +55,26 @@ export default function CandidateProfile({ route, navigation }) {
     }
   };
 
-  // Mock images array for demonstration
-  const profileImages = [null, null, null]; // Placeholders for demo images
+  // Mock images array for demonstration - normally this would come from candidateInfo
+  // Example showing one real image and two null slots to demonstrate how it would work
+  const profileImages = [
+    "https://example.com/sample-image-url.jpg", // This would be replaced with actual image URLs 
+    null, 
+    null
+  ];
+  
+  // Filter out null images since this is always view mode
+  const validImages = [null, ...profileImages.filter(img => img !== null)];
+  
+  // Function to handle scroll end for photo indicators
+  const handleScrollEnd = (event) => {
+    const contentOffset = event.nativeEvent.contentOffset;
+    const viewSize = event.nativeEvent.layoutMeasurement;
+    
+    // Calculate which page is visible
+    const pageNum = Math.floor(contentOffset.x / viewSize.width);
+    setCurrentPhotoIndex(pageNum);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,6 +105,7 @@ export default function CandidateProfile({ route, navigation }) {
             contentContainerStyle={styles.photoScrollContainer}
             pagingEnabled
             decelerationRate="fast"
+            onMomentumScrollEnd={handleScrollEnd}
           >
             {/* Main profile picture */}
             <View style={styles.photoCard}>
@@ -92,10 +114,11 @@ export default function CandidateProfile({ route, navigation }) {
               </View>
             </View>
 
-            {/* Additional photos */}
-            {profileImages.map((image, index) => (
+            {/* Only show images that exist (non-null) */}
+            {profileImages.filter(img => img !== null).map((image, index) => (
               <View key={`additional-photo-${index}`} style={styles.photoCard}>
                 <View style={styles.photoFrame}>
+                  {/* Replace with actual Image component when real image data is available */}
                   <Ionicons name="image" size={60} color={COLORS.mutedBlue} />
                   <Text style={styles.photoText}>Photo {index + 1}</Text>
                 </View>
@@ -103,19 +126,15 @@ export default function CandidateProfile({ route, navigation }) {
             ))}
           </ScrollView>
           
-          {/* Photo indicator dots */}
+          {/* Photo indicator dots - only show for valid images */}
           <View style={styles.photoIndicators}>
-            <View 
-              key="main-photo-indicator"
-              style={[
-                styles.indicatorDot, 
-                styles.activeDot
-              ]} 
-            />
-            {profileImages.map((_, index) => (
+            {validImages.map((_, index) => (
               <View 
                 key={`photo-indicator-${index}`} 
-                style={styles.indicatorDot}
+                style={[
+                  styles.indicatorDot, 
+                  currentPhotoIndex === index && styles.activeDot
+                ]} 
               />
             ))}
           </View>

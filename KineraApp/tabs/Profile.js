@@ -298,7 +298,7 @@ export default function ProfileScreen() {
     }
   };
 
-  // Function to handle scroll end for photo indicators
+  // Updated function to handle scroll end for photo indicators
   const handleScrollEnd = (event) => {
     const contentOffset = event.nativeEvent.contentOffset;
     const viewSize = event.nativeEvent.layoutMeasurement;
@@ -307,6 +307,26 @@ export default function ProfileScreen() {
     const pageNum = Math.floor(contentOffset.x / viewSize.width);
     setCurrentPhotoIndex(pageNum);
   };
+
+  // Get valid photos and limits for rendering
+  const getValidAdditionalPhotos = () => {
+    // In view mode, filter out null photos
+    if (!isEditing) {
+      return additionalPhotos.filter(photo => photo !== null);
+    }
+    // In edit mode, return all photos up to the first null one, plus one extra slot
+    const firstNullIndex = additionalPhotos.findIndex(photo => photo === null);
+    if (firstNullIndex === -1) {
+      // All slots filled, return all plus one extra null
+      return [...additionalPhotos, null];
+    } else {
+      // Return photos up to and including the first null
+      return additionalPhotos.slice(0, firstNullIndex + 1);
+    }
+  };
+
+  // Get photos to display based on edit mode
+  const photosToDisplay = getValidAdditionalPhotos();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -359,8 +379,8 @@ export default function ProfileScreen() {
               )}
             </View>
             
-            {/* Additional photos */}
-            {additionalPhotos.map((photo, index) => (
+            {/* Additional photos - only render the valid ones based on mode */}
+            {photosToDisplay.map((photo, index) => (
               <View key={`additional-photo-${index}`} style={styles.photoCard}>
                 {isEditing ? (
                   <TouchableOpacity 
@@ -377,11 +397,9 @@ export default function ProfileScreen() {
                     )}
                   </TouchableOpacity>
                 ) : (
-                  photo ? (
-                    <View style={styles.photoFrame}>
-                      <Image source={{ uri: photo }} style={styles.photoImage} />
-                    </View>
-                  ) : null // Don't show empty photo slots in view mode
+                  <View style={styles.photoFrame}>
+                    <Image source={{ uri: photo }} style={styles.photoImage} />
+                  </View>
                 )}
               </View>
             ))}
@@ -396,17 +414,14 @@ export default function ProfileScreen() {
                 currentPhotoIndex === 0 && styles.activeDot
               ]} 
             />
-            {additionalPhotos.map((photo, index) => (
-              // Only show indicator for photos that exist in view mode
-              (!isEditing && !photo) ? null : (
-                <View 
-                  key={`photo-indicator-${index}`}
-                  style={[
-                    styles.indicatorDot, 
-                    currentPhotoIndex === index + 1 && styles.activeDot
-                  ]} 
-                />
-              )
+            {photosToDisplay.map((_, index) => (
+              <View 
+                key={`photo-indicator-${index}`}
+                style={[
+                  styles.indicatorDot, 
+                  currentPhotoIndex === index + 1 && styles.activeDot
+                ]} 
+              />
             ))}
           </View>
         </View>
