@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import theme from "../assets/theme";
@@ -28,32 +35,41 @@ export default function Home() {
     height: "5'7\"",
     year: "Sophomore",
     interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"]
+    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
   };
 
   const handleViewProfile = () => {
-    navigation.navigate('CandidateProfile', { candidateInfo: madisonProfile });
+    navigation.navigate("CandidateProfile", { candidateInfo: madisonProfile });
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerText}>Home</Text>
-      
+      <Text style={styles.headerText}>Match Portal</Text>
+
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.sectionTitle}>Featured Profiles</Text>
-        
+        <Text style={styles.sectionTitle}>manage your matches</Text>
+
         {/* Madison's Profile Card */}
-        <TouchableOpacity style={styles.profileCard} onPress={handleViewProfile}>
+        <TouchableOpacity
+          style={styles.profileCard}
+          onPress={handleViewProfile}
+        >
           <View style={styles.cardHeader}>
             <View style={styles.profileImageContainer}>
-              <Ionicons name="person-circle" size={60} color={COLORS.mutedBlue} />
+              <Ionicons
+                name="person-circle"
+                size={60}
+                color={COLORS.mutedBlue}
+              />
             </View>
             <View style={styles.profileDetails}>
               <Text style={styles.profileName}>{madisonProfile.name}</Text>
-              <Text style={styles.profileSubtitle}>{madisonProfile.age} • {madisonProfile.year}</Text>
+              <Text style={styles.profileSubtitle}>
+                {madisonProfile.age} • {madisonProfile.year}
+              </Text>
             </View>
           </View>
-          
+
           <View style={styles.interestsContainer}>
             <Text style={styles.interestsLabel}>Interests:</Text>
             <View style={styles.interestTags}>
@@ -63,18 +79,26 @@ export default function Home() {
                 </View>
               ))}
               {madisonProfile.interests.length > 3 && (
-                <Text style={styles.moreText}>+{madisonProfile.interests.length - 3} more</Text>
+                <Text style={styles.moreText}>
+                  +{madisonProfile.interests.length - 3} more
+                </Text>
               )}
             </View>
           </View>
-          
+
           <View style={styles.cardFooter}>
             <Text style={styles.viewProfileText}>View Full Profile</Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.accentOrange} />
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={COLORS.accentOrange}
+            />
           </View>
         </TouchableOpacity>
-        
-        <Text style={styles.helperText}>Tap on Madison's card to view her profile</Text>
+
+        <Text style={styles.helperText}>
+          Tap on Madison's card to view her profile
+        </Text>
       </ScrollView>
     </View>
   );

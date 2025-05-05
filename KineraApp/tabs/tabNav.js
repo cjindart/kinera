@@ -4,9 +4,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
-import HomeScreen from "./Home";
-import AvailabilityScreen from "./Availability";
-import ProfileScreen from "./Profile";
+import HomeStackScreen from "../_layout";
+import AvailabilityStackScreen from "../_layout";
+import ProfileStackScreen from "../_layout";
 
 import theme from "../assets/theme";
 
@@ -43,9 +43,9 @@ export default function TabNav() {
         },
       })}
     >
-      <Tab.Screen name="Match Portal" component={AvailabilityScreen} />
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Match Portal" component={AvailabilityStackScreen} />
+      <Tab.Screen name="Home" component={HomeStackScreen} />
+      <Tab.Screen name="Profile" component={ProfileStackScreen} />
     </Tab.Navigator>
   );
 }

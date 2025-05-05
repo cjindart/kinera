@@ -1,16 +1,16 @@
 import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from "@react-navigation/native";
 import theme from "../assets/theme";
 
 export default function AvailabilityScreen() {
   // Use the navigation hook instead of prop
   const navigation = useNavigation();
-  
+
   // Debug navigation object
-  console.log('Navigation in AvailabilityScreen:', navigation);
-  
+  console.log("Navigation in AvailabilityScreen:", navigation);
+
   // Mock candidate data - in a real app this would come from an API or database
   const candidateInfo = {
     name: "Madison",
@@ -19,16 +19,16 @@ export default function AvailabilityScreen() {
     height: "5'7",
     year: "Sophomore",
     interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"]
+    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
   };
-  
+
   const handleCardPress = () => {
-    console.log('Card pressed, attempting navigation');
-    // Navigate directly to the screen within the same stack navigator
+    console.log("Card pressed, attempting navigation");
+    // Navigate to CandidateProfile within the Home stack
     if (navigation && navigation.navigate) {
-      navigation.navigate('CandidateProfile', { candidateInfo });
+      navigation.navigate("CandidateProfile", { candidateInfo });
     } else {
-      console.error('Navigation is not available:', navigation);
+      console.error("Navigation is not available:", navigation);
     }
   };
 
@@ -63,13 +63,15 @@ export default function AvailabilityScreen() {
       </View>
 
       {/* Candidate Card - Now Tappable */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.cardContainer}
         onPress={handleCardPress}
         activeOpacity={0.7}
       >
         <View style={styles.card}>
-          <Text style={styles.cardText}>{candidateInfo.name} {candidateInfo.age}</Text>
+          <Text style={styles.cardText}>
+            {candidateInfo.name} {candidateInfo.age}
+          </Text>
           <Text style={styles.cardText}>{candidateInfo.location}</Text>
         </View>
         <View style={styles.approvalRow}>
