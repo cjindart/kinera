@@ -15,6 +15,8 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Use try-catch for imports that might not be available
 let ImagePicker;
@@ -97,6 +99,7 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
 export default function ProfileScreen() {
   // State to track whether profile is in edit mode
   const [isEditing, setIsEditing] = useState(false);
+  const navigation = useNavigation();
 
   // Mock data for the profile
   const profile = {
@@ -169,6 +172,21 @@ export default function ProfileScreen() {
     if (isEditing) {
       setNewInterestText("");
       setNewActivityText("");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Remove user data from AsyncStorage
+      await AsyncStorage.removeItem("user");
+
+      // Navigate back to auth flow
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Auth" }],
+      });
+    } catch (error) {
+      console.error("Error logging out:", error);
     }
   };
 
@@ -391,34 +409,38 @@ export default function ProfileScreen() {
             {/* Additional photos */}
             {additionalPhotos.map((photo, index) => (
               <View key={`additional-photo-${index}`} style={styles.photoCard}>
-                {isEditing ? (
-                  <TouchableOpacity
-                    style={styles.photoFrame}
-                    onPress={() => showImagePickerOptions(index + 1)}
-                  >
-                    {photo ? (
+                {
+                  isEditing ? (
+                    <TouchableOpacity
+                      style={styles.photoFrame}
+                      onPress={() => showImagePickerOptions(index + 1)}
+                    >
+                      {photo ? (
+                        <Image
+                          source={{ uri: photo }}
+                          style={styles.photoImage}
+                        />
+                      ) : (
+                        <View style={styles.editPhotoPlaceholder}>
+                          <Ionicons
+                            name="add-circle"
+                            size={50}
+                            color={COLORS.primaryNavy}
+                          />
+                          <Text style={styles.editPhotoText}>
+                            Add Photo {index + 1}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ) : photo ? (
+                    <View style={styles.photoFrame}>
                       <Image
                         source={{ uri: photo }}
                         style={styles.photoImage}
                       />
-                    ) : (
-                      <View style={styles.editPhotoPlaceholder}>
-                        <Ionicons
-                          name="add-circle"
-                          size={50}
-                          color={COLORS.primaryNavy}
-                        />
-                        <Text style={styles.editPhotoText}>
-                          Add Photo {index + 1}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ) : photo ? (
-                  <View style={styles.photoFrame}>
-                    <Image source={{ uri: photo }} style={styles.photoImage} />
-                  </View>
-                ) : null // Don't show empty photo slots in view mode
+                    </View>
+                  ) : null // Don't show empty photo slots in view mode
                 }
               </View>
             ))}
@@ -654,6 +676,29 @@ export default function ProfileScreen() {
             ))}
           </View>
         </View>
+
+        {/* 6. Divider */}
+        <View style={styles.divider} />
+        <TouchableOpacity
+          title="Logout"
+          onPress={() => {
+            handleLogout();
+          }}
+          style={{
+            margin: "5%",
+            fontFamily: "Gill Sans",
+            fontWeight: "bold",
+            fontSize: 16,
+            color: COLORS.primaryNavy,
+            backgroundColor: COLORS.buttonPeach,
+            width: "20%",
+            borderRadius: 18,
+            padding: 10,
+            textAlign: "center",
+          }}
+        >
+          <Text>Logout</Text>
+        </TouchableOpacity>
 
         {/* Add bottom padding to account for tab bar */}
         <View style={styles.bottomPadding} />
