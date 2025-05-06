@@ -592,7 +592,9 @@ export default function ProfileScreen() {
         {/* 5. Favorite Date Activities Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>Favorite date activities:</Text>
+            <Text style={styles.sectionLabel}>
+              Favorite Stanford date activities:
+            </Text>
             {isEditing && (
               <TouchableOpacity
                 style={styles.addCircleButton}

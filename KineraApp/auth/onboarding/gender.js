@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
 
@@ -46,9 +47,16 @@ export default function GenderScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
   const [otherText, setOtherText] = useState("");
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!selected) return;
     const gender = selected === "other" ? otherText : selected;
+    // Placeholder for backend logic
+    console.log("Submitting gender to backend:", { gender });
+    try {
+      await AsyncStorage.mergeItem("user", JSON.stringify({ gender }));
+    } catch (error) {
+      console.error("Error saving gender to AsyncStorage:", error);
+    }
     navigation.navigate("Step5", { ...route.params, gender });
   };
   const handleBack = () => {

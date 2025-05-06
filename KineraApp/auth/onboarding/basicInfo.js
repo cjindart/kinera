@@ -9,19 +9,23 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Step1Screen({ navigation }) {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
 
-  const handleContinue = () => {
-    // You can pass this data to the next onboarding step or send to Firebase here
-    navigation.navigate("Step2", {
-      phone,
-      name,
-      city,
-    });
+  const handleContinue = async () => {
+    const userData = { phone, name, city };
+    try {
+      await AsyncStorage.mergeItem("user", JSON.stringify(userData));
+      //send to backend
+      console.log(userData);
+    } catch (error) {
+      console.error("Error saving user data to AsyncStorage:", error);
+    }
+    navigation.navigate("Step2", userData);
   };
 
   return (

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Step2UploadPhotos({ navigation, route }) {
   const [photos, setPhotos] = useState([null, null, null, null]);
@@ -105,6 +106,16 @@ export default function Step2UploadPhotos({ navigation, route }) {
   };
 
   const handleContinue = async () => {
+    // Placeholder for backend logic
+    console.log("Submitting photos to backend:", photos);
+    try {
+      await AsyncStorage.mergeItem("user", JSON.stringify({ photos }));
+      //send to backend
+      console.log({ photos });
+    } catch (error) {
+      console.error("Error saving photos to AsyncStorage:", error);
+    }
+
     // Here you would upload the photos to Firebase
     // For now, just pass them to the next step
     //On the final onboarding step, you can upload the images to Firebase Storage

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const OPTIONS = [
   { label: "setting up a friend", value: "setup_friend" },
@@ -11,8 +12,18 @@ const OPTIONS = [
 export default function Step3PurposeScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!selected) return;
+    // Placeholder for backend logic
+    console.log("Submitting user type to backend:", { purpose: selected });
+    try {
+      await AsyncStorage.mergeItem(
+        "user",
+        JSON.stringify({ purpose: selected })
+      );
+    } catch (error) {
+      console.error("Error saving user type to AsyncStorage:", error);
+    }
     // You can use the selected value to determine the next step
     // Example: navigate to different screens based on selection
     if (selected === "setup_friend") {

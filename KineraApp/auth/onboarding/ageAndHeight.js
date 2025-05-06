@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const AGE_RANGE = Array.from({ length: 13 }, (_, i) => 18 + i); // 18-30
 const CLASS_OPTIONS = [
@@ -22,24 +23,28 @@ const CLASS_OPTIONS = [
 const FEET_OPTIONS = [4, 5, 6, 7];
 const INCHES_OPTIONS = Array.from({ length: 12 }, (_, i) => i);
 
-export default function AgeClassHeightScreen({ navigation }) {
+export default function AgeClassHeightScreen({ navigation, route }) {
   const [age, setAge] = useState(19);
   const [classYear, setClassYear] = useState("Sophomore");
   const [feet, setFeet] = useState(5);
   const [inches, setInches] = useState(7);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Placeholder for backend logic
-    console.log("Submitting to backend:", {
+    const userData = {
       age,
       classYear,
       height: `${feet}'${inches}"`,
-    });
-    // Save or pass data as needed
+    };
+    console.log("Submitting to backend:", userData);
+    try {
+      await AsyncStorage.mergeItem("user", JSON.stringify(userData));
+    } catch (error) {
+      console.error("Error saving age/class/height to AsyncStorage:", error);
+    }
     navigation.navigate("Step6", {
-      age,
-      classYear,
-      height: `${feet}'${inches}"`,
+      ...route?.params,
+      ...userData,
     });
   };
 
