@@ -28,6 +28,9 @@ export default function Step1Screen({ navigation }) {
     navigation.navigate("Step2", userData);
   };
 
+  const allFilled =
+    phone.trim() !== "" && name.trim() !== "" && city.trim() !== "";
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <SafeAreaView style={styles.container}>
@@ -65,7 +68,11 @@ export default function Step1Screen({ navigation }) {
           onChangeText={setCity}
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleContinue}>
+        <TouchableOpacity
+          style={[styles.button, !allFilled && styles.buttonDisabled]}
+          onPress={handleContinue}
+          disabled={!allFilled}
+        >
           <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -124,5 +131,8 @@ const styles = StyleSheet.create({
     color: "#3A5A6A",
     fontSize: 24,
     //fontFamily: "Noteworthy-Bold",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
 });

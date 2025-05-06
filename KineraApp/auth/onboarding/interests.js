@@ -42,8 +42,8 @@ export default function InterestsScreen({ navigation, route }) {
   };
 
   // Uncomment the following line to require at least 3 interests before continuing
-  // const canContinue = interests.length >= 3;
-  const canContinue = true;
+  const canContinue = interests.length >= 3;
+  // const canContinue = true;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -101,7 +101,7 @@ export default function InterestsScreen({ navigation, route }) {
       <TouchableOpacity
         style={styles.button}
         onPress={handleContinue}
-        // disabled={!canContinue}
+        disabled={!canContinue}
       >
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>

@@ -40,7 +40,8 @@ export default function ActivitiesScreen({ navigation, route }) {
     }
     navigation.navigate("Step7", { ...route?.params, activities });
   };
-
+  const canContinue = activities.length >= 3;
+  // const canContinue = true;
   return (
     <SafeAreaView style={styles.container}>
       {/* Back Arrow */}
@@ -94,7 +95,11 @@ export default function ActivitiesScreen({ navigation, route }) {
           ))}
         </View>
       </View>
-      <TouchableOpacity style={styles.button} onPress={handleContinue}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleContinue}
+        disabled={!canContinue}
+      >
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
     </SafeAreaView>
