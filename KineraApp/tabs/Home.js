@@ -1,8 +1,17 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Dimensions,
+} from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import theme from "../assets/theme";
+
+const { width, height } = Dimensions.get("window");
 
 export default function AvailabilityScreen() {
   // Use the navigation hook instead of prop
@@ -43,7 +52,7 @@ export default function AvailabilityScreen() {
       {/* Friend Selector */}
       <View style={styles.friendSelector}>
         <TouchableOpacity>
-          <Ionicons name="chevron-back" size={40} />
+          <Ionicons name="chevron-back" size={40} color="#325475" />
           <Text style={styles.friendText}>Previous{"\n"}friend</Text>
         </TouchableOpacity>
 
@@ -53,11 +62,11 @@ export default function AvailabilityScreen() {
             style={styles.temp}
           />
           {/* <View style={styles.temp}></View> */}
-          <Text>Daniel</Text>
+          <Text color="#325475">Daniel</Text>
         </View>
 
         <TouchableOpacity>
-          <Ionicons name="chevron-forward" size={40} />
+          <Ionicons name="chevron-forward" size={40} color="#325475" />
           <Text style={styles.friendText}>Next{"\n"}friend</Text>
         </TouchableOpacity>
       </View>
@@ -68,16 +77,21 @@ export default function AvailabilityScreen() {
         onPress={handleCardPress}
         activeOpacity={0.7}
       >
-        <View style={styles.card}>
-          <Text style={styles.cardText}>
-            {candidateInfo.name} {candidateInfo.age}
-          </Text>
-          <Text style={styles.cardText}>{candidateInfo.location}</Text>
+        <View style={styles.cardContainer}>
+          <Image
+            source={require("../assets/photos/image.png")} // Replace with real image or static asset
+            style={styles.cardImage}
+          />
         </View>
-        <View style={styles.approvalRow}>
+        <Text style={styles.cardText}>
+          {candidateInfo.name} {"\n"} {candidateInfo.age}
+          {"\n"}
+          {candidateInfo.location}
+        </Text>
+        {/* <View style={styles.approvalRow}>
           <Text style={styles.disapprove}>Friends who don't approve: Maya</Text>
           <Text style={styles.approve}>Friends who approved: CJ, Cole</Text>
-        </View>
+        </View> */}
       </TouchableOpacity>
 
       {/* Approve/Reject Buttons */}
@@ -96,25 +110,24 @@ export default function AvailabilityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: theme.colors.background,
     backgroundColor: "white",
-    paddingTop: 40,
-    paddingHorizontal: 20,
+    paddingTop: height * 0.05,
+    paddingHorizontal: width * 0.05,
     justifyContent: "space-between",
   },
   header: {
     alignItems: "center",
-    marginBottom: 20,
+    // marginBottom: height * 0.005,
   },
   title: {
-    fontSize: 32,
+    fontSize: width * 0.1,
     fontWeight: "bold",
     color: "#4B5C6B",
-    paddingTop: 20,
+    paddingTop: height * 0.02,
   },
   temp: {
-    height: 180,
-    width: 140,
+    height: height * 0.13,
+    width: width * 0.22,
     backgroundColor: "black",
   },
   friendSelector: {
@@ -124,37 +137,27 @@ const styles = StyleSheet.create({
   },
   friendText: {
     textAlign: "center",
-    fontSize: 14,
+    fontSize: width * 0.035,
+    color: "#325475",
   },
   friendInfo: {
-    width: 140,
-    height: 180,
+    width: width * 0.35,
+    height: height * 0.22,
     justifyContent: "center",
     alignItems: "center",
   },
-  friendImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 5,
-  },
   cardContainer: {
     alignItems: "center",
-    marginVertical: 20,
-  },
-  questionMark: {
-    fontSize: 24,
-    marginBottom: 10,
+    marginTop: height * 0.01,
   },
   card: {
-    width: 200,
-    height: 200,
+    width: width * 0.7,
+    height: width * 0.6,
     borderWidth: 1,
     borderColor: "#ccc",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
-    // Add shadow and styling to make it look more tappable
+    // marginBottom: height * 0.01,
     backgroundColor: "white",
     borderRadius: 10,
     shadowColor: "#000",
@@ -163,19 +166,27 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
+  cardImage: {
+    width: width * 0.6,
+    height: width * 0.7,
+    borderRadius: 10,
+  },
   cardText: {
-    fontSize: 18,
+    fontSize: width * 0.045,
+    marginTop: height * 0.01,
+    fontWeight: "bold",
+    color: "#325475",
   },
   approvalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    paddingHorizontal: 10,
+    paddingHorizontal: width * 0.025,
   },
   disapprove: {
     color: "#F7C4A5",
-    fontSize: 14,
-    fontWeight: 600,
+    fontSize: width * 0.035,
+    fontWeight: "600",
     flex: 1,
   },
   approve: {
@@ -186,26 +197,26 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginBottom: 20,
+    marginBottom: height * 0.025,
   },
   rejectButton: {
     backgroundColor: "#F7C4A5",
-    width: 75,
-    height: 75,
-    borderRadius: 30,
+    width: width * 0.18,
+    height: width * 0.18,
+    borderRadius: width * 0.09,
     justifyContent: "center",
     alignItems: "center",
   },
   acceptButton: {
     backgroundColor: "#A9B9CC",
-    width: 75,
-    height: 75,
-    borderRadius: 30,
+    width: width * 0.18,
+    height: width * 0.18,
+    borderRadius: width * 0.09,
     justifyContent: "center",
     alignItems: "center",
   },
   buttonText: {
-    fontSize: 20,
+    fontSize: width * 0.06,
     color: "white",
   },
 });
