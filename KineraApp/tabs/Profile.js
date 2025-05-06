@@ -121,8 +121,9 @@ export default function ProfileScreen() {
 
   // State for photos - update to support more photos
   const [mainPhoto, setMainPhoto] = useState(null);
-  const [additionalPhotos, setAdditionalPhotos] = useState([null, null, null]);
+  const [additionalPhotos, setAdditionalPhotos] = useState([]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const MAX_PHOTOS = 5; // Maximum number of photos (including main photo)
 
   // State for tracking selected interests and edited data
   const [selectedInterests, setSelectedInterests] = useState(["Music"]);
@@ -260,7 +261,13 @@ export default function ProfileScreen() {
           setMainPhoto(result.assets[0].uri);
         } else {
           const newPhotos = [...additionalPhotos];
-          newPhotos[index - 1] = result.assets[0].uri;
+          // If adding a new photo at the end
+          if (index - 1 === additionalPhotos.length) {
+            newPhotos.push(result.assets[0].uri);
+          } else {
+            // Replacing an existing photo
+            newPhotos[index - 1] = result.assets[0].uri;
+          }
           setAdditionalPhotos(newPhotos);
         }
       }
@@ -293,7 +300,13 @@ export default function ProfileScreen() {
           setMainPhoto(result.assets[0].uri);
         } else {
           const newPhotos = [...additionalPhotos];
-          newPhotos[index - 1] = result.assets[0].uri;
+          // If adding a new photo at the end
+          if (index - 1 === additionalPhotos.length) {
+            newPhotos.push(result.assets[0].uri);
+          } else {
+            // Replacing an existing photo
+            newPhotos[index - 1] = result.assets[0].uri;
+          }
           setAdditionalPhotos(newPhotos);
         }
       }
@@ -444,28 +457,62 @@ export default function ProfileScreen() {
                 }
               </View>
             ))}
+
+            {/* "Add Photo" container - only shown in edit mode and if there's room for more photos */}
+            {isEditing && mainPhoto && additionalPhotos.length < MAX_PHOTOS - 1 && (
+              <View key="add-photo-container" style={styles.photoCard}>
+                <TouchableOpacity
+                  style={styles.photoFrame}
+                  onPress={() => showImagePickerOptions(additionalPhotos.length + 1)}
+                >
+                  <View style={styles.editPhotoPlaceholder}>
+                    <Ionicons
+                      name="add-circle"
+                      size={50}
+                      color={COLORS.primaryNavy}
+                    />
+                    <Text style={styles.editPhotoText}>
+                      Add Photo {additionalPhotos.length + 1}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
           </ScrollView>
 
           {/* Photo indicator dots */}
           <View style={styles.photoIndicators}>
-            <View
-              key="main-photo-indicator"
-              style={[
-                styles.indicatorDot,
-                currentPhotoIndex === 0 && styles.activeDot,
-              ]}
-            />
-            {additionalPhotos.map((photo, index) =>
-              // Only show indicator for photos that exist in view mode
-              !isEditing && !photo ? null : (
-                <View
-                  key={`photo-indicator-${index}`}
-                  style={[
-                    styles.indicatorDot,
-                    currentPhotoIndex === index + 1 && styles.activeDot,
-                  ]}
-                />
-              )
+            {/* Only show main photo indicator if it exists */}
+            {(mainPhoto || isEditing) && (
+              <View
+                key="main-photo-indicator"
+                style={[
+                  styles.indicatorDot,
+                  currentPhotoIndex === 0 && styles.activeDot,
+                ]}
+              />
+            )}
+            
+            {/* Indicators for additional photos */}
+            {additionalPhotos.map((_, index) => (
+              <View
+                key={`photo-indicator-${index}`}
+                style={[
+                  styles.indicatorDot,
+                  currentPhotoIndex === index + 1 && styles.activeDot,
+                ]}
+              />
+            ))}
+            
+            {/* Add photo indicator in edit mode */}
+            {isEditing && mainPhoto && additionalPhotos.length < MAX_PHOTOS - 1 && (
+              <View
+                key="add-photo-indicator"
+                style={[
+                  styles.indicatorDot,
+                  currentPhotoIndex === additionalPhotos.length + 1 && styles.activeDot,
+                ]}
+              />
             )}
           </View>
         </View>
