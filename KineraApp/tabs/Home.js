@@ -125,8 +125,8 @@ export default function AvailabilityScreen() {
       </TouchableOpacity>
 
       <View style={styles.approvalRow}>
-        <Text style={styles.disapprove}>Approving Friends:{"\n"}Maya</Text>
-        <Text style={styles.approve}>Non Approving Friends:{"\n"}CJ, Cole</Text>
+        <Text style={styles.disapprove}>Non Approving Friends:{"\n"}Maya</Text>
+        <Text style={styles.approve}>Approving Friends:{"\n"}CJ, Cole</Text>
       </View>
 
       {/* Approve/Reject Buttons */}
@@ -258,6 +258,8 @@ const styles = StyleSheet.create({
   },
   approve: {
     color: COLORS.primaryNavy,
+    fontSize: 14,
+    fontWeight: "600",
     flex: 1,
     textAlign: "right",
   },
