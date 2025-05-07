@@ -38,13 +38,37 @@ export default function Home() {
     dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
   };
 
-  const handleViewProfile = () => {
-    navigation.navigate("CandidateProfile", { candidateInfo: madisonProfile });
+  // Alex's profile data
+  const alexProfile = {
+    name: "Alex",
+    age: "21",
+    gender: "Man",
+    height: "6'0\"",
+    year: "Junior",
+    interests: ["Tech", "Outdoors", "Cooking", "Travel", "Movies"],
+    dateActivities: ["Hiking", "Cooking class", "Movie night", "Coffee chat"],
+  };
+
+  const handleViewMatch = (profile) => {
+    navigation.navigate("MatchCompare", { candidateInfo: profile });
+  };
+
+  const handleLiaisonPress = () => {
+    navigation.navigate("SelectLiaison");
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerText}>Match Portal</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerText}>Match Portal</Text>
+        <TouchableOpacity
+          style={styles.liaisonButton}
+          onPress={handleLiaisonPress}
+        >
+          <Ionicons name="people" size={24} color={COLORS.primaryNavy} />
+          <Text style={styles.liaisonButtonText}>Select Liaison</Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <Text style={styles.sectionTitle}>manage your matches</Text>
@@ -52,7 +76,7 @@ export default function Home() {
         {/* Madison's Profile Card */}
         <TouchableOpacity
           style={styles.profileCard}
-          onPress={handleViewProfile}
+          onPress={() => handleViewMatch(madisonProfile)}
         >
           <View style={styles.cardHeader}>
             <View style={styles.profileImageContainer}>
@@ -96,6 +120,53 @@ export default function Home() {
           </View>
         </TouchableOpacity>
 
+        {/* Alex's Profile Card */}
+        <TouchableOpacity
+          style={styles.profileCard}
+          onPress={() => handleViewMatch(alexProfile)}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.profileImageContainer}>
+              <Ionicons
+                name="person-circle"
+                size={60}
+                color={COLORS.mutedBlue}
+              />
+            </View>
+            <View style={styles.profileDetails}>
+              <Text style={styles.profileName}>{alexProfile.name}</Text>
+              <Text style={styles.profileSubtitle}>
+                {alexProfile.age} • {alexProfile.year}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.interestsContainer}>
+            <Text style={styles.interestsLabel}>Interests:</Text>
+            <View style={styles.interestTags}>
+              {alexProfile.interests.slice(0, 3).map((interest, index) => (
+                <View key={index} style={styles.interestTag}>
+                  <Text style={styles.interestText}>{interest}</Text>
+                </View>
+              ))}
+              {alexProfile.interests.length > 3 && (
+                <Text style={styles.moreText}>
+                  +{alexProfile.interests.length - 3} more
+                </Text>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.cardFooter}>
+            <Text style={styles.viewProfileText}>View Full Profile</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={COLORS.accentOrange}
+            />
+          </View>
+        </TouchableOpacity>
+
         <Text style={styles.helperText}>
           Tap on Madison's card to view her profile
         </Text>
@@ -110,12 +181,34 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     paddingTop: 50,
   },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    marginBottom: 20,
+  },
   headerText: {
     fontSize: 24,
     fontWeight: "600",
-    marginHorizontal: 16,
-    marginBottom: 20,
     color: COLORS.primaryNavy,
+  },
+  liaisonButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.paleBlue,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.skyBlue,
+  },
+  liaisonButtonText: {
+    marginLeft: 4,
+    color: COLORS.primaryNavy,
+    fontSize: 14,
+    fontWeight: "500",
   },
   contentContainer: {
     paddingHorizontal: 16,

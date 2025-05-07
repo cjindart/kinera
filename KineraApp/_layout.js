@@ -9,6 +9,8 @@ import HomeScreen from "./tabs/Home";
 import ProfileScreen from "./tabs/Profile";
 import AvailabilityScreen from "./tabs/Availability";
 import CandidateProfile from "./tabs/CandidateProfile";
+import SelectLiaison from "./tabs/SelectLiaison";
+import MatchCompare from "./tabs/MatchCompare";
 import AuthNavigator from "./auth/AuthNavigator";
 import tabNav from "./tabs/tabNav";
 
@@ -47,8 +49,12 @@ function AvailabilityStackScreen() {
         component={AvailabilityScreen}
       />
       <AvailabilityStack.Screen
-        name="CandidateProfile"
-        component={CandidateProfile}
+        name="MatchCompare"
+        component={MatchCompare}
+      />
+      <AvailabilityStack.Screen
+        name="SelectLiaison"
+        component={SelectLiaison}
       />
     </AvailabilityStack.Navigator>
   );
