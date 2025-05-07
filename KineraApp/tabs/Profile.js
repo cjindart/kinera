@@ -13,6 +13,8 @@ import {
   Pressable,
   TextInput,
   Alert,
+  Modal,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -21,6 +23,7 @@ import { useAuth } from "../context/AuthContext";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import mockData from "../assets/mockUserData.json";
 
 // Use try-catch for imports that might not be available
 let ImagePicker;
@@ -104,7 +107,7 @@ export default function ProfileScreen() {
   // State to track whether profile is in edit mode
   const [isEditing, setIsEditing] = useState(false);
   const navigation = useNavigation();
-  const { user, updateProfile, logout } = useAuth();
+  const { user, updateProfile, logout, setUser } = useAuth();
 
   // State for photos
   const [mainPhoto, setMainPhoto] = useState(null);
@@ -124,35 +127,49 @@ export default function ProfileScreen() {
   const [newInterestText, setNewInterestText] = useState("");
   const [newActivityText, setNewActivityText] = useState("");
   const [userType, setUserType] = useState("");
-  
+  const [isAddFriendsModalVisible, setIsAddFriendsModalVisible] =
+    useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+
   // Load user data when component mounts
   useEffect(() => {
     if (user) {
-      console.log("Loading user profile data:", JSON.stringify({
-        name: user.name,
-        userType: user.userType,
-        profileDataExists: !!user.profileData,
-        profileData: user.profileData ? {
-          age: user.profileData.age,
-          gender: user.profileData.gender,
-          height: user.profileData.height,
-          year: user.profileData.year,
-          interestsCount: user.profileData.interests?.length || 0,
-          activitiesCount: user.profileData.dateActivities?.length || 0,
-          photosCount: user.profileData.photos?.length || 0
-        } : null,
-        friendsCount: user.friends?.length || 0,
-        standAloneFields: {
-          age: user.age,
-          gender: user.gender,
-          height: user.height
-        }
-      }, null, 2));
-      
+      console.log(
+        "Loading user profile data:",
+        JSON.stringify(
+          {
+            name: user.name,
+            userType: user.userType,
+            profileDataExists: !!user.profileData,
+            profileData: user.profileData
+              ? {
+                  age: user.profileData.age,
+                  gender: user.profileData.gender,
+                  height: user.profileData.height,
+                  year: user.profileData.year,
+                  interestsCount: user.profileData.interests?.length || 0,
+                  activitiesCount: user.profileData.dateActivities?.length || 0,
+                  photosCount: user.profileData.photos?.length || 0,
+                }
+              : null,
+            friendsCount: user.friends?.length || 0,
+            friends: user.friends || [],
+            standAloneFields: {
+              age: user.age,
+              gender: user.gender,
+              height: user.height,
+            },
+          },
+          null,
+          2
+        )
+      );
+
       // Basic info
       setName(user.name || "");
       setUserType(user.userType || "");
-      
+
       // Profile data from profileData object
       if (user.profileData) {
         // Convert age to string for TextInput
@@ -160,56 +177,63 @@ export default function ProfileScreen() {
         setGender(user.profileData.gender || "");
         setHeight(user.profileData.height || "");
         setYear(user.profileData.year || user.profileData.classYear || "");
-        
+
         // Interests and activities
         const userInterests = user.profileData.interests || [];
         setInterests(userInterests);
-        
-        const userActivities = user.profileData.dateActivities || 
-                               user.profileData.activities || 
-                               [];
+
+        const userActivities =
+          user.profileData.dateActivities || user.profileData.activities || [];
         setDateActivities(userActivities);
-        
+
         // Load photos
         if (user.profileData.photos && user.profileData.photos.length > 0) {
           setMainPhoto(user.profileData.photos[0]);
           setAdditionalPhotos(user.profileData.photos.slice(1));
         }
-        
+
         // Set default selected interest
         if (userInterests.length > 0) {
           setSelectedInterests([userInterests[0]]);
         }
       }
-      
+
       // Direct properties (in case they're not in profileData)
       if (!user.profileData?.age && user.age) {
         setAge(user.age.toString());
       }
-      
+
       if (!user.profileData?.gender && user.gender) {
         setGender(user.gender);
       }
-      
+
       if (!user.profileData?.height && user.height) {
         setHeight(user.height);
       }
-      
-      if (!user.profileData?.year && !user.profileData?.classYear && user.classYear) {
+
+      if (
+        !user.profileData?.year &&
+        !user.profileData?.classYear &&
+        user.classYear
+      ) {
         setYear(user.classYear);
       }
-      
+
       if (!user.profileData?.interests && user.interests) {
         setInterests(user.interests);
         if (user.interests.length > 0) {
           setSelectedInterests([user.interests[0]]);
         }
       }
-      
-      if (!user.profileData?.dateActivities && !user.profileData?.activities && user.activities) {
+
+      if (
+        !user.profileData?.dateActivities &&
+        !user.profileData?.activities &&
+        user.activities
+      ) {
         setDateActivities(user.activities);
       }
-      
+
       if (!user.profileData?.photos && user.photos && user.photos.length > 0) {
         setMainPhoto(user.photos[0]);
         setAdditionalPhotos(user.photos.slice(1));
@@ -256,38 +280,70 @@ export default function ProfileScreen() {
       // Save changes
       try {
         console.log("Saving profile changes");
-        
+
         // Get all photo URLs
-        const allPhotos = mainPhoto ? [mainPhoto, ...additionalPhotos.filter(Boolean)] : [];
-        
-        // Update profile data
-        const profileData = {
+        const allPhotos = mainPhoto
+          ? [mainPhoto, ...additionalPhotos.filter(Boolean)]
+          : [];
+
+        // Create updated user data
+        const updatedUserData = {
+          ...user,
           profileData: {
+            ...user.profileData,
             age: age ? parseInt(age, 10) : null,
             gender,
             height,
             year,
             interests,
             dateActivities,
-            photos: allPhotos
-          }
+            photos: allPhotos,
+          },
+          userType: userType || user.userType, // Preserve existing userType if not changed
         };
-        
-        console.log("Saving profile data:", profileData);
-        
-        // Save to Firebase/Firestore via AuthContext
-        await updateProfile(profileData);
-        
+
+        // Save to AsyncStorage
+        try {
+          await AsyncStorage.setItem(
+            "userData",
+            JSON.stringify(updatedUserData)
+          );
+          console.log("User data saved to AsyncStorage");
+        } catch (storageError) {
+          console.error("Error saving to AsyncStorage:", storageError);
+        }
+
+        // Update Firebase if needed
+        if (user.id) {
+          try {
+            const userRef = doc(db, "users", user.id);
+            await updateDoc(userRef, {
+              profileData: updatedUserData.profileData,
+              userType: updatedUserData.userType,
+            });
+            console.log("User data updated in Firebase");
+          } catch (firebaseError) {
+            console.error("Error updating Firebase:", firebaseError);
+          }
+        }
+
+        // Update the user context
+
+        await updateProfile(updatedUserData);
+
         console.log("Profile data saved successfully");
       } catch (error) {
         console.error("Error saving profile data:", error);
-        Alert.alert("Error", "Failed to save profile changes. Please try again.");
+        Alert.alert(
+          "Error",
+          "Failed to save profile changes. Please try again."
+        );
       }
     }
-    
+
     // Toggle edit mode
     setIsEditing(!isEditing);
-    
+
     // Clear input fields when exiting edit mode
     if (isEditing) {
       setNewInterestText("");
@@ -299,7 +355,7 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     try {
       const success = await logout();
-      
+
       if (success) {
         // Navigate back to auth flow
         navigation.reset({
@@ -367,15 +423,15 @@ export default function ProfileScreen() {
       // Fetch the image data
       const response = await fetch(uri);
       const blob = await response.blob();
-      
+
       // Create a reference to Firebase Storage
       const storage = getStorage();
       const filename = `profiles/${user.id}/${Date.now()}.jpg`;
       const storageRef = ref(storage, filename);
-      
+
       // Upload the image
       await uploadBytes(storageRef, blob);
-      
+
       // Get the download URL
       const downloadURL = await getDownloadURL(storageRef);
       return downloadURL;
@@ -430,7 +486,7 @@ export default function ProfileScreen() {
           Alert.alert("Error", "Failed to upload image. Please try again.");
         }
         */
-        
+
         // Use local URI for now
         if (index === 0) {
           setMainPhoto(imageUri);
@@ -472,7 +528,7 @@ export default function ProfileScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
-        
+
         // For demo purposes, we'll just use the local URI
         // In production, we would upload to Firebase Storage
         /*
@@ -497,7 +553,7 @@ export default function ProfileScreen() {
           Alert.alert("Error", "Failed to upload image. Please try again.");
         }
         */
-        
+
         // Use local URI for now
         if (index === 0) {
           setMainPhoto(imageUri);
@@ -553,6 +609,74 @@ export default function ProfileScreen() {
     // Calculate which page is visible
     const pageNum = Math.floor(contentOffset.x / viewSize.width);
     setCurrentPhotoIndex(pageNum);
+  };
+
+  // Function to handle friend search
+  const handleFriendSearch = (text) => {
+    setSearchQuery(text);
+    if (text.trim() === "") {
+      setSearchResults([]);
+      return;
+    }
+
+    // Filter mock users based on search query and exclude existing friends
+    const results = mockData.users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(text.trim().toLowerCase()) &&
+        !user.friends?.includes(user.id)
+    );
+    setSearchResults(results);
+  };
+
+  // Function to add a friend
+  const handleAddFriend = async (friendId) => {
+    try {
+      const friend = mockData.users.find((user) => user.id === friendId);
+      if (!friend) return;
+
+      const updatedFriends = [...(user.friends || []), friendId];
+
+      // Update user data
+      const updatedUserData = {
+        ...user,
+        friends: updatedFriends,
+      };
+
+      // Save to AsyncStorage
+      await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
+
+      // Update the user context directly
+      setUser(updatedUserData);
+
+      // Clear search
+      setSearchQuery("");
+      setSearchResults([]);
+    } catch (error) {
+      console.error("Error adding friend:", error);
+      Alert.alert("Error", "Failed to add friend. Please try again.");
+    }
+  };
+
+  // Function to remove a friend
+  const handleRemoveFriend = async (friendId) => {
+    try {
+      const updatedFriends = user.friends.filter((id) => id !== friendId);
+
+      // Update user data
+      const updatedUserData = {
+        ...user,
+        friends: updatedFriends,
+      };
+
+      // Save to AsyncStorage
+      await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
+
+      // Update the user context directly
+      setUser(updatedUserData);
+    } catch (error) {
+      console.error("Error removing friend:", error);
+      Alert.alert("Error", "Failed to remove friend. Please try again.");
+    }
   };
 
   return (
@@ -662,25 +786,29 @@ export default function ProfileScreen() {
             ))}
 
             {/* "Add Photo" container - only shown in edit mode and if there's room for more photos */}
-            {isEditing && mainPhoto && additionalPhotos.length < MAX_PHOTOS - 1 && (
-              <View key="add-photo-container" style={styles.photoCard}>
-                <TouchableOpacity
-                  style={styles.photoFrame}
-                  onPress={() => showImagePickerOptions(additionalPhotos.length + 1)}
-                >
-                  <View style={styles.editPhotoPlaceholder}>
-                    <Ionicons
-                      name="add-circle"
-                      size={50}
-                      color={COLORS.primaryNavy}
-                    />
-                    <Text style={styles.editPhotoText}>
-                      Add Photo {additionalPhotos.length + 1}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
+            {isEditing &&
+              mainPhoto &&
+              additionalPhotos.length < MAX_PHOTOS - 1 && (
+                <View key="add-photo-container" style={styles.photoCard}>
+                  <TouchableOpacity
+                    style={styles.photoFrame}
+                    onPress={() =>
+                      showImagePickerOptions(additionalPhotos.length + 1)
+                    }
+                  >
+                    <View style={styles.editPhotoPlaceholder}>
+                      <Ionicons
+                        name="add-circle"
+                        size={50}
+                        color={COLORS.primaryNavy}
+                      />
+                      <Text style={styles.editPhotoText}>
+                        Add Photo {additionalPhotos.length + 1}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
           </ScrollView>
 
           {/* Photo indicator dots */}
@@ -695,7 +823,7 @@ export default function ProfileScreen() {
                 ]}
               />
             )}
-            
+
             {/* Indicators for additional photos */}
             {additionalPhotos.map((_, index) => (
               <View
@@ -706,23 +834,57 @@ export default function ProfileScreen() {
                 ]}
               />
             ))}
-            
+
             {/* Add photo indicator in edit mode */}
-            {isEditing && mainPhoto && additionalPhotos.length < MAX_PHOTOS - 1 && (
-              <View
-                key="add-photo-indicator"
-                style={[
-                  styles.indicatorDot,
-                  currentPhotoIndex === additionalPhotos.length + 1 && styles.activeDot,
-                ]}
-              />
-            )}
+            {isEditing &&
+              mainPhoto &&
+              additionalPhotos.length < MAX_PHOTOS - 1 && (
+                <View
+                  key="add-photo-indicator"
+                  style={[
+                    styles.indicatorDot,
+                    currentPhotoIndex === additionalPhotos.length + 1 &&
+                      styles.activeDot,
+                  ]}
+                />
+              )}
           </View>
         </View>
 
         {/* 3. Profile Summary Bar */}
         <View style={styles.summaryBarSection}>
-          <View style={styles.summaryBlock}>
+          <TouchableOpacity
+            style={styles.summaryBlock}
+            onPress={() => {
+              if (isEditing) {
+                Alert.prompt(
+                  "Edit Age",
+                  "Enter your age:",
+                  [
+                    {
+                      text: "Cancel",
+                      style: "cancel",
+                    },
+                    {
+                      text: "Save",
+                      onPress: (newAge) => {
+                        if (newAge && !isNaN(newAge)) {
+                          setAge(newAge);
+                        } else {
+                          Alert.alert(
+                            "Invalid Input",
+                            "Please enter a valid age"
+                          );
+                        }
+                      },
+                    },
+                  ],
+                  "plain-text",
+                  age
+                );
+              }
+            }}
+          >
             <View style={styles.iconCircle}>
               <Ionicons
                 name="calendar-outline"
@@ -731,9 +893,50 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={styles.summaryText}>{age || "-"}</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.summaryBlock}>
+          <TouchableOpacity
+            style={styles.summaryBlock}
+            onPress={() => {
+              if (isEditing) {
+                Alert.alert("Edit Gender", "Select your gender:", [
+                  {
+                    text: "Male",
+                    onPress: () => setGender("Male"),
+                  },
+                  {
+                    text: "Female",
+                    onPress: () => setGender("Female"),
+                  },
+                  {
+                    text: "Input another gender",
+                    onPress: () =>
+                      Alert.prompt(
+                        "Input Gender",
+                        "Enter your gender:",
+                        [
+                          {
+                            text: "Cancel",
+                            style: "cancel",
+                          },
+                          {
+                            text: "Save",
+                            onPress: (newGender) => {
+                              setGender(newGender);
+                            },
+                          },
+                        ],
+                        "plain-text"
+                      ),
+                  },
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                ]);
+              }
+            }}
+          >
             <View style={styles.iconCircle}>
               <Ionicons
                 name="person-outline"
@@ -742,9 +945,35 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={styles.summaryText}>{gender || "-"}</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.summaryBlock}>
+          <TouchableOpacity
+            style={styles.summaryBlock}
+            onPress={() => {
+              if (isEditing) {
+                Alert.prompt(
+                  "Edit Height",
+                  "Enter your height (e.g., 5'7):",
+                  [
+                    {
+                      text: "Cancel",
+                      style: "cancel",
+                    },
+                    {
+                      text: "Save",
+                      onPress: (newHeight) => {
+                        if (newHeight) {
+                          setHeight(newHeight);
+                        }
+                      },
+                    },
+                  ],
+                  "plain-text",
+                  height
+                );
+              }
+            }}
+          >
             <View style={styles.iconCircle}>
               <Ionicons
                 name="resize-outline"
@@ -753,9 +982,45 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={styles.summaryText}>{height || "-"}</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.summaryBlock}>
+          <TouchableOpacity
+            style={styles.summaryBlock}
+            onPress={() => {
+              if (isEditing) {
+                Alert.alert("Edit Year", "Select your year:", [
+                  {
+                    text: "Freshman",
+                    onPress: () => setYear("Freshman"),
+                  },
+                  {
+                    text: "Sophomore",
+                    onPress: () => setYear("Sophomore"),
+                  },
+                  {
+                    text: "Junior",
+                    onPress: () => setYear("Junior"),
+                  },
+                  {
+                    text: "Senior",
+                    onPress: () => setYear("Senior"),
+                  },
+                  {
+                    text: "Grad-Student",
+                    onPress: () => setYear("Grad-Student"),
+                  },
+                  {
+                    text: "Post-Grad",
+                    onPress: () => setYear("Post-Grad"),
+                  },
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                ]);
+              }
+            }}
+          >
             <View style={styles.iconCircle}>
               <Ionicons
                 name="school-outline"
@@ -764,8 +1029,43 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={styles.summaryText}>{year || "-"}</Text>
-          </View>
+          </TouchableOpacity>
         </View>
+
+        {/* Add Dater-Swiper Edit Button */}
+        {isEditing && (
+          <TouchableOpacity
+            style={styles.daterSwiperButton}
+            onPress={() => {
+              Alert.alert(
+                "Edit Dater or eSwiper Status",
+                "Choose your user experience!",
+                [
+                  {
+                    text: "Dater only",
+                    onPress: () => setUserType("Dater"),
+                  },
+                  {
+                    text: "Match Maker only",
+                    onPress: () => setUserType("Match Maker"),
+                  },
+                  {
+                    text: "Dater & Match Maker",
+                    onPress: () => setYear("Dater & Match Maker"),
+                  },
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                ]
+              );
+            }}
+          >
+            <Text style={styles.daterSwiperButtonText}>
+              Edit Dater-Swiper Status
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* 4. Interest Tags Section */}
         <View style={styles.sectionContainer}>
@@ -907,45 +1207,124 @@ export default function ProfileScreen() {
         <View style={styles.friendsSection}>
           <View style={styles.friendsHeader}>
             <Text style={styles.friendsTitle}>friends:</Text>
-            <TouchableOpacity style={styles.addFriendButton}>
+            <TouchableOpacity
+              style={styles.addFriendButton}
+              onPress={() => setIsAddFriendsModalVisible(true)}
+            >
               <Text style={styles.addFriendText}>+ new friend</Text>
             </TouchableOpacity>
           </View>
 
           {/* Friends List */}
           <View style={styles.friendsList}>
-            {user?.friends?.map((friend) => (
-              <View key={friend.id} style={styles.friendItem}>
-                <View style={styles.friendAvatar}>
-                  {friend.avatar ? (
-                    <Image 
-                      source={{ uri: friend.avatar }} 
-                      style={{ width: 40, height: 40, borderRadius: 4 }}
-                    />
-                  ) : (
-                    <Ionicons
-                      name="person"
-                      size={24}
-                      color={COLORS.primaryNavy}
-                    />
+            {user?.friends?.map((friendId) => {
+              const friend = mockData.users.find(
+                (user) => user.id === friendId
+              );
+              if (!friend) return null;
+
+              return (
+                <View key={friendId} style={styles.friendItem}>
+                  <View style={styles.friendAvatar}>
+                    {friend.photos?.[0] ? (
+                      <Image
+                        source={{ uri: friend.photos[0] }}
+                        style={styles.friendAvatarImage}
+                      />
+                    ) : (
+                      <Ionicons
+                        name="person"
+                        size={24}
+                        color={COLORS.primaryNavy}
+                      />
+                    )}
+                  </View>
+                  <Text style={styles.friendName}>{friend.name}</Text>
+                  {isEditing && (
+                    <TouchableOpacity
+                      style={styles.removeFriendButton}
+                      onPress={() => handleRemoveFriend(friendId)}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={20}
+                        color={COLORS.primaryNavy}
+                      />
+                    </TouchableOpacity>
                   )}
                 </View>
-                <Text style={styles.friendName}>{friend.name}</Text>
-              </View>
-            ))}
-            
+              );
+            })}
+
             {(!user?.friends || user.friends.length === 0) && (
-              <Text style={{ 
-                padding: 20,
-                textAlign: 'center',
-                color: COLORS.mutedBlue,
-                fontStyle: 'italic'
-              }}>
+              <Text style={styles.noFriendsText}>
                 You haven't added any friends yet
               </Text>
             )}
           </View>
         </View>
+
+        {/* Add Friends Modal */}
+        <Modal
+          visible={isAddFriendsModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsAddFriendsModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Friends</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setIsAddFriendsModalVisible(false)}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name..."
+                value={searchQuery}
+                onChangeText={handleFriendSearch}
+              />
+
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.searchResultItem}
+                    onPress={() => handleAddFriend(item.id)}
+                  >
+                    <View style={styles.searchResultAvatar}>
+                      {item.photos?.[0] ? (
+                        <Image
+                          source={{ uri: item.photos[0] }}
+                          style={styles.searchResultAvatarImage}
+                        />
+                      ) : (
+                        <Ionicons
+                          name="person"
+                          size={24}
+                          color={COLORS.primaryNavy}
+                        />
+                      )}
+                    </View>
+                    <Text style={styles.searchResultName}>{item.name}</Text>
+                    <Ionicons
+                      name="add-circle"
+                      size={24}
+                      color={COLORS.primaryNavy}
+                    />
+                  </TouchableOpacity>
+                )}
+                style={styles.searchResultsList}
+              />
+            </View>
+          </View>
+        </Modal>
 
         {/* 6. Divider */}
         <View style={styles.divider} />
@@ -1118,6 +1497,8 @@ const styles = StyleSheet.create({
   summaryBlock: {
     flex: 1,
     alignItems: "center",
+    padding: 8,
+    borderRadius: 8,
   },
   iconCircle: {
     width: 40,
@@ -1287,9 +1668,111 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     fontFamily: Platform.OS === "ios" ? "Gill Sans" : "sans-serif",
   },
+  friendAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
+  },
+  removeFriendButton: {
+    padding: 5,
+  },
+  noFriendsText: {
+    padding: 20,
+    textAlign: "center",
+    color: COLORS.mutedBlue,
+    fontStyle: "italic",
+  },
 
   // Extra bottom padding
   bottomPadding: {
     height: 20,
+  },
+
+  daterSwiperButton: {
+    backgroundColor: COLORS.buttonPeach,
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  daterSwiperButtonText: {
+    color: COLORS.primaryNavy,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    width: "90%",
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: COLORS.primaryNavy,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: COLORS.primaryNavy,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  searchResultsList: {
+    maxHeight: "80%",
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.mutedBlue,
+  },
+  searchResultAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.paleBlue,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  searchResultAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  searchResultName: {
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.primaryNavy,
   },
 });

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,35 +10,45 @@ import {
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import theme from "../assets/theme";
+import mockData from "../assets/mockUserData.json";
 
 const { width, height } = Dimensions.get("window");
 
 export default function AvailabilityScreen() {
-  // Use the navigation hook instead of prop
   const navigation = useNavigation();
+  const [currentUserIndex, setCurrentUserIndex] = useState(0);
+  const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
 
-  // Debug navigation object
-  console.log("Navigation in AvailabilityScreen:", navigation);
+  // Get all users who are either "gettingSetUp" or "both"
+  const availableUsers = mockData.users.filter(
+    (user) => user.setupStatus === "gettingSetUp" || user.setupStatus === "both"
+  );
 
-  // Mock candidate data - in a real app this would come from an API or database
-  const candidateInfo = {
-    name: "Madison",
-    age: 22,
-    location: "Los Angeles",
-    height: "5'7",
-    year: "Sophomore",
-    interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
-  };
+  // Get current user and friend
+  const currentUser = availableUsers[currentUserIndex];
+  const currentFriend = mockData.users.find(
+    (user) => user.id === currentUser.friends[currentFriendIndex]
+  );
 
   const handleCardPress = () => {
     console.log("Card pressed, attempting navigation");
-    // Navigate to CandidateProfile within the Home stack
     if (navigation && navigation.navigate) {
-      navigation.navigate("CandidateProfile", { candidateInfo });
+      navigation.navigate("CandidateProfile", { candidateInfo: currentUser });
     } else {
       console.error("Navigation is not available:", navigation);
     }
+  };
+
+  const handlePreviousFriend = () => {
+    setCurrentFriendIndex((prev) =>
+      prev === 0 ? currentUser.friends.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextFriend = () => {
+    setCurrentFriendIndex((prev) =>
+      prev === currentUser.friends.length - 1 ? 0 : prev + 1
+    );
   };
 
   return (
@@ -51,21 +61,20 @@ export default function AvailabilityScreen() {
 
       {/* Friend Selector */}
       <View style={styles.friendSelector}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handlePreviousFriend}>
           <Ionicons name="chevron-back" size={40} color="#325475" />
           <Text style={styles.friendText}>Previous{"\n"}friend</Text>
         </TouchableOpacity>
 
         <View style={styles.friendInfo}>
           <Image
-            source={require("../assets/photos/daniel.png")} // Replace with real image or static asset
+            source={require("../assets/photos/daniel.png")}
             style={styles.temp}
           />
-          {/* <View style={styles.temp}></View> */}
-          <Text color="#325475">Daniel</Text>
+          <Text color="#325475">{currentFriend.name}</Text>
         </View>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleNextFriend}>
           <Ionicons name="chevron-forward" size={40} color="#325475" />
           <Text style={styles.friendText}>Next{"\n"}friend</Text>
         </TouchableOpacity>
@@ -79,19 +88,15 @@ export default function AvailabilityScreen() {
       >
         <View style={styles.cardContainer}>
           <Image
-            source={require("../assets/photos/image.png")} // Replace with real image or static asset
+            source={require("../assets/photos/image.png")}
             style={styles.cardImage}
           />
         </View>
         <Text style={styles.cardText}>
-          {candidateInfo.name} {"\n"} {candidateInfo.age}
+          {currentUser.name} {"\n"} {currentUser.age}
           {"\n"}
-          {candidateInfo.location}
+          {currentUser.location}
         </Text>
-        {/* <View style={styles.approvalRow}>
-          <Text style={styles.disapprove}>Friends who don't approve: Maya</Text>
-          <Text style={styles.approve}>Friends who approved: CJ, Cole</Text>
-        </View> */}
       </TouchableOpacity>
 
       {/* Approve/Reject Buttons */}

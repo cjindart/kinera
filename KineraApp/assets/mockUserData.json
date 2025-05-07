@@ -1,0 +1,244 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "name": "Madison",
+      "age": 22,
+      "gender": "female",
+      "location": "Los Angeles",
+      "height": "5'7",
+      "year": "Sophomore",
+      "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
+      "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"],
+      "photos": ["madison1.jpg", "madison2.jpg"],
+      "bio": "Political science major who loves jazz and outdoor adventures",
+      "sexuality": "straight",
+      "lookingFor": "men",
+      "setupStatus": "both",
+      "friends": ["u3", "u5", "u7"],
+      "matches": {
+        "u2": { "approvalRate": 0, "matchBack": 0 },
+        "u4": { "approvalRate": 0, "matchBack": 0 },
+        "u6": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u2",
+      "name": "James",
+      "age": 23,
+      "gender": "male",
+      "location": "Los Angeles",
+      "height": "6'0",
+      "year": "Junior",
+      "interests": ["Basketball", "Photography", "Cooking", "Travel"],
+      "dateActivities": ["Beach day", "Museum visit", "Coffee shop", "Hiking"],
+      "photos": ["james1.jpg", "james2.jpg"],
+      "bio": "Computer science major who loves capturing moments through photography",
+      "sexuality": "straight",
+      "lookingFor": "women",
+      "setupStatus": "gettingSetUp",
+      "friends": ["u4", "u6", "u8"],
+      "matches": {
+        "u1": { "approvalRate": 0, "matchBack": 0 },
+        "u3": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u3",
+      "name": "Sophia",
+      "age": 21,
+      "gender": "female",
+      "location": "Los Angeles",
+      "height": "5'5",
+      "year": "Sophomore",
+      "interests": ["Art", "Dance", "Yoga", "Reading"],
+      "dateActivities": [
+        "Art gallery",
+        "Dance class",
+        "Bookstore",
+        "Sunset picnic"
+      ],
+      "photos": ["sophia1.jpg", "sophia2.jpg"],
+      "bio": "Art history major with a passion for contemporary dance",
+      "sexuality": "straight",
+      "lookingFor": "men",
+      "setupStatus": "both",
+      "friends": ["u1", "u5", "u9"],
+      "matches": {
+        "u2": { "approvalRate": 0, "matchBack": 0 },
+        "u4": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u4",
+      "name": "Michael",
+      "age": 24,
+      "gender": "male",
+      "location": "Los Angeles",
+      "height": "5'11",
+      "year": "Senior",
+      "interests": ["Music", "Surfing", "Cooking", "Fitness"],
+      "dateActivities": [
+        "Concert",
+        "Beach day",
+        "Cooking class",
+        "Gym session"
+      ],
+      "photos": ["michael1.jpg", "michael2.jpg"],
+      "bio": "Music production major who loves the ocean and healthy living",
+      "sexuality": "straight",
+      "lookingFor": "women",
+      "setupStatus": "gettingSetUp",
+      "friends": ["u2", "u6", "u10"],
+      "matches": {
+        "u1": { "approvalRate": 0, "matchBack": 0 },
+        "u3": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u5",
+      "name": "Emma",
+      "age": 22,
+      "gender": "female",
+      "location": "Los Angeles",
+      "height": "5'6",
+      "year": "Junior",
+      "interests": ["Fashion", "Photography", "Travel", "Food"],
+      "dateActivities": ["Shopping", "Photo walk", "Food tour", "Museum visit"],
+      "photos": ["emma1.jpg", "emma2.jpg"],
+      "bio": "Fashion design major with a love for street photography",
+      "sexuality": "straight",
+      "lookingFor": "men",
+      "setupStatus": "both",
+      "friends": ["u1", "u3", "u7"],
+      "matches": {
+        "u6": { "approvalRate": 0, "matchBack": 0 },
+        "u8": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u6",
+      "name": "David",
+      "age": 23,
+      "gender": "male",
+      "location": "Los Angeles",
+      "height": "6'1",
+      "year": "Junior",
+      "interests": ["Basketball", "Music", "Cars", "Fashion"],
+      "dateActivities": ["Basketball game", "Concert", "Car show", "Shopping"],
+      "photos": ["david1.jpg", "david2.jpg"],
+      "bio": "Business major who loves sports and streetwear",
+      "sexuality": "straight",
+      "lookingFor": "women",
+      "setupStatus": "gettingSetUp",
+      "friends": ["u2", "u4", "u8"],
+      "matches": {
+        "u1": { "approvalRate": 0, "matchBack": 0 },
+        "u5": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u7",
+      "name": "Olivia",
+      "age": 21,
+      "gender": "female",
+      "location": "Los Angeles",
+      "height": "5'4",
+      "year": "Sophomore",
+      "interests": ["Dance", "Yoga", "Art", "Music"],
+      "dateActivities": [
+        "Dance class",
+        "Yoga session",
+        "Art gallery",
+        "Concert"
+      ],
+      "photos": ["olivia1.jpg", "olivia2.jpg"],
+      "bio": "Dance major who finds peace in yoga and art",
+      "sexuality": "straight",
+      "lookingFor": "men",
+      "setupStatus": "both",
+      "friends": ["u1", "u5", "u9"],
+      "matches": {
+        "u8": { "approvalRate": 0, "matchBack": 0 },
+        "u10": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u8",
+      "name": "William",
+      "age": 24,
+      "gender": "male",
+      "location": "Los Angeles",
+      "height": "5'10",
+      "year": "Senior",
+      "interests": ["Gaming", "Tech", "Movies", "Fitness"],
+      "dateActivities": [
+        "Gaming night",
+        "Tech meetup",
+        "Movie night",
+        "Gym session"
+      ],
+      "photos": ["william1.jpg", "william2.jpg"],
+      "bio": "Computer science major who loves gaming and tech innovation",
+      "sexuality": "straight",
+      "lookingFor": "women",
+      "setupStatus": "gettingSetUp",
+      "friends": ["u2", "u6", "u10"],
+      "matches": {
+        "u5": { "approvalRate": 0, "matchBack": 0 },
+        "u7": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u9",
+      "name": "Isabella",
+      "age": 22,
+      "gender": "female",
+      "location": "Los Angeles",
+      "height": "5'8",
+      "year": "Junior",
+      "interests": ["Fashion", "Travel", "Photography", "Food"],
+      "dateActivities": [
+        "Shopping",
+        "Travel planning",
+        "Photo shoot",
+        "Food tour"
+      ],
+      "photos": ["isabella1.jpg", "isabella2.jpg"],
+      "bio": "Fashion marketing major with a passion for travel photography",
+      "sexuality": "straight",
+      "lookingFor": "men",
+      "setupStatus": "both",
+      "friends": ["u3", "u7", "u1"],
+      "matches": {
+        "u10": { "approvalRate": 0, "matchBack": 0 }
+      }
+    },
+    {
+      "id": "u10",
+      "name": "Alexander",
+      "age": 23,
+      "gender": "male",
+      "location": "Los Angeles",
+      "height": "6'2",
+      "year": "Junior",
+      "interests": ["Sports", "Music", "Cooking", "Travel"],
+      "dateActivities": [
+        "Sports game",
+        "Concert",
+        "Cooking class",
+        "Travel planning"
+      ],
+      "photos": ["alexander1.jpg", "alexander2.jpg"],
+      "bio": "Sports management major who loves music and culinary adventures",
+      "sexuality": "straight",
+      "lookingFor": "women",
+      "setupStatus": "gettingSetUp",
+      "friends": ["u4", "u8", "u2"],
+      "matches": {
+        "u7": { "approvalRate": 0, "matchBack": 0 },
+        "u9": { "approvalRate": 0, "matchBack": 0 }
+      }
+    }
+  ]
+}
