@@ -57,7 +57,7 @@ export default function GenderScreen({ navigation, route }) {
     } catch (error) {
       console.error("Error saving gender to AsyncStorage:", error);
     }
-    navigation.navigate("Step5", { ...route.params, gender });
+    navigation.navigate("sexuality", { ...route.params, gender });
   };
   const handleBack = () => {
     navigation.goBack();

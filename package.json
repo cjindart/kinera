@@ -1,11 +1,13 @@
 {
   "dependencies": {
     "expo": "^53.0.6",
+    "expo-firebase-recaptcha": "^2.3.1",
     "expo-image-picker": "~16.1.4",
     "metro": "^0.80.12",
     "metro-babel-transformer": "^0.82.2",
     "metro-core": "^0.82.2",
-    "metro-react-native-babel-transformer": "^0.77.0"
+    "metro-react-native-babel-transformer": "^0.77.0",
+    "react-native-webview": "^13.13.5"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1"

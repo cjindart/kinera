@@ -38,7 +38,7 @@ export default function ActivitiesScreen({ navigation, route }) {
     } catch (error) {
       console.error("Error saving activities to AsyncStorage:", error);
     }
-    navigation.navigate("Step7", { ...route?.params, activities });
+    navigation.navigate("addFriends", { ...route?.params, activities });
   };
   const canContinue = activities.length >= 3;
   // const canContinue = true;
@@ -47,7 +47,7 @@ export default function ActivitiesScreen({ navigation, route }) {
       {/* Back Arrow */}
       <TouchableOpacity
         style={styles.backArrow}
-        onPress={() => navigation.navigate("Step5")}
+        onPress={() => navigation.goBack()}
       >
         <Text style={styles.arrowText}>←</Text>
       </TouchableOpacity>

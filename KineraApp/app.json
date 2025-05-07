@@ -8,6 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "sdkVersion": "53.0.0",
+    "scheme": "kineraapp",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -17,8 +18,22 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to let you add photos to your profile.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you select profile pictures."
-      }
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you select profile pictures.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "kineraapp"
+            ]
+          }
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      },
+      "bundleIdentifier": "com.kinera.app",
+      "associatedDomains": [
+        "applinks:vouch-e7830.firebaseapp.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +44,28 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.RECEIVE_SMS"
+      ],
+      "package": "com.kinera.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "kineraapp",
+              "host": "*"
+            },
+            {
+              "scheme": "https",
+              "host": "*.firebaseapp.com",
+              "pathPrefix": "/__/auth/callback"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
@@ -43,6 +79,11 @@
           "cameraPermission": "The app needs access to your camera to let you take profile pictures."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "kinera-app"
+      }
+    }
   }
 }

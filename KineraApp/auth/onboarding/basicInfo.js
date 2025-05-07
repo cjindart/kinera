@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,25 @@ export default function Step1Screen({ navigation }) {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
 
+  // Load existing user data when component mounts
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const parsedData = JSON.parse(userData);
+          // Set the phone and name from existing data
+          if (parsedData.phoneNumber) setPhone(parsedData.phoneNumber);
+          if (parsedData.name) setName(parsedData.name);
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      }
+    };
+    
+    loadUserData();
+  }, []);
+
   const handleContinue = async () => {
     const userData = { phone, name, city };
     try {
@@ -25,11 +44,8 @@ export default function Step1Screen({ navigation }) {
     } catch (error) {
       console.error("Error saving user data to AsyncStorage:", error);
     }
-    navigation.navigate("Step2", userData);
+    navigation.navigate("photos", userData);
   };
-
-  const allFilled =
-    phone.trim() !== "" && name.trim() !== "" && city.trim() !== "";
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -41,24 +57,9 @@ export default function Step1Screen({ navigation }) {
           <Text style={styles.arrowText}>←</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>Enter your phone number</Text>
+        <Text style={styles.title}>Tell us about yourself</Text>
+        <Text style={styles.subtitle}>We already have your name and phone number from login.</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your number here"
-          placeholderTextColor="#B0B0B0"
-          keyboardType="phone-pad"
-          value={phone}
-          onChangeText={setPhone}
-        />
-        <Text style={styles.title}>What's Your Name?</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your name first last"
-          placeholderTextColor="#B0B0B0"
-          value={name}
-          onChangeText={setName}
-        />
         <Text style={styles.title}>Where are you from?</Text>
         <TextInput
           style={styles.input}
@@ -69,9 +70,9 @@ export default function Step1Screen({ navigation }) {
         />
 
         <TouchableOpacity
-          style={[styles.button, !allFilled && styles.buttonDisabled]}
+          style={[styles.button, !city.trim() && styles.buttonDisabled]}
           onPress={handleContinue}
-          disabled={!allFilled}
+          disabled={!city.trim()}
         >
           <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
@@ -106,6 +107,12 @@ const styles = StyleSheet.create({
     marginTop: "5%",
     marginBottom: 32,
     //fontFamily: "Noteworthy-Bold", // Use your custom font if available
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#3A5A6A",
+    textAlign: "center",
+    marginBottom: 32,
   },
   input: {
     borderWidth: 2,

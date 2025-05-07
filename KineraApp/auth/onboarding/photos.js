@@ -12,7 +12,7 @@ import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function Step2UploadPhotos({ navigation, route }) {
+export default function PhotosScreen({ navigation, route }) {
   const [photos, setPhotos] = useState([null, null, null, null]);
 
   useEffect(() => {
@@ -121,7 +121,7 @@ export default function Step2UploadPhotos({ navigation, route }) {
     //On the final onboarding step, you can upload the images to Firebase Storage
     // and save their URLs to Firestore.
     // You'll need to convert the local URI to a blob and use the Firebase Storage SDK.
-    navigation.navigate("Step3", {
+    navigation.navigate("userType", {
       ...route.params, // pass previous onboarding data
       photos,
     });

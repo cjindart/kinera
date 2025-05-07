@@ -17,6 +17,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../context/AuthContext";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../utils/firebase";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Use try-catch for imports that might not be available
 let ImagePicker;
@@ -100,37 +104,118 @@ export default function ProfileScreen() {
   // State to track whether profile is in edit mode
   const [isEditing, setIsEditing] = useState(false);
   const navigation = useNavigation();
+  const { user, updateProfile, logout } = useAuth();
 
-  // Mock data for the profile
-  const profile = {
-    name: "Gavin",
-    role: "dater-swiper",
-    age: "22",
-    gender: "Man",
-    height: "6'0\"",
-    year: "Sophomore",
-    interests: ["Politics", "Sports", "Music", "Pets"],
-    dateActivities: ["Voyager", "Jazz Night", "Study Date", "KA Basement"],
-    friends: [
-      { id: 1, name: "Daniel", avatar: null },
-      { id: 2, name: "CJ", avatar: null },
-      { id: 3, name: "Cole", avatar: null },
-      { id: 4, name: "Maya", avatar: null },
-    ],
-  };
-
-  // State for photos - update to support more photos
+  // State for photos
   const [mainPhoto, setMainPhoto] = useState(null);
   const [additionalPhotos, setAdditionalPhotos] = useState([]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const MAX_PHOTOS = 5; // Maximum number of photos (including main photo)
 
-  // State for tracking selected interests and edited data
-  const [selectedInterests, setSelectedInterests] = useState(["Music"]);
-  const [interests, setInterests] = useState(profile.interests);
-  const [dateActivities, setDateActivities] = useState(profile.dateActivities);
+  // State for profile data
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("");
+  const [height, setHeight] = useState("");
+  const [year, setYear] = useState("");
+  const [selectedInterests, setSelectedInterests] = useState([]);
+  const [interests, setInterests] = useState([]);
+  const [dateActivities, setDateActivities] = useState([]);
   const [newInterestText, setNewInterestText] = useState("");
   const [newActivityText, setNewActivityText] = useState("");
+  const [userType, setUserType] = useState("");
+  
+  // Load user data when component mounts
+  useEffect(() => {
+    if (user) {
+      console.log("Loading user profile data:", JSON.stringify({
+        name: user.name,
+        userType: user.userType,
+        profileDataExists: !!user.profileData,
+        profileData: user.profileData ? {
+          age: user.profileData.age,
+          gender: user.profileData.gender,
+          height: user.profileData.height,
+          year: user.profileData.year,
+          interestsCount: user.profileData.interests?.length || 0,
+          activitiesCount: user.profileData.dateActivities?.length || 0,
+          photosCount: user.profileData.photos?.length || 0
+        } : null,
+        friendsCount: user.friends?.length || 0,
+        standAloneFields: {
+          age: user.age,
+          gender: user.gender,
+          height: user.height
+        }
+      }, null, 2));
+      
+      // Basic info
+      setName(user.name || "");
+      setUserType(user.userType || "");
+      
+      // Profile data from profileData object
+      if (user.profileData) {
+        // Convert age to string for TextInput
+        setAge(user.profileData.age?.toString() || "");
+        setGender(user.profileData.gender || "");
+        setHeight(user.profileData.height || "");
+        setYear(user.profileData.year || user.profileData.classYear || "");
+        
+        // Interests and activities
+        const userInterests = user.profileData.interests || [];
+        setInterests(userInterests);
+        
+        const userActivities = user.profileData.dateActivities || 
+                               user.profileData.activities || 
+                               [];
+        setDateActivities(userActivities);
+        
+        // Load photos
+        if (user.profileData.photos && user.profileData.photos.length > 0) {
+          setMainPhoto(user.profileData.photos[0]);
+          setAdditionalPhotos(user.profileData.photos.slice(1));
+        }
+        
+        // Set default selected interest
+        if (userInterests.length > 0) {
+          setSelectedInterests([userInterests[0]]);
+        }
+      }
+      
+      // Direct properties (in case they're not in profileData)
+      if (!user.profileData?.age && user.age) {
+        setAge(user.age.toString());
+      }
+      
+      if (!user.profileData?.gender && user.gender) {
+        setGender(user.gender);
+      }
+      
+      if (!user.profileData?.height && user.height) {
+        setHeight(user.height);
+      }
+      
+      if (!user.profileData?.year && !user.profileData?.classYear && user.classYear) {
+        setYear(user.classYear);
+      }
+      
+      if (!user.profileData?.interests && user.interests) {
+        setInterests(user.interests);
+        if (user.interests.length > 0) {
+          setSelectedInterests([user.interests[0]]);
+        }
+      }
+      
+      if (!user.profileData?.dateActivities && !user.profileData?.activities && user.activities) {
+        setDateActivities(user.activities);
+      }
+      
+      if (!user.profileData?.photos && user.photos && user.photos.length > 0) {
+        setMainPhoto(user.photos[0]);
+        setAdditionalPhotos(user.photos.slice(1));
+      }
+    }
+  }, [user]);
 
   // Request camera and media library permissions on component mount
   useEffect(() => {
@@ -165,10 +250,44 @@ export default function ProfileScreen() {
     })();
   }, []);
 
-  // Toggle edit mode
-  const toggleEditMode = () => {
+  // Toggle edit mode and save changes if exiting edit mode
+  const toggleEditMode = async () => {
+    if (isEditing) {
+      // Save changes
+      try {
+        console.log("Saving profile changes");
+        
+        // Get all photo URLs
+        const allPhotos = mainPhoto ? [mainPhoto, ...additionalPhotos.filter(Boolean)] : [];
+        
+        // Update profile data
+        const profileData = {
+          profileData: {
+            age: age ? parseInt(age, 10) : null,
+            gender,
+            height,
+            year,
+            interests,
+            dateActivities,
+            photos: allPhotos
+          }
+        };
+        
+        console.log("Saving profile data:", profileData);
+        
+        // Save to Firebase/Firestore via AuthContext
+        await updateProfile(profileData);
+        
+        console.log("Profile data saved successfully");
+      } catch (error) {
+        console.error("Error saving profile data:", error);
+        Alert.alert("Error", "Failed to save profile changes. Please try again.");
+      }
+    }
+    
+    // Toggle edit mode
     setIsEditing(!isEditing);
-
+    
     // Clear input fields when exiting edit mode
     if (isEditing) {
       setNewInterestText("");
@@ -176,18 +295,23 @@ export default function ProfileScreen() {
     }
   };
 
+  // Handle logout
   const handleLogout = async () => {
     try {
-      // Remove user data from AsyncStorage
-      await AsyncStorage.removeItem("user");
-
-      // Navigate back to auth flow
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Auth" }],
-      });
+      const success = await logout();
+      
+      if (success) {
+        // Navigate back to auth flow
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Auth" }],
+        });
+      } else {
+        Alert.alert("Error", "Failed to log out. Please try again.");
+      }
     } catch (error) {
       console.error("Error logging out:", error);
+      Alert.alert("Error", "Failed to log out. Please try again.");
     }
   };
 
@@ -237,6 +361,30 @@ export default function ProfileScreen() {
     setDateActivities(dateActivities.filter((item) => item !== activity));
   };
 
+  // Function to upload image to Firebase Storage
+  const uploadImageToFirebase = async (uri) => {
+    try {
+      // Fetch the image data
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      // Create a reference to Firebase Storage
+      const storage = getStorage();
+      const filename = `profiles/${user.id}/${Date.now()}.jpg`;
+      const storageRef = ref(storage, filename);
+      
+      // Upload the image
+      await uploadBytes(storageRef, blob);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(storageRef);
+      return downloadURL;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
+  };
+
   // Updated function to pick an image
   const pickImage = async (index = 0) => {
     try {
@@ -257,16 +405,43 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        // For demo purposes, we'll just use the local URI
+        // In production, we would upload to Firebase Storage
+        /*
+        try {
+          const firebaseUrl = await uploadImageToFirebase(imageUri);
+          
+          if (index === 0) {
+            setMainPhoto(firebaseUrl);
+          } else {
+            const newPhotos = [...additionalPhotos];
+            // If adding a new photo at the end
+            if (index - 1 === additionalPhotos.length) {
+              newPhotos.push(firebaseUrl);
+            } else {
+              // Replacing an existing photo
+              newPhotos[index - 1] = firebaseUrl;
+            }
+            setAdditionalPhotos(newPhotos);
+          }
+        } catch (error) {
+          console.error("Error uploading to Firebase:", error);
+          Alert.alert("Error", "Failed to upload image. Please try again.");
+        }
+        */
+        
+        // Use local URI for now
         if (index === 0) {
-          setMainPhoto(result.assets[0].uri);
+          setMainPhoto(imageUri);
         } else {
           const newPhotos = [...additionalPhotos];
           // If adding a new photo at the end
           if (index - 1 === additionalPhotos.length) {
-            newPhotos.push(result.assets[0].uri);
+            newPhotos.push(imageUri);
           } else {
             // Replacing an existing photo
-            newPhotos[index - 1] = result.assets[0].uri;
+            newPhotos[index - 1] = imageUri;
           }
           setAdditionalPhotos(newPhotos);
         }
@@ -296,16 +471,44 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        
+        // For demo purposes, we'll just use the local URI
+        // In production, we would upload to Firebase Storage
+        /*
+        try {
+          const firebaseUrl = await uploadImageToFirebase(imageUri);
+          
+          if (index === 0) {
+            setMainPhoto(firebaseUrl);
+          } else {
+            const newPhotos = [...additionalPhotos];
+            // If adding a new photo at the end
+            if (index - 1 === additionalPhotos.length) {
+              newPhotos.push(firebaseUrl);
+            } else {
+              // Replacing an existing photo
+              newPhotos[index - 1] = firebaseUrl;
+            }
+            setAdditionalPhotos(newPhotos);
+          }
+        } catch (error) {
+          console.error("Error uploading to Firebase:", error);
+          Alert.alert("Error", "Failed to upload image. Please try again.");
+        }
+        */
+        
+        // Use local URI for now
         if (index === 0) {
-          setMainPhoto(result.assets[0].uri);
+          setMainPhoto(imageUri);
         } else {
           const newPhotos = [...additionalPhotos];
           // If adding a new photo at the end
           if (index - 1 === additionalPhotos.length) {
-            newPhotos.push(result.assets[0].uri);
+            newPhotos.push(imageUri);
           } else {
             // Replacing an existing photo
-            newPhotos[index - 1] = result.assets[0].uri;
+            newPhotos[index - 1] = imageUri;
           }
           setAdditionalPhotos(newPhotos);
         }
@@ -359,8 +562,8 @@ export default function ProfileScreen() {
         <View style={styles.headerSection}>
           <View style={styles.headerContent}>
             <View style={styles.nameContainer}>
-              <Text style={styles.headerTitle}>{profile.name}</Text>
-              <Text style={styles.roleText}>You are a: {profile.role}</Text>
+              <Text style={styles.headerTitle}>{name}</Text>
+              <Text style={styles.roleText}>You are a: {userType}</Text>
             </View>
             <EditButton isEditing={isEditing} onToggleEdit={toggleEditMode} />
           </View>
@@ -527,7 +730,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{profile.age}</Text>
+            <Text style={styles.summaryText}>{age || "-"}</Text>
           </View>
 
           <View style={styles.summaryBlock}>
@@ -538,7 +741,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{profile.gender}</Text>
+            <Text style={styles.summaryText}>{gender || "-"}</Text>
           </View>
 
           <View style={styles.summaryBlock}>
@@ -549,7 +752,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{profile.height}</Text>
+            <Text style={styles.summaryText}>{height || "-"}</Text>
           </View>
 
           <View style={styles.summaryBlock}>
@@ -560,7 +763,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{profile.year}</Text>
+            <Text style={styles.summaryText}>{year || "-"}</Text>
           </View>
         </View>
 
@@ -711,28 +914,43 @@ export default function ProfileScreen() {
 
           {/* Friends List */}
           <View style={styles.friendsList}>
-            {profile.friends.map((friend) => (
+            {user?.friends?.map((friend) => (
               <View key={friend.id} style={styles.friendItem}>
                 <View style={styles.friendAvatar}>
-                  <Ionicons
-                    name="sad-outline"
-                    size={24}
-                    color={COLORS.primaryNavy}
-                  />
+                  {friend.avatar ? (
+                    <Image 
+                      source={{ uri: friend.avatar }} 
+                      style={{ width: 40, height: 40, borderRadius: 4 }}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="person"
+                      size={24}
+                      color={COLORS.primaryNavy}
+                    />
+                  )}
                 </View>
                 <Text style={styles.friendName}>{friend.name}</Text>
               </View>
             ))}
+            
+            {(!user?.friends || user.friends.length === 0) && (
+              <Text style={{ 
+                padding: 20,
+                textAlign: 'center',
+                color: COLORS.mutedBlue,
+                fontStyle: 'italic'
+              }}>
+                You haven't added any friends yet
+              </Text>
+            )}
           </View>
         </View>
 
         {/* 6. Divider */}
         <View style={styles.divider} />
         <TouchableOpacity
-          title="Logout"
-          onPress={() => {
-            handleLogout();
-          }}
+          onPress={handleLogout}
           style={{
             margin: "5%",
             fontFamily: "Gill Sans",

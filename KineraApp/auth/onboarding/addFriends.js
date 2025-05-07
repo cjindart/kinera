@@ -10,6 +10,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../context/AuthContext";
+import User from "../../models/User";
 
 // Mock users map
 const MOCK_USERS = [
@@ -27,6 +29,7 @@ export default function AddFriendsScreen({ navigation }) {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [friends, setFriends] = useState([]);
+  const { setUser } = useAuth();
 
   const handleSearch = (text) => {
     setSearch(text);
@@ -59,13 +62,71 @@ export default function AddFriendsScreen({ navigation }) {
       friends.map((f) => f.name)
     );
     try {
-      await AsyncStorage.setItem(
-        "user",
-        JSON.stringify({
-          isAuthenticated: true,
-          friends: friends.map((f) => f.name),
-        })
-      );
+      // Get existing user data first
+      const existingUserData = await AsyncStorage.getItem("user");
+      let userData = existingUserData ? JSON.parse(existingUserData) : {};
+      
+      // Add/update fields instead of replacing everything
+      userData = {
+        ...userData,
+        isAuthenticated: true,
+        friends: friends.map((f) => ({ 
+          id: f.id,
+          name: f.name,
+          avatar: null // No avatars in demo data
+        }))
+      };
+      
+      // Structure the data correctly for the User model
+      if (!userData.profileData) {
+        userData.profileData = {};
+      }
+      
+      // If individual fields were stored during onboarding, move them to profileData
+      if (userData.age) {
+        userData.profileData.age = userData.age;
+        delete userData.age;
+      }
+      
+      if (userData.gender) {
+        userData.profileData.gender = userData.gender;
+        delete userData.gender;
+      }
+      
+      if (userData.height) {
+        userData.profileData.height = userData.height;
+        delete userData.height;
+      }
+      
+      if (userData.classYear) {
+        userData.profileData.year = userData.classYear;
+        delete userData.classYear;
+      }
+      
+      if (userData.interests) {
+        userData.profileData.interests = userData.interests;
+        delete userData.interests;
+      }
+      
+      if (userData.activities) {
+        userData.profileData.dateActivities = userData.activities;
+        delete userData.activities;
+      }
+      
+      if (userData.photos) {
+        userData.profileData.photos = userData.photos;
+        delete userData.photos;
+      }
+      
+      // Save the updated user data
+      await AsyncStorage.setItem("user", JSON.stringify(userData));
+      
+      // Create User object and update AuthContext state to reflect changes immediately
+      const userObject = new User(userData);
+      console.log("Created user object after onboarding:", userObject);
+      setUser(userObject);
+      
+      // Navigate to Main
       navigation.reset({
         index: 0,
         routes: [
@@ -97,7 +158,7 @@ export default function AddFriendsScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <TouchableOpacity
         style={styles.backArrow}
-        onPress={() => navigation.navigate("Step8")}
+        onPress={() => navigation.goBack()}
       >
         <Text style={styles.arrowText}>←</Text>
       </TouchableOpacity>

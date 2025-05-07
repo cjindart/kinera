@@ -25,7 +25,7 @@ export default function SexualityScreen({ navigation, route }) {
     } catch (error) {
       console.error("Error saving sexuality to AsyncStorage:", error);
     }
-    navigation.navigate("lastStep", { ...route?.params, lookingFor: selected });
+    navigation.navigate("ageAndHeight", { ...route?.params, lookingFor: selected });
   };
 
   return (
@@ -33,7 +33,7 @@ export default function SexualityScreen({ navigation, route }) {
       {/* Back Arrow */}
       <TouchableOpacity
         style={styles.backArrow}
-        onPress={() => navigation.navigate("Step7")}
+        onPress={() => navigation.goBack()}
       >
         <Text style={styles.arrowText}>←</Text>
       </TouchableOpacity>

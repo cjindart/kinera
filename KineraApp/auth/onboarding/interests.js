@@ -38,7 +38,7 @@ export default function InterestsScreen({ navigation, route }) {
     } catch (error) {
       console.error("Error saving interests to AsyncStorage:", error);
     }
-    navigation.navigate("Step8", { ...route?.params, interests });
+    navigation.navigate("activities", { ...route?.params, interests });
   };
 
   // Uncomment the following line to require at least 3 interests before continuing
@@ -50,7 +50,7 @@ export default function InterestsScreen({ navigation, route }) {
       {/* Back Arrow */}
       <TouchableOpacity
         style={styles.backArrow}
-        onPress={() => navigation.navigate("Step6")}
+        onPress={() => navigation.goBack()}
       >
         <Text style={styles.arrowText}>←</Text>
       </TouchableOpacity>

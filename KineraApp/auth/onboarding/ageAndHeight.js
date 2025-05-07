@@ -42,7 +42,7 @@ export default function AgeClassHeightScreen({ navigation, route }) {
     } catch (error) {
       console.error("Error saving age/class/height to AsyncStorage:", error);
     }
-    navigation.navigate("Step6", {
+    navigation.navigate("interests", {
       ...route?.params,
       ...userData,
     });
