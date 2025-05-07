@@ -26,7 +26,7 @@ const COLORS = {
 };
 
 // Get device dimensions to use for more precise sizing
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export default function CandidateProfile({ route, navigation }) {
   // Get candidate info from route params or use default values
@@ -37,16 +37,18 @@ export default function CandidateProfile({ route, navigation }) {
     height: "5'7\"",
     year: "Sophomore",
     interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"]
+    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
   };
 
   // State for tracking selected interests
   const [selectedInterests, setSelectedInterests] = useState(["Music"]);
-  
+
   // Toggle function for interests (for highlighting/selecting)
   const toggleInterest = (interest) => {
     if (selectedInterests.includes(interest)) {
-      setSelectedInterests(selectedInterests.filter(item => item !== interest));
+      setSelectedInterests(
+        selectedInterests.filter((item) => item !== interest)
+      );
     } else {
       setSelectedInterests([...selectedInterests, interest]);
     }
@@ -59,8 +61,8 @@ export default function CandidateProfile({ route, navigation }) {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={COLORS.primaryNavy} />
@@ -102,19 +104,16 @@ export default function CandidateProfile({ route, navigation }) {
               </View>
             ))}
           </ScrollView>
-          
+
           {/* Photo indicator dots */}
           <View style={styles.photoIndicators}>
-            <View 
+            <View
               key="main-photo-indicator"
-              style={[
-                styles.indicatorDot, 
-                styles.activeDot
-              ]} 
+              style={[styles.indicatorDot, styles.activeDot]}
             />
             {profileImages.map((_, index) => (
-              <View 
-                key={`photo-indicator-${index}`} 
+              <View
+                key={`photo-indicator-${index}`}
                 style={styles.indicatorDot}
               />
             ))}
@@ -125,28 +124,44 @@ export default function CandidateProfile({ route, navigation }) {
         <View style={styles.summaryBarSection}>
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons name="calendar-outline" size={24} color={COLORS.primaryNavy} />
+              <Ionicons
+                name="calendar-outline"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
             </View>
             <Text style={styles.summaryText}>{candidateInfo.age}</Text>
           </View>
-          
+
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons name="person-outline" size={24} color={COLORS.primaryNavy} />
+              <Ionicons
+                name="person-outline"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
             </View>
             <Text style={styles.summaryText}>{candidateInfo.gender}</Text>
           </View>
-          
+
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons name="resize-outline" size={24} color={COLORS.primaryNavy} />
+              <Ionicons
+                name="resize-outline"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
             </View>
             <Text style={styles.summaryText}>{candidateInfo.height}</Text>
           </View>
-          
+
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons name="school-outline" size={24} color={COLORS.primaryNavy} />
+              <Ionicons
+                name="school-outline"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
             </View>
             <Text style={styles.summaryText}>{candidateInfo.year}</Text>
           </View>
@@ -161,14 +176,16 @@ export default function CandidateProfile({ route, navigation }) {
                 key={index}
                 style={[
                   styles.tagPill,
-                  selectedInterests.includes(interest) && styles.selectedTagPill,
+                  selectedInterests.includes(interest) &&
+                    styles.selectedTagPill,
                 ]}
                 onPress={() => toggleInterest(interest)}
               >
                 <Text
                   style={[
                     styles.tagText,
-                    selectedInterests.includes(interest) && styles.selectedTagText,
+                    selectedInterests.includes(interest) &&
+                      styles.selectedTagText,
                   ]}
                 >
                   {interest}
@@ -189,7 +206,7 @@ export default function CandidateProfile({ route, navigation }) {
             ))}
           </View>
         </View>
-        
+
         {/* Add bottom padding to account for tab bar */}
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -218,7 +235,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     color: COLORS.primaryNavy,
   },
-  
+
   // 1. Header Section
   headerSection: {
     marginTop: 10,
@@ -241,7 +258,7 @@ const styles = StyleSheet.create({
     color: COLORS.primaryNavy,
     marginBottom: 2,
   },
-  
+
   // 2. Photo Gallery Section with Horizontal Scrolling
   photoSection: {
     marginVertical: 15,
@@ -253,7 +270,7 @@ const styles = StyleSheet.create({
     width: width, // Full screen width
   },
   photoFrame: {
-    width: '92%', // Slightly less than full width to provide some margin
+    width: "92%", // Slightly less than full width to provide some margin
     height: width * 0.6, // Larger images
     borderRadius: 20,
     borderWidth: 2,
@@ -261,8 +278,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: COLORS.paleBlue,
-    overflow: 'hidden',
-    marginHorizontal: '4%', // Center the frame
+    overflow: "hidden",
+    marginHorizontal: "4%", // Center the frame
   },
   photoText: {
     marginTop: 10,
@@ -270,9 +287,9 @@ const styles = StyleSheet.create({
     color: COLORS.mutedBlue,
   },
   photoIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 10,
   },
   indicatorDot: {
@@ -288,7 +305,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
   },
-  
+
   // 3. Profile Summary Bar
   summaryBarSection: {
     flexDirection: "row",
@@ -313,7 +330,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: COLORS.primaryNavy,
   },
-  
+
   // 4 & 5. Section Containers (Interests & Date Activities)
   sectionContainer: {
     paddingHorizontal: 16,
@@ -336,8 +353,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     margin: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   selectedTagPill: {
     backgroundColor: COLORS.accentOrange,
@@ -350,9 +367,9 @@ const styles = StyleSheet.create({
   selectedTagText: {
     color: COLORS.offWhite,
   },
-  
+
   // Extra bottom padding
   bottomPadding: {
     height: 20,
-  }
-}); 
+  },
+});
