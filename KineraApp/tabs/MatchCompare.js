@@ -57,24 +57,6 @@ export default function MatchCompare({ route, navigation }) {
     yourInfo.dateActivities.includes(act)
   );
 
-  // Static mock availability data
-  const days = ["4/23", "4/24", "4/25", "4/26", "4/27"];
-  const slots = ["12-2", "1-3", "6-8", "6-9", "11-2"];
-  const candidateAvailability = {
-    "4/23": ["12-2", "6-8"],
-    "4/24": ["1-3"],
-    "4/25": ["6-9"],
-    "4/26": ["11-2"],
-    "4/27": ["12-2", "6-8"],
-  };
-  const yourAvailability = {
-    "4/23": ["6-8"],
-    "4/24": ["6-9"],
-    "4/25": [],
-    "4/26": ["11-2"],
-    "4/27": ["6-8"],
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topRow}>
@@ -88,7 +70,7 @@ export default function MatchCompare({ route, navigation }) {
           </TouchableOpacity>
         </View>
         <View style={{ flex: 2, alignItems: "center" }}>
-          <Text style={styles.matchNameHeader}>{candidateInfo.name}</Text>
+          <Text style={styles.matchNameHeader}>Match: {candidateInfo.name[0]}</Text>
         </View>
         <View style={{ flex: 1 }} />
       </View>
@@ -109,7 +91,9 @@ export default function MatchCompare({ route, navigation }) {
             <View style={styles.profileImageFrame}>
               <Ionicons name="person" size={70} color={COLORS.mutedBlue} />
             </View>
-            <Text style={styles.profileLabel}>{candidateInfo.name}</Text>
+            <Text style={styles.profileLabel}>
+              {candidateInfo.name[0]} ({candidateInfo.age})
+            </Text>
           </View>
           <View style={styles.profileImageBlock}>
             <Image

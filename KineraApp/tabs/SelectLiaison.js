@@ -29,23 +29,23 @@ const COLORS = {
   selectedBlue: "#C2D7E5",
 };
 
-const LIAISONS = [
-  { id: 1, name: "dan", image: null },
-  { id: 2, name: "cole", image: null },
-  { id: 3, name: "maya", image: null },
-  { id: 4, name: "cj", image: null },
-  // Add more if needed
-];
-
 const CARD_SIZE = (Dimensions.get("window").width - 64) / 2;
 
 export default function SelectLiaison({ navigation }) {
-  const [selectedId, setSelectedId] = useState(1);
   const { user, updateProfile } = useAuth();
+  const [selectedId, setSelectedId] = useState(null);
+
+  // Convert friends array to liaison format
+  const liaisons =
+    user?.profileData?.friends?.map((friend, index) => ({
+      id: index + 1,
+      name: friend,
+      image: null,
+    })) || [];
 
   const handleSetLiaison = async () => {
     try {
-      const selectedLiaison = LIAISONS.find((l) => l.id === selectedId);
+      const selectedLiaison = liaisons.find((l) => l.id === selectedId);
 
       if (!selectedLiaison) {
         Alert.alert("Error", "Please select a liaison");
@@ -100,22 +100,41 @@ export default function SelectLiaison({ navigation }) {
       </View>
 
       {/* Grid of liaisons */}
-      <FlatList
-        data={LIAISONS}
-        renderItem={renderLiaison}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={2}
-        contentContainerStyle={styles.gridContainer}
-        showsVerticalScrollIndicator={false}
-      />
+      {liaisons.length > 0 ? (
+        <FlatList
+          data={liaisons}
+          renderItem={renderLiaison}
+          keyExtractor={(item) => item.id.toString()}
+          numColumns={2}
+          contentContainerStyle={styles.gridContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateText}>
+            Add friends to your profile to select them as liaisons
+          </Text>
+        </View>
+      )}
 
       {/* Submit button */}
       <View style={styles.submitRow}>
         <TouchableOpacity
-          style={styles.submitButton}
+          style={[
+            styles.submitButton,
+            !selectedId && styles.submitButtonDisabled,
+          ]}
           onPress={handleSetLiaison}
+          disabled={!selectedId}
         >
-          <Text style={styles.submitText}>Set Liaison</Text>
+          <Text
+            style={[
+              styles.submitText,
+              !selectedId && styles.submitTextDisabled,
+            ]}
+          >
+            Set Liaison
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -212,5 +231,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     textAlign: "center",
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: COLORS.mutedBlue,
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  submitButtonDisabled: {
+    backgroundColor: COLORS.skyBlue,
+    opacity: 0.7,
+  },
+  submitTextDisabled: {
+    color: COLORS.primaryNavy,
+    opacity: 0.7,
   },
 });
