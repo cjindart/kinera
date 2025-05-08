@@ -127,7 +127,7 @@ export default function RegistrationScreen({ navigation, route }) {
             
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Your Role</Text>
-              <Text style={styles.infoText}>Choose how you want to use Kinera.</Text>
+              <Text style={styles.infoText}>Choose how you want to use Vouch.</Text>
               
               <View style={styles.roleContainer}>
                 <TouchableOpacity

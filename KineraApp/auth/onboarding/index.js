@@ -26,6 +26,12 @@ export default function OnboardingNavigator({ navigation, route }) {
     const checkOnboardingStatus = async () => {
       try {
         console.log("OnboardingNavigator: Checking if user should see onboarding...");
+        console.log("Current user:", user ? { 
+          id: user.id, 
+          name: user.name,
+          hasProfile: !!user.profileData,
+          profileFields: Object.keys(user.profileData || {}).length
+        } : "No user");
         
         // HIGHEST PRIORITY: Check for explicit params from the navigation
         if (route?.params?.forceOnboarding) {
@@ -41,6 +47,19 @@ export default function OnboardingNavigator({ navigation, route }) {
         if (storedValue === 'true') {
           // AsyncStorage says user is new, so show onboarding
           console.log("OnboardingNavigator: AsyncStorage indicates new user, showing onboarding");
+          setIsNewUser(true);
+          return;
+        }
+        
+        // Check if user profile data exists and has required fields
+        const hasRequiredFields = user && 
+                                 user.profileData && 
+                                 user.profileData.gender && 
+                                 user.profileData.interests && 
+                                 user.profileData.interests.length > 0;
+                                 
+        if (!hasRequiredFields) {
+          console.log("OnboardingNavigator: User missing required profile fields, showing onboarding");
           setIsNewUser(true);
           return;
         }

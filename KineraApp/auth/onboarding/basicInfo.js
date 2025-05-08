@@ -72,14 +72,14 @@ export default function Step1Screen({ navigation }) {
         <Text style={styles.subtitle}>
           We already have your name and phone number from login.
         </Text>
-        <Text style={styles.title}>What is your Stanford Email?</Text>
+        {/* <Text style={styles.title}>What is your Stanford Email?</Text>
         <TextInput
           style={styles.input}
           placeholder="sunet@stanford.edu"
           placeholderTextColor="#B0B0B0"
           value={email}
           onChangeText={setEmail}
-        />
+        /> */}
         <Text style={styles.title}>Where are you from?</Text>
         <TextInput
           style={styles.input}

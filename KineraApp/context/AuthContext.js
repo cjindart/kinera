@@ -540,156 +540,78 @@ export function AuthProvider({ children }) {
    */
   const register = async (userData) => {
     try {
-      console.log("Starting registration process...");
+      console.log('Registering user:', JSON.stringify(userData, null, 2));
       
-      // Check if we're in development mode and handle accordingly
-      if (isDevelopmentMode()) {
-        console.log("Development mode: Creating simulated user");
-        
-        // Create a local user ID for development
-        const devUserId = `dev_${Date.now()}`;
-        
-        // Create new user object with local ID
-        const newUser = new User({
-          ...userData,
-          id: devUserId,
-          phoneNumber: tempPhoneNumber || '1234567890',
-          isAuthenticated: true,
-          newUser: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-        
-        console.log("Created development user:", {
-          id: newUser.id,
-          name: newUser.name,
-          hasPhoneNumber: !!newUser.phoneNumber,
-          userType: newUser.userType,
-        });
-        
-        // Save locally
-        try {
-          await newUser.save();
-          console.log("Development user saved to AsyncStorage");
-          
-          // Store isNewUser flag in AsyncStorage
-          await AsyncStorage.setItem('isNewUser', 'true');
-        } catch (saveError) {
-          console.error("Error saving development user:", saveError);
-        }
-        
-        // Set user in state
-        setUser(newUser);
-        setIsNewUser(true);
-        
-        return true;
+      // Clean up phone number if provided
+      if (userData.phoneNumber) {
+        userData.phoneNumber = formatPhoneNumber(userData.phoneNumber);
       }
       
-      // PRODUCTION MODE - Use Firebase Auth
-      
-      // ALWAYS use Firebase Auth UID when available
-      if (!auth.currentUser) {
-        console.error("No authenticated user found. Cannot register without Firebase Auth.");
-        return false;
+      // Get Firebase ID if available
+      let userId = userData.id;
+      if (!userId && auth.currentUser) {
+        userId = auth.currentUser.uid;
+        console.log("Using Firebase auth UID:", userId);
       }
       
-      const userId = auth.currentUser.uid;
-      console.log("Using Firebase Auth UID:", userId);
-      
-      // Check if a user with this phone number already exists in Firestore
-      let existingUser = null;
-      try {
-        console.log("Checking for existing user with phone:", tempPhoneNumber);
-        const userByPhone = await findUserByPhone(tempPhoneNumber);
-        
-        if (userByPhone) {
-          console.log("Found existing user with this phone number:", userByPhone.id);
-          existingUser = userByPhone;
-        } else {
-          console.log("No existing user found with this phone number");
-        }
-      } catch (findError) {
-        console.error("Error checking for existing user:", findError);
-        // Continue with registration even if check fails
+      // If still no ID and not in development mode, generate a fallback ID
+      if (!userId && !isDevelopmentMode()) {
+        userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        console.log("Generated fallback ID:", userId);
       }
       
-      // Handle existing user
-      if (existingUser) {
-        if (existingUser.id !== userId) {
-          // This is a case where the user exists but with a different ID
-          console.log("User exists with different ID. Will update to use Firebase UID.");
-          
-          // Create updated user with Firebase UID
-          const updatedUser = new User({
-            ...existingUser,
-            id: userId,
-            name: userData.name || existingUser.name,
-            userType: userData.userType || existingUser.userType,
-            previousId: existingUser.id,
-            isAuthenticated: true,
-            updatedAt: new Date().toISOString()
-          });
-          
-          // Save with new ID
-          console.log("Saving updated user with Firebase UID");
-          const saveResult = await updatedUser.save();
-          console.log("Save result:", saveResult ? "Success" : "Failed");
-          
-          setUser(updatedUser);
-          // Ensure isNewUser status is correctly maintained based on userData or existingUser.newUser
-          // If updatedUser.newUser is true (it should be if userData.isNewUser was true), reflect that.
-          setIsNewUser(updatedUser.newUser);
-          await AsyncStorage.setItem('isNewUser', updatedUser.newUser ? 'true' : 'false');
-          return true;
-        } else {
-          // User exists with correct ID, just update profile
-          console.log("User exists with correct ID. Updating profile data.");
-          
-          // Update the existing user with new data
-          const updatedUser = new User({
-            ...existingUser,
-            ...userData, // userData contains isNewUser: true from RegistrationScreen
-            isAuthenticated: true,
-            updatedAt: new Date().toISOString()
-          });
-          
-          await updatedUser.save(); // updatedUser.newUser will be true and saved in the User object
-          setUser(updatedUser);
-          // Correctly set isNewUser state and AsyncStorage item based on updatedUser.newUser
-          setIsNewUser(updatedUser.newUser);
-          await AsyncStorage.setItem('isNewUser', updatedUser.newUser ? 'true' : 'false');
-          return true;
-        }
-      }
+      // Handle isNewUser flag
+      const isUserNew = userData.isNewUser === true; // Explicitly check for true
       
-      // Create new user for Firestore
-      console.log("Creating new user in Firestore");
+      // Create user instance with the ID
       const newUser = new User({
         ...userData,
-        id: userId, // Always use Firebase UID
-        phoneNumber: tempPhoneNumber,
+        id: userId, // Ensure ID is set
         isAuthenticated: true,
-        newUser: true,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
       
-      console.log("Created user object:", {
+      // Set the newUser flag explicitly from the input parameter
+      if (isUserNew) {
+        newUser.newUser = true;
+        console.log('Setting user as NEW USER in registration');
+      } else {
+        console.log('Setting user as RETURNING USER in registration');
+      }
+      
+      // Log the final user object that will be saved
+      console.log("Final user object being saved:", {
         id: newUser.id,
         name: newUser.name,
+        isNewUser: !!newUser.newUser,
         hasPhoneNumber: !!newUser.phoneNumber,
-        userType: newUser.userType,
+        profileDataFields: Object.keys(newUser.profileData || {}).length
       });
       
-      // Initialize in Firestore
-      console.log("Initializing user in Firestore...");
+      // Save user data to AsyncStorage and Firestore
       const saveResult = await newUser.save();
-      console.log("Firestore save result:", saveResult ? "Success" : "Failed");
+      console.log('Firestore save result:', saveResult ? 'Success' : 'Failed');
       
-      // Set user in state
+      // Initialize Firestore collections
+      if (isUserNew) {
+        await newUser.initialize();
+      }
+      
+      // Update auth context
       setUser(newUser);
-      setIsNewUser(true);
-      await AsyncStorage.setItem('isNewUser', 'true');
+      setIsNewUser(isUserNew);
+      
+      // Update AsyncStorage for isNewUser flag
+      await AsyncStorage.setItem('isNewUser', isUserNew ? 'true' : 'false');
+      
+      // Debugging the state after setting
+      console.log('Layout render - Auth state:', {
+        hasUser: !!newUser,
+        isAuthenticated: newUser.isAuthenticated,
+        isLoading: false,
+        isNewUser: isUserNew
+      });
       
       return true;
     } catch (error) {
@@ -723,7 +645,20 @@ export function AuthProvider({ children }) {
         }
       }
       
-      console.log("Updating profile for user:", userToUpdate.id || "new user");
+      // Ensure user has an ID
+      if (!userToUpdate.id) {
+        // If Firebase auth is available, use the UID
+        if (auth.currentUser) {
+          userToUpdate.id = auth.currentUser.uid;
+          console.log("Set missing ID from Firebase auth:", userToUpdate.id);
+        } else {
+          // Generate a fallback ID if needed
+          userToUpdate.id = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          console.log("Generated fallback ID for profile update:", userToUpdate.id);
+        }
+      }
+      
+      console.log("Updating profile for user:", userToUpdate.id);
       
       // Update basic user fields
       if (profileData.name) userToUpdate.name = profileData.name;
@@ -753,6 +688,13 @@ export function AuthProvider({ children }) {
         if (profileData.activities !== undefined) userToUpdate.profileData.dateActivities = profileData.activities;
       }
       
+      // Handle friends separately to ensure they're saved in the right place
+      if (profileData.friends) {
+        userToUpdate.friends = profileData.friends;
+        // Also add to profileData to ensure it's accessible in both places
+        userToUpdate.profileData.friends = profileData.friends;
+      }
+      
       // Update timestamps
       userToUpdate.updatedAt = new Date().toISOString();
       userToUpdate.profileData.updatedAt = new Date().toISOString();
@@ -762,12 +704,23 @@ export function AuthProvider({ children }) {
         userToUpdate.isAuthenticated = true;
       }
       
+      // Log final user object for debugging
+      console.log("Final user object before saving:", {
+        id: userToUpdate.id,
+        name: userToUpdate.name,
+        hasProfileData: !!userToUpdate.profileData,
+        profileDataFields: Object.keys(userToUpdate.profileData || {}).length,
+        friendsCount: (userToUpdate.friends || []).length
+      });
+      
       // Save user data (this will handle both AsyncStorage and Firestore)
       console.log("Saving updated profile...");
       const saveResult = await userToUpdate.save();
       
       if (!saveResult && !isDevelopmentMode()) {
         console.warn("Failed to save user data to Firestore");
+      } else {
+        console.log("Profile saved successfully");
       }
       
       // Update the user in state
@@ -949,6 +902,7 @@ export function AuthProvider({ children }) {
     formatPhoneNumber,
     handleAuthResult,
     registerWithoutVerification,
+    fetchUserData,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -963,7 +917,12 @@ export function useAuth() {
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+
+  // Add fetchUserData to the auth context for direct access
+  return {
+    ...context,
+    fetchUserData: context.fetchUserData
+  };
 }
 
 export default AuthContext; 

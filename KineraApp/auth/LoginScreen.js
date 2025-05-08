@@ -113,41 +113,94 @@ export default function LoginScreen({ navigation }) {
       if (result.success) {
         console.log("LoginScreen: Verification successful, result:", result);
         
-        // IMPORTANT: Force isNewUser to true regardless of Firebase result
-        // This ensures all users go through onboarding
-        const forceOnboarding = true;
+        // IMPORTANT: Different behavior for login vs signup modes
+        const currentMode = mode; // 'login' or 'signup'
+        console.log(`Current mode: ${currentMode}`);
         
-        // Store the isNewUser flag in AsyncStorage, forcing it to true
-        await AsyncStorage.setItem('isNewUser', 'true');
-        
-        // Use register method from AuthContext to properly set up the user
-        // This ensures the user is stored in the AuthContext state
-        if (auth.register) {
-          try {
-            // Register the user in the auth context, always set isNewUser to true
-            const registerSuccess = await auth.register({
+        // For signup, always force onboarding regardless of Firebase result
+        if (currentMode === 'signup') {
+          console.log("Signup mode - forcing onboarding flow");
+          await AsyncStorage.setItem('isNewUser', 'true');
+          
+          // Register user with isNewUser flag set to true
+          if (auth.register) {
+            await auth.register({
               id: result.user.uid,
               phoneNumber: result.phoneNumber,
-              isNewUser: true, // Force isNewUser to true
+              isNewUser: true,
               isAuthenticated: true
             });
-            
-            console.log("User registered in AuthContext:", registerSuccess);
-          } catch (registerError) {
-            console.error("Error registering user in AuthContext:", registerError);
-            // Continue anyway, as we already have successful Firebase auth
           }
+          
+          // Always go to onboarding for signup
+          navigation.reset({
+            index: 0,
+            routes: [{ 
+              name: "Registration",
+              params: { forceOnboarding: true, comingFrom: 'Signup' }
+            }]
+          });
+          return;
         }
         
-        // ALWAYS go to registration/onboarding flow regardless of Firebase isNewUser status
-        console.log("Forcing navigation to Registration for onboarding flow");
-        navigation.reset({
-          index: 0,
-          routes: [{ 
-            name: "Registration",
-            params: { forceOnboarding: true }
-          }]
+        // For login mode, check if the user has an existing profile
+        const userHasProfile = result.user && 
+                              result.user.profileData && 
+                              Object.keys(result.user.profileData || {}).length > 0;
+        
+        // Get user document from Firestore directly to ensure latest data
+        let userDocumentExists = false;
+        try {
+          if (auth.fetchUserData && result.user?.uid) {
+            const userData = await auth.fetchUserData(result.user.uid);
+            userDocumentExists = !!userData;
+            console.log("User document exists in Firestore:", userDocumentExists);
+          }
+        } catch (error) {
+          console.error("Error checking user document:", error);
+        }
+        
+        // Log what we found
+        console.log("User check details:", {
+          mode: currentMode,
+          hasProfile: userHasProfile,
+          userDocExists: userDocumentExists,
+          isNewUserFromFirebase: result.isNewUser
         });
+        
+        // Determine if user should see onboarding based on all criteria
+        const shouldShowOnboarding = result.isNewUser || (!userHasProfile && !userDocumentExists);
+        
+        // Set the isNewUser flag in AsyncStorage
+        await AsyncStorage.setItem('isNewUser', shouldShowOnboarding ? 'true' : 'false');
+        
+        // Register user with the correct isNewUser flag
+        if (auth.register) {
+          await auth.register({
+            id: result.user.uid,
+            phoneNumber: result.phoneNumber,
+            isNewUser: shouldShowOnboarding,
+            isAuthenticated: true
+          });
+        }
+        
+        // Navigate to the right destination
+        if (shouldShowOnboarding) {
+          console.log("Login mode - User needs onboarding, redirecting to Registration");
+          navigation.reset({
+            index: 0,
+            routes: [{ 
+              name: "Registration",
+              params: { forceOnboarding: true, comingFrom: 'Login' }
+            }]
+          });
+        } else {
+          console.log("Login mode - User already has profile, going to Main");
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Main" }]
+          });
+        }
       } else {
         Alert.alert("Invalid Code", "The verification code you entered is invalid. Please try again.");
       }
