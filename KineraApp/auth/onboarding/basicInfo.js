@@ -13,6 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Step1Screen({ navigation }) {
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
 
@@ -20,7 +21,7 @@ export default function Step1Screen({ navigation }) {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const userData = await AsyncStorage.getItem('user');
+        const userData = await AsyncStorage.getItem("user");
         if (userData) {
           const parsedData = JSON.parse(userData);
           // Set the phone and name from existing data
@@ -31,12 +32,12 @@ export default function Step1Screen({ navigation }) {
         console.error("Error loading user data:", error);
       }
     };
-    
+
     loadUserData();
   }, []);
 
   const handleContinue = async () => {
-    const userData = { phone, name, city };
+    const userData = { phone, email, city };
     try {
       await AsyncStorage.mergeItem("user", JSON.stringify(userData));
       //send to backend
@@ -58,8 +59,17 @@ export default function Step1Screen({ navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.title}>Tell us about yourself</Text>
-        <Text style={styles.subtitle}>We already have your name and phone number from login.</Text>
-
+        <Text style={styles.subtitle}>
+          We already have your name and phone number from login.
+        </Text>
+        <Text style={styles.title}>What is your Stanford Email?</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="sunet@stanford.edu"
+          placeholderTextColor="#B0B0B0"
+          value={email}
+          onChangeText={setEmail}
+        />
         <Text style={styles.title}>Where are you from?</Text>
         <TextInput
           style={styles.input}

@@ -11,9 +11,11 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 export default function PhotosScreen({ navigation, route }) {
   const [photos, setPhotos] = useState([null, null, null, null]);
+  const { user } = useAuth();
 
   useEffect(() => {
     (async () => {
@@ -121,10 +123,20 @@ export default function PhotosScreen({ navigation, route }) {
     //On the final onboarding step, you can upload the images to Firebase Storage
     // and save their URLs to Firestore.
     // You'll need to convert the local URI to a blob and use the Firebase Storage SDK.
-    navigation.navigate("userType", {
-      ...route.params, // pass previous onboarding data
-      photos,
-    });
+
+    if (user.userType === "Match Maker") {
+      // Match makers might need different onboarding steps
+      navigation.navigate("addFriends", {
+        ...route.params, // pass previous onboarding data
+        photos,
+      });
+    } else {
+      // Daters need to set up their dating profile
+      navigation.navigate("gender", {
+        ...route.params, // pass previous onboarding data
+        photos,
+      });
+    }
   };
 
   return (

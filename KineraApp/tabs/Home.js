@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,11 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import theme from "../assets/theme";
 import mockData from "../assets/mockUserData.json";
 
@@ -16,8 +18,27 @@ const { width, height } = Dimensions.get("window");
 
 export default function AvailabilityScreen() {
   const navigation = useNavigation();
-  const [currentUserIndex, setCurrentUserIndex] = useState(0);
+  const [currentCandidateIndex, setcurrentCandidateIndex] = useState(0);
   const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem("userData");
+        if (userData) {
+          setCurrentUser(JSON.parse(userData));
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, []);
 
   // Get all users who are either "gettingSetUp" or "both"
   const availableUsers = mockData.users.filter(
@@ -25,30 +46,54 @@ export default function AvailabilityScreen() {
   );
 
   // Get current user and friend
-  const currentUser = availableUsers[currentUserIndex];
-  const currentFriend = mockData.users.find(
-    (user) => user.id === currentUser.friends[currentFriendIndex]
-  );
+  const currentCandidate = availableUsers[currentCandidateIndex];
+  const currentFriend = currentCandidate?.friends?.[currentFriendIndex]
+    ? mockData.users.find(
+        (user) => user.id === currentCandidate.friends[currentFriendIndex]
+      )
+    : null;
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#325475" />
+      </View>
+    );
+  }
+
+  if (!currentCandidate || !currentFriend) {
+    return (
+      <View style={[styles.container, styles.errorContainer]}>
+        <Text style={styles.errorText}>No candidates available</Text>
+      </View>
+    );
+  }
 
   const handleCardPress = () => {
     console.log("Card pressed, attempting navigation");
     if (navigation && navigation.navigate) {
-      navigation.navigate("CandidateProfile", { candidateInfo: currentUser });
+      navigation.navigate("CandidateProfile", {
+        candidateInfo: currentCandidate,
+      });
     } else {
       console.error("Navigation is not available:", navigation);
     }
   };
 
   const handlePreviousFriend = () => {
-    setCurrentFriendIndex((prev) =>
-      prev === 0 ? currentUser.friends.length - 1 : prev - 1
-    );
+    if (currentCandidate?.friends) {
+      setCurrentFriendIndex((prev) =>
+        prev === 0 ? currentCandidate.friends.length - 1 : prev - 1
+      );
+    }
   };
 
   const handleNextFriend = () => {
-    setCurrentFriendIndex((prev) =>
-      prev === currentUser.friends.length - 1 ? 0 : prev + 1
-    );
+    if (currentCandidate?.friends) {
+      setCurrentFriendIndex((prev) =>
+        prev === currentCandidate.friends.length - 1 ? 0 : prev + 1
+      );
+    }
   };
 
   return (
@@ -93,9 +138,9 @@ export default function AvailabilityScreen() {
           />
         </View>
         <Text style={styles.cardText}>
-          {currentUser.name} {"\n"} {currentUser.age}
+          {currentCandidate.name} {"\n"} {currentCandidate.age}
           {"\n"}
-          {currentUser.location}
+          {currentCandidate.location}
         </Text>
       </TouchableOpacity>
 
@@ -223,5 +268,18 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: width * 0.06,
     color: "white",
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    fontSize: 18,
+    color: "#325475",
+    textAlign: "center",
   },
 });

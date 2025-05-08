@@ -6,24 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  Image,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
-import User from "../../models/User";
-
-// Mock users map
-const MOCK_USERS = [
-  { id: 1, name: "Daniel Mnat" },
-  { id: 2, name: "CJ Indart" },
-  { id: 3, name: "Cole Sprout" },
-  { id: 4, name: "Maya Avital" },
-  { id: 5, name: "Gavin West" },
-  { id: 6, name: "Madison Wu" },
-  { id: 7, name: "Alex Chen" },
-  { id: 8, name: "Sam Patel" },
-];
+import mockData from "../../assets/mockUserData.json";
 
 export default function AddFriendsScreen({ navigation }) {
   const [search, setSearch] = useState("");
@@ -37,7 +27,9 @@ export default function AddFriendsScreen({ navigation }) {
       setSearchResults([]);
       return;
     }
-    const results = MOCK_USERS.filter(
+
+    // Filter mock users based on search query and exclude existing friends
+    const results = mockData.users.filter(
       (user) =>
         user.name.toLowerCase().includes(text.trim().toLowerCase()) &&
         !friends.some((f) => f.id === user.id)
@@ -56,76 +48,27 @@ export default function AddFriendsScreen({ navigation }) {
   };
 
   const handleFinish = async () => {
-    // Placeholder for backend logic
-    console.log(
-      "Submitting friends to backend:",
-      friends.map((f) => f.name)
-    );
     try {
       // Get existing user data first
-      const existingUserData = await AsyncStorage.getItem("user");
+      const existingUserData = await AsyncStorage.getItem("userData");
       let userData = existingUserData ? JSON.parse(existingUserData) : {};
-      
-      // Add/update fields instead of replacing everything
+
+      // Add/update fields
       userData = {
         ...userData,
-        isAuthenticated: true,
-        friends: friends.map((f) => ({ 
-          id: f.id,
-          name: f.name,
-          avatar: null // No avatars in demo data
-        }))
+        friends: friends.map((friend) => friend.id),
+        matches: friends.reduce((acc, friend) => {
+          acc[friend.id] = { approvalRate: 0, matchBack: 0 };
+          return acc;
+        }, {}),
       };
-      
-      // Structure the data correctly for the User model
-      if (!userData.profileData) {
-        userData.profileData = {};
-      }
-      
-      // If individual fields were stored during onboarding, move them to profileData
-      if (userData.age) {
-        userData.profileData.age = userData.age;
-        delete userData.age;
-      }
-      
-      if (userData.gender) {
-        userData.profileData.gender = userData.gender;
-        delete userData.gender;
-      }
-      
-      if (userData.height) {
-        userData.profileData.height = userData.height;
-        delete userData.height;
-      }
-      
-      if (userData.classYear) {
-        userData.profileData.year = userData.classYear;
-        delete userData.classYear;
-      }
-      
-      if (userData.interests) {
-        userData.profileData.interests = userData.interests;
-        delete userData.interests;
-      }
-      
-      if (userData.activities) {
-        userData.profileData.dateActivities = userData.activities;
-        delete userData.activities;
-      }
-      
-      if (userData.photos) {
-        userData.profileData.photos = userData.photos;
-        delete userData.photos;
-      }
-      
+
       // Save the updated user data
-      await AsyncStorage.setItem("user", JSON.stringify(userData));
-      
-      // Create User object and update AuthContext state to reflect changes immediately
-      const userObject = new User(userData);
-      console.log("Created user object after onboarding:", userObject);
-      setUser(userObject);
-      
+      await AsyncStorage.setItem("userData", JSON.stringify(userData));
+
+      // Update the user context
+      setUser(userData);
+
       // Navigate to Main
       navigation.reset({
         index: 0,
@@ -150,7 +93,7 @@ export default function AddFriendsScreen({ navigation }) {
         ],
       });
     } catch (error) {
-      console.error("Error saving auth status:", error);
+      console.error("Error saving friends:", error);
     }
   };
 
@@ -163,35 +106,71 @@ export default function AddFriendsScreen({ navigation }) {
         <Text style={styles.arrowText}>←</Text>
       </TouchableOpacity>
       <Text style={styles.title}>Add friends to your group!</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Search by name..."
-        value={search}
-        onChangeText={handleSearch}
-      />
-      {searchResults.length > 0 && (
-        <View style={styles.dropdown}>
-          {searchResults.map((user) => (
-            <TouchableOpacity
-              key={user.id}
-              style={styles.dropdownItem}
-              onPress={() => handleSelectUser(user)}
-            >
-              <Text style={styles.dropdownText}>{user.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+      <View style={styles.inputDropdownContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Search by name..."
+          value={search}
+          onChangeText={handleSearch}
+        />
+        {searchResults.length > 0 && (
+          <ScrollView style={styles.dropdown}>
+            {searchResults.map((user) => (
+              <TouchableOpacity
+                key={user.id}
+                style={styles.dropdownItem}
+                onPress={() => handleSelectUser(user)}
+              >
+                <View style={styles.searchResultContent}>
+                  <View style={styles.searchResultAvatar}>
+                    {user.photos?.[0] ? (
+                      <Image
+                        source={{ uri: user.photos[0] }}
+                        style={styles.searchResultAvatarImage}
+                      />
+                    ) : (
+                      <Ionicons name="person" size={24} color="#325475" />
+                    )}
+                  </View>
+                  <View style={styles.searchResultInfo}>
+                    <Text style={styles.dropdownText}>{user.name}</Text>
+                    <Text style={styles.dropdownSubtext}>
+                      {user.profileData?.year} • {user.profileData?.gender}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </View>
       <View style={styles.friendsList}>
         {friends.map((friend) => (
           <View key={friend.id} style={styles.friendTag}>
-            <Text style={styles.friendName}>{friend.name}</Text>
-            <TouchableOpacity
-              style={styles.removeIconContainer}
-              onPress={() => handleRemoveFriend(friend.id)}
-            >
-              <Ionicons name="close-circle" size={18} color="#325475" />
-            </TouchableOpacity>
+            <View style={styles.friendContent}>
+              <View style={styles.friendAvatar}>
+                {friend.photos?.[0] ? (
+                  <Image
+                    source={{ uri: friend.photos[0] }}
+                    style={styles.friendAvatarImage}
+                  />
+                ) : (
+                  <Ionicons name="person" size={24} color="#325475" />
+                )}
+              </View>
+              <View style={styles.friendInfo}>
+                <Text style={styles.friendName}>{friend.name}</Text>
+                <Text style={styles.friendSubtext}>
+                  {friend.profileData?.year} • {friend.profileData?.gender}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.removeIconContainer}
+                onPress={() => handleRemoveFriend(friend.id)}
+              >
+                <Ionicons name="close-circle" size={18} color="#325475" />
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </View>
@@ -227,28 +206,70 @@ const styles = StyleSheet.create({
     color: "#3A5A6A",
     backgroundColor: "#F8F9FB",
   },
+  inputDropdownContainer: {
+    position: "relative",
+    zIndex: 10,
+  },
   dropdown: {
-    backgroundColor: "#E6EEF3",
+    position: "absolute",
+    top: 60, // height of input + margin
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
     borderRadius: 12,
-    marginBottom: 8,
     borderWidth: 1,
     borderColor: "#3A5A6A",
-    maxHeight: 150,
+    maxHeight: 180,
+    zIndex: 100,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   dropdownItem: {
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#A9B7C5",
   },
+  searchResultContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  searchResultAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E6EEF4",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  searchResultAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  searchResultInfo: {
+    flex: 1,
+  },
   dropdownText: {
     fontSize: 18,
     color: "#3A5A6A",
+    fontWeight: "500",
+  },
+  dropdownSubtext: {
+    fontSize: 14,
+    color: "#A9B7C5",
+    marginTop: 2,
   },
   friendsList: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "center",
     marginTop: 12,
     marginBottom: 24,
+    marginHorizontal: 15,
   },
   friendTag: {
     flexDirection: "row",
@@ -261,14 +282,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#325475",
   },
+  friendContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  friendAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#E6EEF4",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  friendAvatarImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  friendInfo: {
+    flex: 1,
+  },
   friendName: {
     fontSize: 16,
     color: "#325475",
-    marginRight: 8,
+    fontWeight: "500",
+  },
+  friendSubtext: {
+    fontSize: 12,
+    color: "#A9B7C5",
+    marginTop: 2,
   },
   removeIconContainer: {
     justifyContent: "center",
     alignItems: "center",
+    marginLeft: 8,
   },
   button: {
     backgroundColor: "#E6EEF3",
