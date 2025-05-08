@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Check if a Stanford email is valid
+    function isValidStanfordEmail(email) {
+      return email.matches('^[a-zA-Z0-9._%+-]+@stanford\\.edu$');
+    }
+    
+    // User data rules
+    match /users/{userId} {
+      // Basic read/write permissions
+      allow read, update, delete: if isOwner(userId);
+      allow create: if isAuthenticated();
+      
+      // Stanford email validation
+      allow update: if isOwner(userId) && 
+        (
+          !request.resource.data.keys().hasAny(['stanfordEmail']) || 
+          (
+            request.resource.data.stanfordEmail == null || 
+            isValidStanfordEmail(request.resource.data.stanfordEmail)
+          )
+        );
+    }
+    
+    // Activities rules
+    match /activities/{activityId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (resource == null || resource.data.creatorId == request.auth.uid);
+    }
+    
+    // Email verification rules
+    match /emailVerifications/{verificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Test collections for development and debugging
+    match /test_users/{testDocId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /debug_tests/{testDocId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

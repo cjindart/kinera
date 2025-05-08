@@ -7,15 +7,17 @@ import {
   StyleSheet,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Step1Screen({ navigation }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const { user, updateProfile } = useAuth();
 
   // Load existing user data when component mounts
   useEffect(() => {
@@ -35,6 +37,12 @@ export default function Step1Screen({ navigation }) {
 
     loadUserData();
   }, []);
+  //   if (user) {
+  //     // Set the phone and name from existing data
+  //     if (user.phoneNumber) setPhone(user.phoneNumber);
+  //     if (user.name) setName(user.name);
+  //   }
+  // }, [user]);
 
   const handleContinue = async () => {
     const userData = { phone, email, city };
@@ -43,9 +51,9 @@ export default function Step1Screen({ navigation }) {
       //send to backend
       console.log(userData);
     } catch (error) {
-      console.error("Error saving user data to AsyncStorage:", error);
+      console.error("Error saving user data:", error);
+      Alert.alert("Error", "There was a problem saving your information.");
     }
-    navigation.navigate("photos", userData);
   };
 
   return (

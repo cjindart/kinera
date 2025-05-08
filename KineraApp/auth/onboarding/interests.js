@@ -9,12 +9,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 export default function InterestsScreen({ navigation, route }) {
   const [isEditing, setIsEditing] = useState(true); // Always editing in onboarding
   const [interests, setInterests] = useState([]);
   const [newInterestText, setNewInterestText] = useState("");
+  const { updateProfile } = useAuth();
 
   const addNewInterest = () => {
     if (newInterestText.trim() === "") return;
@@ -31,14 +32,27 @@ export default function InterestsScreen({ navigation, route }) {
   };
 
   const handleContinue = async () => {
-    // Placeholder for backend logic
-    console.log("Submitting interests to backend:", interests);
-    try {
-      await AsyncStorage.mergeItem("user", JSON.stringify({ interests }));
-    } catch (error) {
-      console.error("Error saving interests to AsyncStorage:", error);
+    if (!canContinue) {
+      Alert.alert("Please add at least 3 interests");
+      return;
     }
-    navigation.navigate("activities", { ...route?.params, interests });
+    
+    try {
+      console.log("Saving interests:", interests);
+      
+      // Save interests using the standardized structure
+      await updateProfile({
+        profileData: {
+          interests: interests
+        }
+      });
+      
+      // Navigate to next screen
+      navigation.navigate("activities", { ...route?.params, interests });
+    } catch (error) {
+      console.error("Error saving interests:", error);
+      Alert.alert("Error", "There was a problem saving your interests.");
+    }
   };
 
   // Uncomment the following line to require at least 3 interests before continuing

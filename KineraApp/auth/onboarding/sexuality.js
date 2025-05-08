@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 const OPTIONS = [
   { label: "Girls", value: "girls" },
@@ -13,19 +13,27 @@ const OPTIONS = [
 
 export default function SexualityScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
+  const { updateProfile } = useAuth();
 
   const handleContinue = async () => {
-    // Placeholder for backend logic
-    console.log("Submitting sexuality to backend:", { lookingFor: selected });
+    if (!selected) return;
+    
     try {
-      await AsyncStorage.mergeItem(
-        "user",
-        JSON.stringify({ lookingFor: selected })
-      );
+      console.log("Submitting sexuality:", { sexuality: selected });
+      
+      // Save sexuality to profileData using the standard format
+      await updateProfile({
+        profileData: {
+          sexuality: selected
+        }
+      });
+      
+      // Navigate to next screen
+      navigation.navigate("ageAndHeight", { ...route?.params, lookingFor: selected });
     } catch (error) {
-      console.error("Error saving sexuality to AsyncStorage:", error);
+      console.error("Error saving sexuality:", error);
+      Alert.alert("Error", "There was a problem saving your selection.");
     }
-    navigation.navigate("ageAndHeight", { ...route?.params, lookingFor: selected });
   };
 
   return (

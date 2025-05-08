@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  Image,
   StyleSheet,
   FlatList,
   Image,
   ScrollView,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,7 +21,7 @@ export default function AddFriendsScreen({ navigation }) {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [friends, setFriends] = useState([]);
-  const { setUser } = useAuth();
+  const { updateProfile, user } = useAuth();
 
   const handleSearch = (text) => {
     setSearch(text);
@@ -48,6 +50,11 @@ export default function AddFriendsScreen({ navigation }) {
   };
 
   const handleFinish = async () => {
+    console.log(
+      "Submitting friends to backend:",
+      friends.map((f) => f.name)
+    );
+
     try {
       // Get existing user data first
       const existingUserData = await AsyncStorage.getItem("userData");
@@ -93,7 +100,11 @@ export default function AddFriendsScreen({ navigation }) {
         ],
       });
     } catch (error) {
-      console.error("Error saving friends:", error);
+      console.error("Error completing onboarding:", error);
+      Alert.alert(
+        "Error",
+        "There was a problem saving your information. Please try again."
+      );
     }
   };
 

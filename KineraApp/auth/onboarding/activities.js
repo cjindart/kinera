@@ -9,12 +9,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ActivitiesScreen({ navigation, route }) {
   const [isEditing, setIsEditing] = useState(true); // Always editing in onboarding
   const [activities, setActivities] = useState([]);
   const [newActivityText, setNewActivityText] = useState("");
+  const { updateProfile } = useAuth();
 
   const addNewActivity = () => {
     if (newActivityText.trim() === "") return;
@@ -31,15 +32,29 @@ export default function ActivitiesScreen({ navigation, route }) {
   };
 
   const handleContinue = async () => {
-    // Placeholder for backend logic
-    console.log("Submitting date activities to backend:", activities);
-    try {
-      await AsyncStorage.mergeItem("user", JSON.stringify({ activities }));
-    } catch (error) {
-      console.error("Error saving activities to AsyncStorage:", error);
+    if (!canContinue) {
+      Alert.alert("Please add at least 3 activities");
+      return;
     }
-    navigation.navigate("addFriends", { ...route?.params, activities });
+    
+    try {
+      console.log("Saving activities:", activities);
+      
+      // Save activities using the standardized structure
+      await updateProfile({
+        profileData: {
+          dateActivities: activities
+        }
+      });
+      
+      // Navigate to next screen
+      navigation.navigate("stanfordEmail", { ...route?.params, activities });
+    } catch (error) {
+      console.error("Error saving activities:", error);
+      Alert.alert("Error", "There was a problem saving your activities.");
+    }
   };
+
   const canContinue = activities.length >= 3;
   // const canContinue = true;
   return (

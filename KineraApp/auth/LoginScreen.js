@@ -1,352 +1,344 @@
-import React, { useState } from "react";
-import { 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
-  Text, 
-  StyleSheet, 
-  Alert,
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  SafeAreaView
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../context/AuthContext";
-import { USER_TYPES } from "../models/User";
-import PhoneAuth from "../utils/PhoneAuth";
+  Alert,
+  Dimensions
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 
-// Our app colors from the rest of the app
+const { width, height } = Dimensions.get('window');
+
+// Background image of sunset
+const SUNSET_BG = require('../assets/photos/sunset.jpg');
+
+// Color scheme
 const COLORS = {
   primaryNavy: "#325475",
   mutedBlue: "#A9B7C5",
-  skyBlue: "#C2D7E5",
   paleBlue: "#E6EEF4",
   offWhite: "#FAEFE4",
   accentOrange: "#ED7E31",
-  lightPeach: "#F6D3B7",
   buttonPeach: "#F7D0B5",
   buttonShadow: "#E98E42",
+  transparent: 'rgba(0,0,0,0.5)',
+  white: '#FFFFFF',
 };
 
 export default function LoginScreen({ navigation }) {
-  const { handleAuthResult, register, isNewUser } = useAuth();
-  const [name, setName] = useState("");
-  const [userType, setUserType] = useState(USER_TYPES.DATER_SWIPER);
-  const [step, setStep] = useState("phone"); // "phone", "name"
+  const { sendVerificationCode, verifyCode } = useAuth();
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState('initial'); // 'initial', 'signup', 'login'
 
-  // Handle authentication success
-  const handleAuthSuccess = async (authResult) => {
-    setLoading(true);
+  const formatPhoneNumber = (text) => {
+    // Remove non-numeric characters
+    const cleaned = text.replace(/\D/g, '');
     
-    try {
-      // Process the authentication result
-      const result = await handleAuthResult(authResult);
-      
-      if (result.success) {
-        if (result.isNewUser) {
-          // New user - go to name entry
-          setStep("name");
-        } else {
-          // Existing user - navigate to main app
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "Main" }]
-          });
-        }
-      } else {
-        Alert.alert("Authentication Error", "Failed to authenticate. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error handling authentication:", error);
-      Alert.alert("Error", "Failed to complete authentication. Please try again.");
-    } finally {
-      setLoading(false);
+    // Format as (XXX) XXX-XXXX
+    if (cleaned.length <= 3) {
+      return cleaned;
+    } else if (cleaned.length <= 6) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+    } else {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
     }
   };
 
-  // Handle name entry and registration
-  const handleRegister = async () => {
-    if (!name.trim()) {
-      Alert.alert("Invalid Name", "Please enter your name.");
+  const handlePhoneNumberChange = (text) => {
+    setPhoneNumber(formatPhoneNumber(text));
+  };
+
+  const handleSendCode = async () => {
+    if (!phoneNumber || phoneNumber.length < 10) {
+      Alert.alert("Invalid Phone Number", "Please enter a valid phone number.");
       return;
     }
 
     setLoading(true);
-    
     try {
-      // Register the new user
-      const success = await register({
-        name,
-        userType
-      });
-      
-      if (success) {
-        // Navigate to onboarding for new users
-        navigation.navigate("Onboarding");
-      } else {
-        Alert.alert("Registration Failed", "There was a problem creating your account. Please try again.");
-      }
+      // Send verification code
+      await sendVerificationCode(phoneNumber);
+      setIsVerifying(true);
     } catch (error) {
-      console.error("Error registering user:", error);
-      Alert.alert("Error", "There was a problem creating your account.");
+      console.error("Error sending verification code:", error);
+      Alert.alert("Error", "Failed to send verification code. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Toggle user type selection
-  const toggleUserType = (type) => {
-    setUserType(type);
-  };
+  const handleVerifyCode = async () => {
+    if (!verificationCode || verificationCode.length < 6) {
+      Alert.alert("Invalid Code", "Please enter the 6-digit verification code.");
+      return;
+    }
 
-  // Render based on current step
-  const renderStep = () => {
-    switch (step) {
-      case "phone":
-        return (
-          <View style={styles.formContainer}>
-            <Text style={styles.title}>Welcome to Kinera</Text>
-            <Text style={styles.subtitle}>Verify your phone number to get started</Text>
-            
-            <PhoneAuth 
-              onAuthSuccess={handleAuthSuccess}
-              onCancel={() => navigation.goBack()} 
-            />
-          </View>
-        );
-        
-      case "name":
-        return (
-          <View style={styles.formContainer}>
-            <Text style={styles.title}>Create Profile</Text>
-            <Text style={styles.subtitle}>Tell us a bit about yourself</Text>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Your Name</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter your name"
-                placeholderTextColor={COLORS.mutedBlue}
-                autoCapitalize="words"
-                keyboardType="default"
-                autoFocus
-              />
-            </View>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Your Role</Text>
-              <Text style={styles.infoText}>Choose how you want to use Kinera.</Text>
-              
-              <View style={styles.roleContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.roleOption,
-                    userType === USER_TYPES.DATER_SWIPER && styles.selectedRole
-                  ]}
-                  onPress={() => toggleUserType(USER_TYPES.DATER_SWIPER)}
-                >
-                  <Ionicons
-                    name="people"
-                    size={24}
-                    color={userType === USER_TYPES.DATER_SWIPER ? "white" : COLORS.primaryNavy}
-                  />
-                  <Text
-                    style={[
-                      styles.roleText,
-                      userType === USER_TYPES.DATER_SWIPER && styles.selectedRoleText
-                    ]}
-                  >
-                    Date & Match
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.roleOption,
-                    userType === USER_TYPES.DATER && styles.selectedRole
-                  ]}
-                  onPress={() => toggleUserType(USER_TYPES.DATER)}
-                >
-                  <Ionicons
-                    name="heart"
-                    size={24}
-                    color={userType === USER_TYPES.DATER ? "white" : COLORS.primaryNavy}
-                  />
-                  <Text
-                    style={[
-                      styles.roleText,
-                      userType === USER_TYPES.DATER && styles.selectedRoleText
-                    ]}
-                  >
-                    Date Only
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.roleOption,
-                    userType === USER_TYPES.SWIPER && styles.selectedRole
-                  ]}
-                  onPress={() => toggleUserType(USER_TYPES.SWIPER)}
-                >
-                  <Ionicons
-                    name="hand-left"
-                    size={24}
-                    color={userType === USER_TYPES.SWIPER ? "white" : COLORS.primaryNavy}
-                  />
-                  <Text
-                    style={[
-                      styles.roleText,
-                      userType === USER_TYPES.SWIPER && styles.selectedRoleText
-                    ]}
-                  >
-                    Match Only
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            
-            <TouchableOpacity 
-              style={[styles.button, !name.trim() && styles.buttonDisabled]} 
-              onPress={handleRegister}
-              disabled={!name.trim() || loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.buttonText}>Continue</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        );
-        
-      default:
-        return null;
+    setLoading(true);
+    try {
+      // Verify the code
+      const result = await verifyCode(verificationCode);
+      
+      if (result.success) {
+        // Based on response, direct to registration or home
+        if (result.isNewUser) {
+          // New user, go to registration
+          console.log("New user - navigating to Registration");
+          navigation.navigate("Registration");
+        } else {
+          // Existing user, go to main app
+          console.log("Existing user - navigating to Main");
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Main" }],
+          });
+        }
+      } else {
+        Alert.alert("Invalid Code", "The verification code you entered is invalid. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error verifying code:", error);
+      Alert.alert("Error", "Failed to verify code. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const navigateToSignup = () => {
+    setMode('signup');
+  };
+
+  const navigateToLogin = () => {
+    setMode('login');
+  };
+
+  const goBack = () => {
+    if (isVerifying) {
+      setIsVerifying(false);
+      setVerificationCode('');
+    } else {
+      setMode('initial');
+    }
+  };
+
+  // Initial welcome screen with login/signup options
+  const renderInitialScreen = () => (
+    <View style={styles.contentContainer}>
+      <Text style={styles.appTitle}>Vouch</Text>
+      <Text style={styles.welcomeText}>Find activities and dates with friends</Text>
+      
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.primaryButton} onPress={navigateToSignup}>
+          <Text style={styles.primaryButtonText}>Sign Up</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.secondaryButton} onPress={navigateToLogin}>
+          <Text style={styles.secondaryButtonText}>Log In</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // Phone number input screen (both login and signup)
+  const renderPhoneScreen = () => (
+    <View style={styles.contentContainer}>
+      {isVerifying ? (
+        <>
+          <TouchableOpacity style={styles.backButton} onPress={goBack}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerText}>Verification Code</Text>
+          <Text style={styles.instructionText}>
+            Enter the 6-digit code sent to {phoneNumber}
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="000000"
+            placeholderTextColor={COLORS.mutedBlue}
+            value={verificationCode}
+            onChangeText={setVerificationCode}
+            keyboardType="number-pad"
+            maxLength={6}
+          />
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleVerifyCode}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Verify Code</Text>
+            )}
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.backButton} onPress={goBack}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerText}>
+            {mode === 'signup' ? 'Create Your Account' : 'Welcome Back'}
+          </Text>
+          <Text style={styles.instructionText}>
+            {mode === 'signup' 
+              ? 'Enter your phone number to get started' 
+              : 'Enter your phone number to log in'}
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="(___) ___-____"
+            placeholderTextColor={COLORS.mutedBlue}
+            value={phoneNumber}
+            onChangeText={handlePhoneNumberChange}
+            keyboardType="phone-pad"
+          />
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleSendCode}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Continue</Text>
+            )}
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-      >
-        {renderStep()}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    <ImageBackground source={SUNSET_BG} style={styles.backgroundImage}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardView}
+        >
+          <View style={styles.overlay}>
+            {mode === 'initial' ? renderInitialScreen() : renderPhoneScreen()}
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: "white",
   },
   keyboardView: {
     flex: 1,
+    justifyContent: 'center',
   },
-  formContainer: {
+  overlay: {
     flex: 1,
-    padding: 24,
-    justifyContent: "center",
+    // backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    // position: 'absolute',
+    // top: 0,
+    // left: 0,
+    // right: 0,
+    // bottom: 0,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: COLORS.primaryNavy,
+  contentContainer: {
+    width: width * 0.85,
+    marginBottom: height * 0.03,
+    padding: 30,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  appTitle: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: COLORS.white,
     marginBottom: 10,
-    textAlign: "center",
   },
-  subtitle: {
+  welcomeText: {
     fontSize: 16,
-    color: COLORS.mutedBlue,
-    marginBottom: 32,
-    textAlign: "center",
+    color: COLORS.white,
+    marginBottom: 30,
+    textAlign: 'center',
   },
-  inputContainer: {
-    marginBottom: 24,
+  headerText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    marginBottom: 10,
   },
-  label: {
+  instructionText: {
     fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.primaryNavy,
-    marginBottom: 8,
+    color: COLORS.white,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   input: {
-    borderWidth: 2,
-    borderColor: COLORS.primaryNavy,
-    borderRadius: 12,
-    padding: 16,
+    width: '100%',
+    height: 50,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 10,
+    marginBottom: 20,
+    paddingHorizontal: 15,
     fontSize: 16,
-    backgroundColor: COLORS.paleBlue,
-  },
-  infoText: {
-    fontSize: 14,
-    color: COLORS.mutedBlue,
-    marginBottom: 12,
-  },
-  roleContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-  roleOption: {
-    flex: 1,
-    borderWidth: 2,
-    borderColor: COLORS.primaryNavy,
-    borderRadius: 12,
-    padding: 12,
-    marginHorizontal: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.paleBlue,
-  },
-  selectedRole: {
-    backgroundColor: COLORS.accentOrange,
-    borderColor: COLORS.accentOrange,
-  },
-  roleText: {
-    fontSize: 14,
-    fontWeight: "600",
     color: COLORS.primaryNavy,
-    marginTop: 6,
-    textAlign: "center",
   },
-  selectedRoleText: {
-    color: "white",
+  buttonContainer: {
+    width: '100%',
+    alignItems: 'center',
   },
-  button: {
+  primaryButton: {
+    width: '100%',
+    height: 50,
     backgroundColor: COLORS.accentOrange,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 12,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
   },
-  buttonDisabled: {
-    backgroundColor: COLORS.mutedBlue,
+  primaryButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
-  buttonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "600",
+  secondaryButton: {
+    width: '100%',
+    height: 50,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   backButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
+    position: 'absolute',
+    top: 10,
+    left: 10,
     zIndex: 10,
-  },
-  resendButton: {
-    marginTop: 16,
-    alignSelf: "center",
-  },
-  resendText: {
-    color: COLORS.accentOrange,
-    fontSize: 16,
   },
 });

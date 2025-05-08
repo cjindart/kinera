@@ -7,9 +7,10 @@ import {
   TextInput,
   Dimensions,
   ScrollView,
+  Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -46,18 +47,28 @@ const OPTIONS = [
 export default function GenderScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
   const [otherText, setOtherText] = useState("");
+  const { updateProfile } = useAuth();
 
   const handleNext = async () => {
     if (!selected) return;
-    const gender = selected === "other" ? otherText : selected;
-    // Placeholder for backend logic
-    console.log("Submitting gender to backend:", { gender });
+    
     try {
-      await AsyncStorage.mergeItem("user", JSON.stringify({ gender }));
+      const gender = selected === "other" ? otherText : selected;
+      console.log("Submitting gender:", { gender });
+      
+      // Save gender to the profileData structure
+      await updateProfile({ 
+        profileData: { 
+          gender 
+        } 
+      });
+      
+      // Navigate to next screen
+      navigation.navigate("sexuality", { ...route.params, gender });
     } catch (error) {
-      console.error("Error saving gender to AsyncStorage:", error);
+      console.error("Error saving gender:", error);
+      Alert.alert("Error", "There was a problem saving your selection.");
     }
-    navigation.navigate("sexuality", { ...route.params, gender });
   };
   const handleBack = () => {
     navigation.goBack();

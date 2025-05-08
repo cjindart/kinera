@@ -1,6 +1,8 @@
-import { db, auth } from './firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db, auth, storage } from './firebase';
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { mergeDuplicateUsers as mergeDuplicateUsersUtil } from './firestoreSetup';
 
 /**
  * Tests Firebase connectivity
@@ -99,14 +101,27 @@ export const testUserDataWrite = async (userData) => {
     const testDocPath = `test_users/${userData.id}_${Date.now()}`;
     const testDoc = doc(db, testDocPath);
     
-    // Try to write the user data
+    // Try to write the user data with full profile data
     results.timings.writeStart = new Date().toISOString();
-    await setDoc(testDoc, {
+    const testUserData = {
       id: userData.id,
       name: userData.name || 'Test User',
       phoneNumber: userData.phoneNumber || null,
-      updatedAt: new Date().toISOString()
-    });
+      updatedAt: new Date().toISOString(),
+      // Include full profile data for testing
+      profileData: userData.profileData || {
+        age: 21,
+        gender: 'Test Gender',
+        height: '5\'10"',
+        year: 'Senior',
+        interests: ['Testing', 'Debugging'],
+        dateActivities: ['Coding', 'Coffee'],
+        photos: [],
+        updatedAt: new Date().toISOString()
+      }
+    };
+    
+    await setDoc(testDoc, testUserData);
     results.timings.writeEnd = new Date().toISOString();
     
     // Read it back to confirm
@@ -116,6 +131,7 @@ export const testUserDataWrite = async (userData) => {
     
     results.success = readResult.exists();
     results.readData = readResult.data();
+    results.originalData = testUserData;
     
     // Try to delete (cleanup)
     try {
@@ -142,4 +158,140 @@ export const testUserDataWrite = async (userData) => {
   }
   
   return results;
-}; 
+};
+
+/**
+ * Comprehensive test of Firebase services
+ * Tests both Firestore and Storage functionality
+ * @returns {Promise<Object>} Test results
+ */
+export const testFirebaseServices = async () => {
+  const results = {
+    timestamp: new Date().toISOString(),
+    firestore: { success: false, error: null },
+    storage: { success: false, error: null },
+    auth: { initialized: false, currentUser: null }
+  };
+
+  try {
+    // Test 1: Check Auth Status
+    results.auth.initialized = !!auth;
+    results.auth.currentUser = auth.currentUser ? {
+      uid: auth.currentUser.uid,
+      isAnonymous: auth.currentUser.isAnonymous
+    } : null;
+
+    // Test 2: Firestore Test
+    try {
+      const testId = `test_${Date.now()}`;
+      const testDoc = doc(db, 'debug_tests', testId);
+      
+      // Write test
+      await setDoc(testDoc, {
+        timestamp: new Date().toISOString(),
+        message: 'Firestore connectivity test'
+      });
+      
+      // Read test
+      const readResult = await getDoc(testDoc);
+      results.firestore.success = readResult.exists();
+      
+      // Cleanup
+      await setDoc(testDoc, { deleted: true });
+    } catch (error) {
+      results.firestore.error = {
+        message: error.message,
+        code: error.code
+      };
+    }
+
+    // Test 3: Storage Test
+    try {
+      // Create a small test file
+      const testData = new Blob(['Test file content'], { type: 'text/plain' });
+      const testPath = `debug_tests/test_${Date.now()}.txt`;
+      const storageRef = ref(storage, testPath);
+      
+      // Upload test
+      await uploadBytes(storageRef, testData);
+      
+      // Download URL test
+      const downloadURL = await getDownloadURL(storageRef);
+      results.storage.success = !!downloadURL;
+      
+      // Cleanup
+      await deleteObject(storageRef);
+    } catch (error) {
+      results.storage.error = {
+        message: error.message,
+        code: error.code
+      };
+    }
+
+    // Save results to AsyncStorage for debugging
+    try {
+      await AsyncStorage.setItem('firebase_services_test', JSON.stringify(results));
+    } catch (e) {
+      // Ignore AsyncStorage errors
+    }
+
+    return results;
+  } catch (error) {
+    return {
+      ...results,
+      error: {
+        message: error.message,
+        code: error.code
+      }
+    };
+  }
+};
+
+/**
+ * Check if there are duplicate user accounts with the same phone number
+ * @param {string} phoneNumber - Phone number to search for
+ * @returns {Promise<Object>} Results of the check and any duplicates found
+ */
+export const checkDuplicateUsers = async (phoneNumber) => {
+  const results = {
+    phoneNumber,
+    hasDuplicates: false,
+    users: [],
+    error: null
+  };
+
+  try {
+    // Skip if in development mode
+    if (!auth.currentUser) {
+      results.error = "No authenticated user";
+      return results;
+    }
+
+    // Query Firestore for users with this phone number
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('phoneNumber', '==', phoneNumber));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      // Found users with this phone number
+      results.users = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      // Check if there are multiple users
+      if (results.users.length > 1) {
+        results.hasDuplicates = true;
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('Error checking for duplicate users:', error);
+    results.error = error.message;
+    return results;
+  }
+};
+
+// Re-export the mergeDuplicateUsers function for convenience
+export const mergeDuplicateUsers = mergeDuplicateUsersUtil; 

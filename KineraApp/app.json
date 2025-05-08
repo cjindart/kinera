@@ -1,19 +1,25 @@
 {
   "expo": {
-    "name": "KineraApp",
-    "slug": "KineraApp",
+    "name": "Vouch",
+    "slug": "vouch",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "sdkVersion": "53.0.0",
-    "scheme": "kineraapp",
+    "scheme": "vouch",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -22,7 +28,7 @@
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
-              "kineraapp"
+              "vouch"
             ]
           }
         ],
@@ -30,7 +36,7 @@
           "NSAllowsArbitraryLoads": true
         }
       },
-      "bundleIdentifier": "com.kinera.app",
+      "bundleIdentifier": "com.vouch.app",
       "associatedDomains": [
         "applinks:vouch-e7830.firebaseapp.com"
       ]
@@ -38,7 +44,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FFFFFF"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -48,14 +54,14 @@
         "android.permission.INTERNET",
         "android.permission.RECEIVE_SMS"
       ],
-      "package": "com.kinera.app",
+      "package": "com.vouch.app",
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
           "data": [
             {
-              "scheme": "kineraapp",
+              "scheme": "vouch",
               "host": "*"
             },
             {
@@ -75,15 +81,16 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app needs access to your photos to let you share them with your friends.",
-          "cameraPermission": "The app needs access to your camera to let you take profile pictures."
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ]
     ],
     "extra": {
       "eas": {
-        "projectId": "kinera-app"
-      }
+        "projectId": "12345678-1234-1234-1234-123456789012"
+      },
+      "hostUri": "10.27.145.110:8081",
+      "localIp": "10.27.145.110"
     }
   }
 }
