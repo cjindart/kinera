@@ -45,7 +45,9 @@ export default function MatchCompare({ route, navigation }) {
     interests: user?.profileData?.interests || [],
     dateActivities: user?.profileData?.dateActivities || [],
   };
-  const liaison = { name: "Dan" };
+
+  // Get liaison from user's profile
+  const liaison = { name: user?.profileData?.liaison || "Not set" };
 
   // Calculate shared interests and activities
   const sharedInterests = candidateInfo.interests.filter((interest) =>

@@ -7,7 +7,7 @@ import { ActivityIndicator, View, StyleSheet } from "react-native";
 
 import HomeScreen from "./tabs/Home";
 import ProfileScreen from "./tabs/Profile";
-import AvailabilityScreen from "./tabs/Availability";
+import MatchPortalScreen from "./tabs/MatchPortal";
 import CandidateProfile from "./tabs/CandidateProfile";
 import SelectLiaison from "./tabs/SelectLiaison";
 import MatchCompare from "./tabs/MatchCompare";
@@ -17,7 +17,8 @@ import { useAuth } from "./context/AuthContext";
 // Create stack navigators for each tab to allow for nested navigation
 const HomeStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
-const AvailabilityStack = createNativeStackNavigator();
+// const AvailabilityStack = createNativeStackNavigator();
+const MatchPortalStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const RootStack = createNativeStackNavigator();
 
@@ -54,20 +55,20 @@ function ProfileStackScreen() {
 // Stack navigator for Availability tab
 function AvailabilityStackScreen() {
   return (
-    <AvailabilityStack.Navigator screenOptions={{ headerShown: false }}>
-      <AvailabilityStack.Screen
-        name="AvailabilityMain"
-        component={AvailabilityScreen}
+    <MatchPortalStack.Navigator screenOptions={{ headerShown: false }}>
+      <MatchPortalStack.Screen
+        name="MatchPortalMain"
+        component={MatchPortalScreen}
       />
-      <AvailabilityStack.Screen
+      <MatchPortalStack.Screen
         name="MatchCompare"
         component={MatchCompare}
       />
-      <AvailabilityStack.Screen
+      <MatchPortalStack.Screen
         name="SelectLiaison"
         component={SelectLiaison}
       />
-    </AvailabilityStack.Navigator>
+    </MatchPortalStack.Navigator>
   );
 }
 
