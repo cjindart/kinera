@@ -7,8 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
 
 const COLORS = {
   primaryNavy: "#325475",
@@ -23,6 +25,8 @@ const COLORS = {
 };
 
 export default function MatchCompare({ route, navigation }) {
+  const { user } = useAuth();
+
   // Get candidate info from route params or use default values
   const candidateInfo = route.params?.candidateInfo || {
     name: "Madison",
@@ -34,12 +38,12 @@ export default function MatchCompare({ route, navigation }) {
     dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
   };
 
-  // Mock data for 'you' and liaison
+  // Use real user data from AuthContext
   const yourInfo = {
-    name: "You",
-    image: "../assets/photos/daniel.png", // placeholder
-    interests: ["Music", "Sports", "Tech", "Movies"],
-    dateActivities: ["Jazz night", "Movie night", "Cooking class", "Fizz"],
+    name: user?.name || "You",
+    image: user?.profileData?.photos?.[0] || null,
+    interests: user?.profileData?.interests || [],
+    dateActivities: user?.profileData?.dateActivities || [],
   };
   const liaison = { name: "Dan" };
 
@@ -103,7 +107,7 @@ export default function MatchCompare({ route, navigation }) {
             <View style={styles.profileImageFrame}>
               <Ionicons name="person" size={70} color={COLORS.mutedBlue} />
             </View>
-            <Text style={styles.profileLabel}>your date</Text>
+            <Text style={styles.profileLabel}>{candidateInfo.name}</Text>
           </View>
           <View style={styles.profileImageBlock}>
             <Image
@@ -114,125 +118,146 @@ export default function MatchCompare({ route, navigation }) {
           </View>
         </View>
 
-        {/* Interests and activities comparison (no shared column) */}
-        <View style={styles.comparisonRow}>
+        {/* Availability button */}
+        <View style={styles.availabilityButtonContainer}>
+          <TouchableOpacity
+            style={styles.availabilityButton}
+            onPress={() => {
+              const googleFormUrl =
+                "https://docs.google.com/forms/d/e/1FAIpQLSdeI3BYvrD4TF7KBps8ez1Ysb4ek3QEOjEykgCS1Dy49001Bw/viewform?usp=dialog";
+              Linking.openURL(googleFormUrl);
+            }}
+          >
+            <Text style={styles.availabilityButtonText}>Add availability!</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Interests and activities comparison */}
+        <View style={styles.comparisonContainer}>
           {/* Left: Candidate interests/activities */}
           <View style={styles.comparisonCol}>
             <Text style={styles.comparisonTitle}>Interests</Text>
-            {candidateInfo.interests.map((interest, idx) => (
-              <View
-                key={idx}
-                style={
-                  sharedInterests.includes(interest)
-                    ? styles.sharedPill
-                    : styles.pill
-                }
-              >
-                <Text
-                  style={
-                    sharedInterests.includes(interest)
-                      ? styles.sharedPillText
-                      : styles.pillText
-                  }
+            <View style={styles.pillsContainer}>
+              {candidateInfo.interests.map((interest, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.pill,
+                    sharedInterests.includes(interest) && styles.sharedPill,
+                  ]}
                 >
-                  {interest}
-                </Text>
-              </View>
-            ))}
+                  <Text
+                    style={[
+                      styles.pillText,
+                      sharedInterests.includes(interest) &&
+                        styles.sharedPillText,
+                    ]}
+                  >
+                    {interest}
+                  </Text>
+                  {sharedInterests.includes(interest) && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={COLORS.offWhite}
+                      style={styles.matchIcon}
+                    />
+                  )}
+                </View>
+              ))}
+            </View>
             <Text style={styles.comparisonTitle}>Activities</Text>
-            {candidateInfo.dateActivities.map((act, idx) => (
-              <View
-                key={idx}
-                style={
-                  sharedActivities.includes(act)
-                    ? styles.sharedPill
-                    : styles.pill
-                }
-              >
-                <Text
-                  style={
-                    sharedActivities.includes(act)
-                      ? styles.sharedPillText
-                      : styles.pillText
-                  }
+            <View style={styles.pillsContainer}>
+              {candidateInfo.dateActivities.map((act, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.pill,
+                    sharedActivities.includes(act) && styles.sharedPill,
+                  ]}
                 >
-                  {act}
-                </Text>
-              </View>
-            ))}
+                  <Text
+                    style={[
+                      styles.pillText,
+                      sharedActivities.includes(act) && styles.sharedPillText,
+                    ]}
+                  >
+                    {act}
+                  </Text>
+                  {sharedActivities.includes(act) && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={COLORS.offWhite}
+                      style={styles.matchIcon}
+                    />
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
           {/* Right: Your interests/activities */}
           <View style={styles.comparisonCol}>
             <Text style={styles.comparisonTitle}>Interests</Text>
-            {yourInfo.interests.map((interest, idx) => (
-              <View
-                key={idx}
-                style={
-                  sharedInterests.includes(interest)
-                    ? styles.sharedPill
-                    : styles.pill
-                }
-              >
-                <Text
-                  style={
-                    sharedInterests.includes(interest)
-                      ? styles.sharedPillText
-                      : styles.pillText
-                  }
+            <View style={styles.pillsContainer}>
+              {yourInfo.interests.map((interest, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.pill,
+                    sharedInterests.includes(interest) && styles.sharedPill,
+                  ]}
                 >
-                  {interest}
-                </Text>
-              </View>
-            ))}
-            <Text style={styles.comparisonTitle}>Activities</Text>
-            {yourInfo.dateActivities.map((act, idx) => (
-              <View
-                key={idx}
-                style={
-                  sharedActivities.includes(act)
-                    ? styles.sharedPill
-                    : styles.pill
-                }
-              >
-                <Text
-                  style={
-                    sharedActivities.includes(act)
-                      ? styles.sharedPillText
-                      : styles.pillText
-                  }
-                >
-                  {act}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Availability calendar */}
-        <View style={styles.calendarSection}>
-          <View style={styles.calendarHeaderRow}>
-            <Text style={styles.calendarHeaderCell}> </Text>
-            {days.map((day, idx) => (
-              <Text key={idx} style={styles.calendarHeaderCell}>
-                {day}
-              </Text>
-            ))}
-          </View>
-          {slots.map((slot, rowIdx) => (
-            <View key={rowIdx} style={styles.calendarRow}>
-              <Text style={styles.calendarTimeCell}>{slot}</Text>
-              {days.map((day, colIdx) => {
-                const candidateHas = candidateAvailability[day]?.includes(slot);
-                const youHave = yourAvailability[day]?.includes(slot);
-                return (
-                  <View key={colIdx} style={styles.calendarCell}>
-                    {candidateHas && <View style={styles.candidateDot} />}
-                    {youHave && <View style={styles.youDot} />}
-                  </View>
-                );
-              })}
+                  <Text
+                    style={[
+                      styles.pillText,
+                      sharedInterests.includes(interest) &&
+                        styles.sharedPillText,
+                    ]}
+                  >
+                    {interest}
+                  </Text>
+                  {sharedInterests.includes(interest) && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={COLORS.offWhite}
+                      style={styles.matchIcon}
+                    />
+                  )}
+                </View>
+              ))}
             </View>
-          ))}
+            <Text style={styles.comparisonTitle}>Activities</Text>
+            <View style={styles.pillsContainer}>
+              {yourInfo.dateActivities.map((act, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.pill,
+                    sharedActivities.includes(act) && styles.sharedPill,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.pillText,
+                      sharedActivities.includes(act) && styles.sharedPillText,
+                    ]}
+                  >
+                    {act}
+                  </Text>
+                  {sharedActivities.includes(act) && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={COLORS.offWhite}
+                      style={styles.matchIcon}
+                    />
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -310,103 +335,104 @@ const styles = StyleSheet.create({
     color: COLORS.primaryNavy,
     fontStyle: "italic",
   },
-  comparisonRow: {
+  matchSummaryContainer: {
+    backgroundColor: COLORS.paleBlue,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: COLORS.primaryNavy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  matchSummaryText: {
+    fontSize: 16,
+    color: COLORS.primaryNavy,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  comparisonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginVertical: 16,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
+    marginBottom: 20,
   },
   comparisonCol: {
     flex: 1,
-    alignItems: "center",
+    marginHorizontal: 8,
   },
   comparisonTitle: {
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
     color: COLORS.primaryNavy,
-    marginVertical: 4,
-    fontSize: 13,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  pillsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: 20,
   },
   pill: {
     backgroundColor: COLORS.offWhite,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.primaryNavy,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginVertical: 2,
-    marginHorizontal: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    margin: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: COLORS.primaryNavy,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   pillText: {
-    fontSize: 12,
+    fontSize: 14,
     color: COLORS.primaryNavy,
+    fontWeight: "500",
   },
   sharedPill: {
     backgroundColor: COLORS.accentOrange,
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginVertical: 2,
-    marginHorizontal: 2,
+    borderColor: COLORS.accentOrange,
+    transform: [{ scale: 1.05 }],
   },
   sharedPillText: {
-    fontSize: 12,
     color: COLORS.offWhite,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
-  calendarSection: {
-    marginTop: 20,
-    marginBottom: 30,
-    paddingHorizontal: 8,
+  matchIcon: {
+    marginLeft: 6,
   },
-  calendarHeaderRow: {
-    flexDirection: "row",
+  availabilityButtonContainer: {
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 20,
     alignItems: "center",
-    marginBottom: 2,
   },
-  calendarHeaderCell: {
-    flex: 1,
-    textAlign: "center",
-    fontWeight: "bold",
-    color: COLORS.primaryNavy,
-    fontSize: 13,
-  },
-  calendarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 2,
-  },
-  calendarTimeCell: {
-    flex: 1,
-    textAlign: "center",
-    color: COLORS.primaryNavy,
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  calendarCell: {
-    flex: 1,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: COLORS.skyBlue,
-    backgroundColor: COLORS.paleBlue,
-    marginHorizontal: 1,
-    borderRadius: 6,
-    flexDirection: "row",
-  },
-  candidateDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  availabilityButton: {
     backgroundColor: COLORS.accentOrange,
-    marginHorizontal: 1,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 30,
+    shadowColor: COLORS.buttonShadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    width: "100%",
   },
-  youDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.primaryNavy,
-    marginHorizontal: 1,
+  availabilityButtonText: {
+    color: COLORS.offWhite,
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
   },
   topRow: {
     flexDirection: "row",
