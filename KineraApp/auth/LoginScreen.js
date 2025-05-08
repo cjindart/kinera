@@ -143,6 +143,33 @@ export default function LoginScreen({ navigation }) {
           return;
         }
         
+        // For login mode (existing user), go directly to Main
+        if (currentMode === 'login') {
+          console.log("Login mode - Ensuring user is marked as existing user");
+          
+          // Set the isNewUser flag to false explicitly for login mode
+          await AsyncStorage.setItem('isNewUser', 'false');
+          
+          // Register user with isNewUser flag set to false
+          if (auth.register) {
+            await auth.register({
+              id: result.user.uid,
+              phoneNumber: result.phoneNumber,
+              isNewUser: false,
+              isAuthenticated: true
+            });
+          }
+          
+          // Navigate directly to the Main screen for login
+          console.log("Login mode - Navigating directly to Main");
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Main" }]
+          });
+          return;
+        }
+        
+        // This is the fallback logic if mode is not explicitly set
         // For login mode, check if the user has an existing profile
         const userHasProfile = result.user && 
                               result.user.profileData && 

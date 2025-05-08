@@ -213,6 +213,7 @@ export function AuthProvider({ children }) {
           await mergedUser.save();
           safelySetUser(mergedUser);
           setIsNewUser(false);
+          await AsyncStorage.setItem('isNewUser', 'false');
           return { success: true, isNewUser: false };
         }
       }
@@ -223,6 +224,7 @@ export function AuthProvider({ children }) {
         console.log("User found by Firebase UID");
         safelySetUser(userByUid);
         setIsNewUser(false);
+        await AsyncStorage.setItem('isNewUser', 'false');
         return { success: true, isNewUser: false };
       }
       
@@ -257,6 +259,7 @@ export function AuthProvider({ children }) {
           await updatedUser.save();
           safelySetUser(updatedUser);
           setIsNewUser(false);
+          await AsyncStorage.setItem('isNewUser', 'false');
           return { success: true, isNewUser: false };
         } else {
           // User already has the correct Firebase UID
@@ -268,6 +271,7 @@ export function AuthProvider({ children }) {
           await existingUser.save();
           safelySetUser(existingUser);
           setIsNewUser(false);
+          await AsyncStorage.setItem('isNewUser', 'false');
           return { success: true, isNewUser: false };
         }
       }
@@ -275,6 +279,7 @@ export function AuthProvider({ children }) {
       // If it's a new user or we couldn't find user data
       console.log("No existing user found, will create new user");
       setIsNewUser(true);
+      await AsyncStorage.setItem('isNewUser', 'true');
       return { success: true, isNewUser: true };
     } catch (error) {
       console.error('Error handling auth result:', error);
@@ -496,14 +501,30 @@ export function AuthProvider({ children }) {
         if (code.length === 6) {
           console.log('Direct verification successful');
           
-          // Force isNewUser to be true for direct registrations
-          console.log('Direct registration - forcing isNewUser=true');
+          // If we have a phone number, check if the user already exists
+          if (tempPhoneNumber) {
+            try {
+              const existingUser = await findUserByPhone(tempPhoneNumber);
+              if (existingUser) {
+                console.log('Found existing user with this phone number, marking as returning user');
+                setIsNewUser(false);
+                await AsyncStorage.setItem('isNewUser', 'false');
+                return { success: true, isNewUser: false };
+              }
+            } catch (err) {
+              console.log('Error checking for existing user:', err);
+              // Continue as new user
+            }
+          }
+          
+          // Force isNewUser to be true for direct registrations (new users)
+          console.log('Direct registration - new user');
           setIsNewUser(true);
           await AsyncStorage.setItem('isNewUser', 'true');
           
           return { 
             success: true, 
-            isNewUser: true // Always treat direct registrations as new users
+            isNewUser: true
           };
         } else {
           console.error('Invalid verification code format');
@@ -534,18 +555,22 @@ export function AuthProvider({ children }) {
         
         console.log("Phone verification successful");
         
-        // Get user data
+        // Get user data and check if this is a new or existing user
         const result = await handleAuthResult({
           user: authResult.user,
           isNewUser: authResult._tokenResponse?.isNewUser,
           phoneNumber: tempPhoneNumber || authResult.user.phoneNumber
         });
         
-        // Ensure isNewUser is properly set
+        // Ensure isNewUser is properly set based on handleAuthResult
         if (result.isNewUser) {
           console.log('Setting isNewUser=true for new Firebase authenticated user');
           setIsNewUser(true);
           await AsyncStorage.setItem('isNewUser', 'true');
+        } else {
+          console.log('Setting isNewUser=false for existing Firebase authenticated user');
+          setIsNewUser(false);
+          await AsyncStorage.setItem('isNewUser', 'false');
         }
         
         return result;

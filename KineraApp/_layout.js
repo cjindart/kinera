@@ -128,7 +128,8 @@ export default function Layout() {
     hasUser: !!user, 
     isAuthenticated: !!user?.isAuthenticated,
     isLoading,
-    isNewUser
+    isNewUser: isNewUser,
+    shouldGoToMain: isLoggedIn && !isNewUser
   });
 
   // Show loading screen while checking auth status
