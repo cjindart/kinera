@@ -1061,7 +1061,7 @@ export default function ProfileScreen() {
                   },
                   {
                     text: "Dater & Match Maker",
-                    onPress: () => setYear("Dater & Match Maker"),
+                    onPress: () => setUserType("Dater & Match Maker"),
                   },
                   {
                     text: "Cancel",
