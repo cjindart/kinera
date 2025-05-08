@@ -101,14 +101,27 @@ export const testUserDataWrite = async (userData) => {
     const testDocPath = `test_users/${userData.id}_${Date.now()}`;
     const testDoc = doc(db, testDocPath);
     
-    // Try to write the user data
+    // Try to write the user data with full profile data
     results.timings.writeStart = new Date().toISOString();
-    await setDoc(testDoc, {
+    const testUserData = {
       id: userData.id,
       name: userData.name || 'Test User',
       phoneNumber: userData.phoneNumber || null,
-      updatedAt: new Date().toISOString()
-    });
+      updatedAt: new Date().toISOString(),
+      // Include full profile data for testing
+      profileData: userData.profileData || {
+        age: 21,
+        gender: 'Test Gender',
+        height: '5\'10"',
+        year: 'Senior',
+        interests: ['Testing', 'Debugging'],
+        dateActivities: ['Coding', 'Coffee'],
+        photos: [],
+        updatedAt: new Date().toISOString()
+      }
+    };
+    
+    await setDoc(testDoc, testUserData);
     results.timings.writeEnd = new Date().toISOString();
     
     // Read it back to confirm
@@ -118,6 +131,7 @@ export const testUserDataWrite = async (userData) => {
     
     results.success = readResult.exists();
     results.readData = readResult.data();
+    results.originalData = testUserData;
     
     // Try to delete (cleanup)
     try {
