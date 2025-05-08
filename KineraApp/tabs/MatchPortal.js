@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
 import theme from "../assets/theme";
 
 // Color constants based on the spec
@@ -24,8 +25,9 @@ const COLORS = {
   buttonShadow: "#E98E42",
 };
 
-export default function Home() {
+export default function MatchPortal() {
   const navigation = useNavigation();
+  const { user } = useAuth();
 
   // Madison's profile data - this would normally come from an API or database
   const madisonProfile = {
@@ -35,7 +37,7 @@ export default function Home() {
     height: "5'7\"",
     year: "Sophomore",
     interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
+    dateActivities: ["Voyager", "Jazz night", "Study date", "KA basement"],
   };
 
   // Alex's profile data
@@ -61,17 +63,36 @@ export default function Home() {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <Text style={styles.headerText}>Match Portal</Text>
-        <TouchableOpacity
-          style={styles.liaisonButton}
-          onPress={handleLiaisonPress}
-        >
-          <Ionicons name="people" size={24} color={COLORS.primaryNavy} />
-          <Text style={styles.liaisonButtonText}>Select Liaison</Text>
-        </TouchableOpacity>
+        <View style={styles.liaisonContainer}>
+          <TouchableOpacity
+            style={styles.liaisonButton}
+            onPress={handleLiaisonPress}
+          >
+            <Ionicons name="people" size={24} color={COLORS.primaryNavy} />
+            <Text style={styles.liaisonButtonText}>Select Liaison</Text>
+          </TouchableOpacity>
+          {user?.profileData?.liaison && (
+            <View style={styles.currentLiaisonContainer}>
+              <View style={styles.liaisonBadge}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={COLORS.accentOrange}
+                />
+                <Text style={styles.currentLiaisonText}>
+                  Current Liaison:{" "}
+                  <Text style={styles.liaisonName}>
+                    {user.profileData.liaison}
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.sectionTitle}>manage your matches</Text>
+        <Text style={styles.sectionTitle}>Manage Your Matches</Text>
 
         {/* Madison's Profile Card */}
         <TouchableOpacity
@@ -166,10 +187,6 @@ export default function Home() {
             />
           </View>
         </TouchableOpacity>
-
-        <Text style={styles.helperText}>
-          Tap on Madison's card to view her profile
-        </Text>
       </ScrollView>
     </View>
   );
@@ -194,6 +211,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.primaryNavy,
   },
+  liaisonContainer: {
+    alignItems: "flex-end",
+  },
   liaisonButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -209,6 +229,29 @@ const styles = StyleSheet.create({
     color: COLORS.primaryNavy,
     fontSize: 14,
     fontWeight: "500",
+  },
+  currentLiaisonContainer: {
+    marginTop: 8,
+    alignItems: "flex-end",
+  },
+  liaisonBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.offWhite,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.accentOrange,
+  },
+  currentLiaisonText: {
+    fontSize: 13,
+    color: COLORS.primaryNavy,
+    marginLeft: 4,
+  },
+  liaisonName: {
+    fontWeight: "600",
+    color: COLORS.accentOrange,
   },
   contentContainer: {
     paddingHorizontal: 16,

@@ -9,8 +9,12 @@ import {
   SafeAreaView,
   FlatList,
   Dimensions,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../utils/firebase";
 
 const COLORS = {
   primaryNavy: "#325475",
@@ -37,6 +41,39 @@ const CARD_SIZE = (Dimensions.get("window").width - 64) / 2;
 
 export default function SelectLiaison({ navigation }) {
   const [selectedId, setSelectedId] = useState(1);
+  const { user, updateProfile } = useAuth();
+
+  const handleSetLiaison = async () => {
+    try {
+      const selectedLiaison = LIAISONS.find((l) => l.id === selectedId);
+
+      if (!selectedLiaison) {
+        Alert.alert("Error", "Please select a liaison");
+        return;
+      }
+
+      // Update the user's profile with the selected liaison
+      const profileUpdate = {
+        profileData: {
+          ...user.profileData,
+          liaison: selectedLiaison.name,
+        },
+      };
+
+      // Save to Firestore and update local state
+      const success = await updateProfile(profileUpdate);
+
+      if (success) {
+        Alert.alert("Success", "Liaison updated successfully!");
+        navigation.goBack();
+      } else {
+        Alert.alert("Error", "Failed to update liaison. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error updating liaison:", error);
+      Alert.alert("Error", "Failed to update liaison. Please try again.");
+    }
+  };
 
   const renderLiaison = ({ item }) => (
     <TouchableOpacity
@@ -76,7 +113,7 @@ export default function SelectLiaison({ navigation }) {
       <View style={styles.submitRow}>
         <TouchableOpacity
           style={styles.submitButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleSetLiaison}
         >
           <Text style={styles.submitText}>Set Liaison</Text>
         </TouchableOpacity>
