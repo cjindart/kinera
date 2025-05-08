@@ -169,31 +169,37 @@ export default function ProfileScreen() {
       );
 
       // Basic info
-      setName(user.name || "");
-      setUserType(user.userType || "");
+      setName(typeof user.name === 'string' ? user.name : '');
+      setUserType(typeof user.userType === 'string' ? user.userType : '');
 
       // Profile data from profileData object
       if (user.profileData) {
         // Convert age to string for TextInput
-        setAge(user.profileData.age?.toString() || "");
-        setGender(user.profileData.gender || "");
-        setHeight(user.profileData.height || "");
-        setYear(user.profileData.year || user.profileData.classYear || "");
+        setAge(typeof user.profileData.age === 'number' ? user.profileData.age.toString() : 
+               typeof user.profileData.age === 'string' ? user.profileData.age : '');
+        setGender(typeof user.profileData.gender === 'string' ? user.profileData.gender : '');
+        setHeight(typeof user.profileData.height === 'string' ? user.profileData.height : '');
+        setYear(
+          typeof user.profileData.year === 'string' ? user.profileData.year : 
+          typeof user.profileData.classYear === 'string' ? user.profileData.classYear : ''
+        );
 
-        setCity(user.profileData.city || "");
+        setCity(typeof user.profileData.city === 'string' ? user.profileData.city : '');
 
         // Interests and activities
-        const userInterests = user.profileData.interests || [];
+        const userInterests = Array.isArray(user.profileData.interests) ? user.profileData.interests : [];
         setInterests(userInterests);
 
-        const userActivities =
-          user.profileData.dateActivities || user.profileData.activities || [];
+        const userActivities = Array.isArray(user.profileData.dateActivities) ? user.profileData.dateActivities :
+                              Array.isArray(user.profileData.activities) ? user.profileData.activities : [];
         setDateActivities(userActivities);
 
         // Load photos
-        if (user.profileData.photos && user.profileData.photos.length > 0) {
-          setMainPhoto(user.profileData.photos[0]);
-          setAdditionalPhotos(user.profileData.photos.slice(1));
+        if (user.profileData.photos && Array.isArray(user.profileData.photos) && user.profileData.photos.length > 0) {
+          setMainPhoto(typeof user.profileData.photos[0] === 'string' ? user.profileData.photos[0] : null);
+          setAdditionalPhotos(
+            user.profileData.photos.slice(1).filter(photo => typeof photo === 'string')
+          );
         }
 
         // Set default selected interest
@@ -204,15 +210,16 @@ export default function ProfileScreen() {
 
       // Direct properties (in case they're not in profileData)
       if (!user.profileData?.age && user.age) {
-        setAge(user.age.toString());
+        setAge(typeof user.age === 'number' ? user.age.toString() : 
+               typeof user.age === 'string' ? user.age : '');
       }
 
       if (!user.profileData?.gender && user.gender) {
-        setGender(user.gender);
+        setGender(typeof user.gender === 'string' ? user.gender : '');
       }
 
       if (!user.profileData?.height && user.height) {
-        setHeight(user.height);
+        setHeight(typeof user.height === 'string' ? user.height : '');
       }
 
       if (
@@ -220,13 +227,14 @@ export default function ProfileScreen() {
         !user.profileData?.classYear &&
         user.classYear
       ) {
-        setYear(user.classYear);
+        setYear(typeof user.classYear === 'string' ? user.classYear : '');
       }
 
       if (!user.profileData?.interests && user.interests) {
-        setInterests(user.interests);
-        if (user.interests.length > 0) {
-          setSelectedInterests([user.interests[0]]);
+        const validInterests = Array.isArray(user.interests) ? user.interests : [];
+        setInterests(validInterests);
+        if (validInterests.length > 0) {
+          setSelectedInterests([validInterests[0]]);
         }
       }
 
@@ -235,12 +243,14 @@ export default function ProfileScreen() {
         !user.profileData?.activities &&
         user.activities
       ) {
-        setDateActivities(user.activities);
+        setDateActivities(Array.isArray(user.activities) ? user.activities : []);
       }
 
-      if (!user.profileData?.photos && user.photos && user.photos.length > 0) {
-        setMainPhoto(user.photos[0]);
-        setAdditionalPhotos(user.photos.slice(1));
+      if (!user.profileData?.photos && user.photos && Array.isArray(user.photos) && user.photos.length > 0) {
+        setMainPhoto(typeof user.photos[0] === 'string' ? user.photos[0] : null);
+        setAdditionalPhotos(
+          user.photos.slice(1).filter(photo => typeof photo === 'string')
+        );
       }
     }
   }, [user]);
@@ -630,7 +640,18 @@ export default function ProfileScreen() {
       const friend = mockData.users.find((user) => user.id === friendId);
       if (!friend) return;
 
-      const updatedFriends = [...(user.friends || []), friendId];
+      // Get the complete friend object with all data
+      const friendObject = {
+        id: `friend_${user.friends ? user.friends.length : 0}`,
+        name: friend.name || "Unknown",
+        avatar: null,
+        interests: Array.isArray(friend.profileData?.interests) ? friend.profileData.interests : 
+                  Array.isArray(friend.interests) ? friend.interests : [],
+        dateActivities: Array.isArray(friend.profileData?.dateActivities) ? friend.profileData.dateActivities :
+                        Array.isArray(friend.dateActivities) ? friend.dateActivities : [],
+      };
+
+      const updatedFriends = [...(user.friends || []), friendObject];
 
       // Update user data
       const updatedUserData = {
@@ -638,11 +659,25 @@ export default function ProfileScreen() {
         friends: updatedFriends,
       };
 
+      // Update the user context directly 
+      setUser(updatedUserData);
+
       // Save to AsyncStorage
       await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
 
-      // Update the user context directly
-      setUser(updatedUserData);
+      // Update Firestore if user has an ID
+      if (user.id) {
+        try {
+          const userRef = doc(db, "users", user.id);
+          await updateDoc(userRef, {
+            friends: updatedFriends
+          });
+          console.log("Friends updated in Firestore successfully");
+        } catch (firestoreError) {
+          console.error("Error updating friends in Firestore:", firestoreError);
+          Alert.alert("Error", "Failed to update friends in Firestore, but local changes were saved.");
+        }
+      }
 
       // Clear search
       setSearchQuery("");
@@ -656,7 +691,9 @@ export default function ProfileScreen() {
   // Function to remove a friend
   const handleRemoveFriend = async (friendId) => {
     try {
-      const updatedFriends = user.friends.filter((id) => id !== friendId);
+      const updatedFriends = user.friends.filter((friend) => 
+        typeof friend === 'object' ? friend.id !== friendId : friend !== friendId
+      );
 
       // Update user data
       const updatedUserData = {
@@ -664,11 +701,25 @@ export default function ProfileScreen() {
         friends: updatedFriends,
       };
 
+      // Update the user context directly
+      setUser(updatedUserData);
+
       // Save to AsyncStorage
       await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
 
-      // Update the user context directly
-      setUser(updatedUserData);
+      // Update Firestore if user has an ID
+      if (user.id) {
+        try {
+          const userRef = doc(db, "users", user.id);
+          await updateDoc(userRef, {
+            friends: updatedFriends
+          });
+          console.log("Friend removed in Firestore successfully");
+        } catch (firestoreError) {
+          console.error("Error removing friend in Firestore:", firestoreError);
+          Alert.alert("Error", "Failed to update friend removal in Firestore, but local changes were saved.");
+        }
+      }
     } catch (error) {
       console.error("Error removing friend:", error);
       Alert.alert("Error", "Failed to remove friend. Please try again.");
@@ -682,8 +733,8 @@ export default function ProfileScreen() {
         <View style={styles.headerSection}>
           <View style={styles.headerContent}>
             <View style={styles.nameContainer}>
-              <Text style={styles.headerTitle}>{name}</Text>
-              <Text style={styles.roleText}>You are a: {userType}</Text>
+              <Text style={styles.headerTitle}>{typeof name === 'string' ? name : 'Profile'}</Text>
+              <Text style={styles.roleText}>You are a: {typeof userType === 'string' ? userType : ''}</Text>
             </View>
             <EditButton isEditing={isEditing} onToggleEdit={toggleEditMode} />
           </View>
@@ -888,7 +939,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{age || "-"}</Text>
+            <Text style={styles.summaryText}>{typeof age === 'string' || typeof age === 'number' ? age : '-'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -940,7 +991,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{gender || "-"}</Text>
+            <Text style={styles.summaryText}>{typeof gender === 'string' ? gender : '-'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -977,7 +1028,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{height || "-"}</Text>
+            <Text style={styles.summaryText}>{typeof height === 'string' ? height : '-'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1024,7 +1075,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{year || "-"}</Text>
+            <Text style={styles.summaryText}>{typeof year === 'string' ? year : '-'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -1038,7 +1089,7 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.cityText}>{city}</Text>
+            <Text style={styles.cityText}>{typeof city === 'string' ? city : ''}</Text>
           </View>
         )}
 
@@ -1215,18 +1266,34 @@ export default function ProfileScreen() {
 
           {/* Friends List */}
           <View style={styles.friendsList}>
-            {user?.friends?.map((friendId) => {
-              const friend = mockData.users.find(
-                (user) => user.id === friendId
-              );
-              if (!friend) return null;
+            {user?.friends?.map((friend, index) => {
+              // Add debug logging
+              console.log(`Rendering friend ${index}:`, JSON.stringify(friend));
+              
+              // Handle both object-based friends and legacy ID-based friends
+              const friendId = typeof friend === 'object' ? friend.id : friend;
+              const friendName = typeof friend === 'object' ? friend.name : null;
+              const friendInterests = typeof friend === 'object' && Array.isArray(friend.interests) ? friend.interests : [];
+              const friendActivities = typeof friend === 'object' && Array.isArray(friend.dateActivities) ? friend.dateActivities : [];
+              
+              // For legacy ID-based friends, look up in mock data
+              let mockFriend = null;
+              if (!friendName) {
+                mockFriend = mockData.users.find((u) => u.id === friendId);
+              }
+              
+              // If friend can't be found in any way, skip rendering
+              if (!friendName && !mockFriend) {
+                console.log(`Skipping friend ${index} - no data available`);
+                return null;
+              }
 
               return (
                 <View key={friendId} style={styles.friendItem}>
                   <View style={styles.friendAvatar}>
-                    {friend.photos?.[0] ? (
+                    {mockFriend?.photos?.[0] ? (
                       <Image
-                        source={{ uri: friend.photos[0] }}
+                        source={{ uri: mockFriend.photos[0] }}
                         style={styles.friendAvatarImage}
                       />
                     ) : (
@@ -1237,7 +1304,15 @@ export default function ProfileScreen() {
                       />
                     )}
                   </View>
-                  <Text style={styles.friendName}>{friend.name}</Text>
+                  <View style={styles.friendDetails}>
+                    <Text style={styles.friendName}>{friendName || mockFriend?.name || 'Unknown'}</Text>
+                    {(friendInterests.length > 0 || (mockFriend?.interests && mockFriend.interests.length > 0)) && (
+                      <Text style={styles.friendInterests}>
+                        Interests: {(friendInterests.length > 0 ? friendInterests : (mockFriend?.interests || [])).slice(0, 2).join(", ")}
+                        {(friendInterests.length > 0 ? friendInterests.length : (mockFriend?.interests || []).length) > 2 ? "..." : ""}
+                      </Text>
+                    )}
+                  </View>
                   {isEditing && (
                     <TouchableOpacity
                       style={styles.removeFriendButton}
@@ -1658,12 +1733,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
+    overflow: "hidden",
+  },
+  friendDetails: {
+    flex: 1,
+    justifyContent: "center",
   },
   friendName: {
-    fontSize: 24,
+    fontSize: 18,
     color: COLORS.primaryNavy,
-    fontWeight: "400",
+    fontWeight: "500",
     fontFamily: Platform.OS === "ios" ? "Gill Sans" : "sans-serif",
+    marginBottom: 2,
+  },
+  friendInterests: {
+    fontSize: 14,
+    color: COLORS.mutedBlue,
+    fontStyle: "italic",
   },
   friendAvatarImage: {
     width: 40,

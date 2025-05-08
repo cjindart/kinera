@@ -32,6 +32,44 @@ export function AuthProvider({ children }) {
   const [verificationId, setVerificationId] = useState(null);
   const [tempPhoneNumber, setTempPhoneNumber] = useState(null);
 
+  // Helper function to safely set user data and ensure it's properly serialized
+  const safelySetUser = (userData) => {
+    if (!userData) {
+      setUser(null);
+      return;
+    }
+    
+    // Ensure friends array is properly formatted
+    if (userData.friends) {
+      userData.friends = userData.friends.map((friend, index) => {
+        if (typeof friend === 'string') {
+          return {
+            id: `friend_${index}`,
+            name: friend,
+            avatar: null
+          };
+        }
+        if (typeof friend === 'object' && friend !== null) {
+          return {
+            id: friend.id || `friend_${index}`,
+            name: typeof friend.name === 'string' ? friend.name : 'Unknown',
+            avatar: friend.avatar || null,
+            interests: Array.isArray(friend.interests) ? friend.interests : [],
+            dateActivities: Array.isArray(friend.dateActivities) ? friend.dateActivities : []
+          };
+        }
+        return {
+          id: `friend_${index}`,
+          name: 'Unknown',
+          avatar: null
+        };
+      });
+    }
+    
+    // Set the sanitized user data
+    setUser(userData);
+  };
+
   // Load user data when the component mounts
   useEffect(() => {
     const loadUser = async () => {
@@ -44,7 +82,7 @@ export function AuthProvider({ children }) {
             // User is signed in, get user data from Firestore
             const userData = await fetchUserData(firebaseUser.uid);
             if (userData) {
-              setUser(userData);
+              safelySetUser(userData);
               setIsNewUser(!!userData.newUser);
               
               // Clear the newUser flag after we've used it
@@ -59,7 +97,7 @@ export function AuthProvider({ children }) {
           if (!firebaseUser) {
             const localUser = await User.load();
             if (localUser && localUser.isAuthenticated) {
-              setUser(localUser);
+              safelySetUser(localUser);
             }
           }
           
@@ -74,7 +112,7 @@ export function AuthProvider({ children }) {
         try {
           const localUser = await User.load();
           if (localUser && localUser.isAuthenticated) {
-            setUser(localUser);
+            safelySetUser(localUser);
           }
         } catch (innerError) {
           console.error('Error loading from AsyncStorage:', innerError);
@@ -173,7 +211,7 @@ export function AuthProvider({ children }) {
           });
           
           await mergedUser.save();
-          setUser(mergedUser);
+          safelySetUser(mergedUser);
           setIsNewUser(false);
           return { success: true, isNewUser: false };
         }
@@ -183,7 +221,7 @@ export function AuthProvider({ children }) {
       const userByUid = await fetchUserData(firebaseUid);
       if (userByUid) {
         console.log("User found by Firebase UID");
-        setUser(userByUid);
+        safelySetUser(userByUid);
         setIsNewUser(false);
         return { success: true, isNewUser: false };
       }
@@ -217,7 +255,7 @@ export function AuthProvider({ children }) {
           
           // Save the updated user data
           await updatedUser.save();
-          setUser(updatedUser);
+          safelySetUser(updatedUser);
           setIsNewUser(false);
           return { success: true, isNewUser: false };
         } else {
@@ -228,7 +266,7 @@ export function AuthProvider({ children }) {
           });
           
           await existingUser.save();
-          setUser(existingUser);
+          safelySetUser(existingUser);
           setIsNewUser(false);
           return { success: true, isNewUser: false };
         }
@@ -599,7 +637,7 @@ export function AuthProvider({ children }) {
       }
       
       // Update auth context
-      setUser(newUser);
+      safelySetUser(newUser);
       setIsNewUser(isUserNew);
       
       // Update AsyncStorage for isNewUser flag
@@ -690,9 +728,34 @@ export function AuthProvider({ children }) {
       
       // Handle friends separately to ensure they're saved in the right place
       if (profileData.friends) {
-        userToUpdate.friends = profileData.friends;
+        // Ensure friends are properly formatted
+        const sanitizedFriends = profileData.friends.map((friend, index) => {
+          if (typeof friend === 'string') {
+            return {
+              id: `friend_${index}`,
+              name: friend,
+              avatar: null
+            };
+          }
+          if (typeof friend === 'object' && friend !== null) {
+            return {
+              id: friend.id || `friend_${index}`,
+              name: typeof friend.name === 'string' ? friend.name : 'Unknown',
+              avatar: friend.avatar || null,
+              interests: Array.isArray(friend.interests) ? friend.interests : [],
+              dateActivities: Array.isArray(friend.dateActivities) ? friend.dateActivities : []
+            };
+          }
+          return {
+            id: `friend_${index}`,
+            name: 'Unknown',
+            avatar: null
+          };
+        });
+        
+        userToUpdate.friends = sanitizedFriends;
         // Also add to profileData to ensure it's accessible in both places
-        userToUpdate.profileData.friends = profileData.friends;
+        userToUpdate.profileData.friends = sanitizedFriends;
       }
       
       // Update timestamps
@@ -724,7 +787,7 @@ export function AuthProvider({ children }) {
       }
       
       // Update the user in state
-      setUser(userToUpdate);
+      safelySetUser(userToUpdate);
       
       return true;
     } catch (error) {
@@ -748,7 +811,7 @@ export function AuthProvider({ children }) {
       
       // Clear local storage
       await User.logout();
-      setUser(null);
+      safelySetUser(null);
       return true;
     } catch (error) {
       console.error('Error logging out:', error);
@@ -835,7 +898,7 @@ export function AuthProvider({ children }) {
           await updatedUser.save();
           
           // Update state
-          setUser(updatedUser);
+          safelySetUser(updatedUser);
           // For direct registration, we should set existingUser to isNewUser=false 
           setIsNewUser(false);
           await AsyncStorage.setItem('isNewUser', 'false');
@@ -870,7 +933,7 @@ export function AuthProvider({ children }) {
       await newUser.save();
       
       // Update state
-      setUser(newUser);
+      safelySetUser(newUser);
       // For new users, set isNewUser=true (explicitly)
       setIsNewUser(true);
       await AsyncStorage.setItem('isNewUser', 'true');

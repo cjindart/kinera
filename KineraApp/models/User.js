@@ -109,13 +109,34 @@ class User {
 
     // Social connections - friends might be just names or objects
     this.friends = userData.friends || [];
-    // Convert any string friends to objects if needed
-    if (this.friends.length > 0 && typeof this.friends[0] === "string") {
-      this.friends = this.friends.map((friend, index) => ({
-        id: `friend_${index}`,
-        name: friend,
-        avatar: null,
-      }));
+    // Convert any string friends to objects if needed and ensure all friends are properly serialized
+    if (this.friends.length > 0) {
+      this.friends = this.friends.map((friend, index) => {
+        // If it's a string, convert to basic object
+        if (typeof friend === "string") {
+          return {
+            id: `friend_${index}`,
+            name: friend,
+            avatar: null,
+          };
+        }
+        // If it's already an object, ensure it has the right format
+        if (typeof friend === "object" && friend !== null) {
+          return {
+            id: friend.id || `friend_${index}`,
+            name: typeof friend.name === 'string' ? friend.name : 'Unknown',
+            avatar: friend.avatar || null,
+            interests: Array.isArray(friend.interests) ? friend.interests : [],
+            dateActivities: Array.isArray(friend.dateActivities) ? friend.dateActivities : [],
+          };
+        }
+        // Fallback for any other type
+        return {
+          id: `friend_${index}`,
+          name: 'Unknown',
+          avatar: null,
+        };
+      });
     }
 
     // Dating data

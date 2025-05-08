@@ -1,243 +1,361 @@
 {
   "users": [
     {
-      "id": "u1",
+      "id": "user_1746724905001_a7bcd3e",
       "name": "Madison",
-      "profileDataExists": true,
+      "createdAt": "2025-05-08T16:56:22.224Z",
+      "updatedAt": "2025-05-08T18:51:20.464Z",
+      "phoneNumber": "+17206336711",
+      "userType": "Dater & Match Maker",
+      "isStanfordVerified": true,
+      "stanfordEmail": "madison@stanford.edu",
       "profileData": {
         "age": 22,
         "gender": "female",
-        "height": "5'7",
+        "height": "5'7\"",
         "year": "Sophomore",
-        "interestsCount": 3,
-        "activitiesCount": 3,
-        "photosCount": 4
+        "city": "Stanford",
+        "sexuality": "straight",
+        "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
+        "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"],
+        "photos": [
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/madison1.jpg",
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/madison2.jpg"
+        ],
+        "liaison": "u4",
+        "friends": ["u3", "u5", "u7"],
+        "updatedAt": "2025-05-08T18:51:20.452Z"
       },
-      "location": "Los Angeles",
-      "height": "5'7",
-      "year": "Sophomore",
-      "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
-      "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"],
-      "photos": ["madison1.jpg", "madison2.jpg"],
-      "bio": "Political science major who loves jazz and outdoor adventures",
-      "sexuality": "straight",
-      "lookingFor": "men",
-      "UserType": "both",
-      "friends": ["u3", "u5", "u7"],
-      "matches": {
-        "u2": { "approvalRate": 0, "matchBack": 0 },
-        "u4": { "approvalRate": 0, "matchBack": 0 },
-        "u6": { "approvalRate": 0, "matchBack": 0 }
-      }
+      "friends": [
+        {
+          "id": "friend_0",
+          "name": "Sarah",
+          "avatar": null,
+          "interests": ["Art", "Dance", "Yoga", "Reading", "Cooking"],
+          "dateActivities": ["Art Museum", "Dance Class", "Cooking Together", "Book Club"]
+        },
+        {
+          "id": "friend_1",
+          "name": "Emma",
+          "avatar": null,
+          "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
+          "dateActivities": ["Swimming Pool", "Art Studio", "Volunteer Event", "Dog Park"]
+        },
+        {
+          "id": "friend_2",
+          "name": "Sophie",
+          "avatar": null,
+          "interests": ["Psychology", "Dance", "Reading", "Cooking", "Yoga"],
+          "dateActivities": ["Dance Class", "Book Club", "Cooking Together", "Yoga Session"]
+        }
+      ],
+      "matches": [
+        { "id": "u2", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u4", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u6", "approvalRate": 0, "matchBack": 0 }
+      ],
+      "swipingPool": {}
     },
     {
-      "id": "u2",
+      "id": "user_1746724905002_b8def4f",
       "name": "Alex",
-      "profileDataExists": true,
+      "createdAt": "2025-05-08T16:58:15.224Z",
+      "updatedAt": "2025-05-08T18:50:10.464Z",
+      "phoneNumber": "+17206336712",
+      "userType": "Dater & Match Maker",
+      "isStanfordVerified": true,
+      "stanfordEmail": "alex@stanford.edu",
       "profileData": {
         "age": 21,
         "gender": "male",
-        "height": "6'0",
+        "height": "6'0\"",
         "year": "Junior",
-        "interestsCount": 4,
-        "activitiesCount": 3,
-        "photosCount": 3
+        "city": "Stanford",
+        "sexuality": "straight",
+        "interests": ["Computer Science", "Gaming", "Hiking", "Photography"],
+        "dateActivities": ["Coffee at Coupa", "Hiking at Dish", "Study at Green Library"],
+        "photos": [
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/alex1.jpg",
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/alex2.jpg"
+        ],
+        "liaison": "u6",
+        "friends": ["u4", "u6"],
+        "updatedAt": "2025-05-08T18:50:10.452Z"
       },
-      "location": "San Francisco",
-      "height": "6'0",
-      "year": "Junior",
-      "interests": ["Computer Science", "Gaming", "Hiking", "Photography"],
-      "dateActivities": [
-        "Coffee at Coupa",
-        "Hiking at Dish",
-        "Study at Green Library"
+      "friends": [
+        {
+          "id": "friend_0",
+          "name": "Michael",
+          "avatar": null,
+          "interests": ["Engineering", "Basketball", "Music", "Travel"],
+          "dateActivities": ["Basketball Game", "Concert", "Road Trip", "Study Session"]
+        },
+        {
+          "id": "friend_1",
+          "name": "David",
+          "avatar": null,
+          "interests": ["Physics", "Soccer", "Chess", "Photography"],
+          "dateActivities": ["Soccer Game", "Chess Club", "Photo Walk", "Study Group"]
+        }
       ],
-      "photos": ["alex1.jpg", "alex2.jpg"],
-      "bio": "CS major who loves outdoor photography and gaming",
-      "sexuality": "straight",
-      "lookingFor": "women",
-      "UserType": "both",
-      "friends": ["u4", "u6"],
-      "matches": {
-        "u1": { "approvalRate": 0, "matchBack": 0 },
-        "u3": { "approvalRate": 0, "matchBack": 0 },
-        "u5": { "approvalRate": 0, "matchBack": 0 }
-      }
+      "matches": [
+        { "id": "u1", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u3", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u5", "approvalRate": 0, "matchBack": 0 }
+      ],
+      "swipingPool": {}
     },
     {
-      "id": "u3",
+      "id": "user_1746724905003_c9fgh5i",
       "name": "Sarah",
-      "profileDataExists": true,
+      "createdAt": "2025-05-08T17:05:22.224Z",
+      "updatedAt": "2025-05-08T18:45:20.464Z",
+      "phoneNumber": "+17206336713",
+      "userType": "Dater & Match Maker",
+      "isStanfordVerified": true,
+      "stanfordEmail": "sarah@stanford.edu",
       "profileData": {
         "age": 20,
         "gender": "female",
-        "height": "5'5",
+        "height": "5'5\"",
         "year": "Freshman",
-        "interestsCount": 5,
-        "activitiesCount": 4,
-        "photosCount": 3
+        "city": "Stanford",
+        "sexuality": "straight",
+        "interests": ["Art", "Dance", "Yoga", "Reading", "Cooking"],
+        "dateActivities": ["Art Museum", "Dance Class", "Cooking Together", "Book Club"],
+        "photos": [
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/sarah1.jpg",
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/sarah2.jpg"
+        ],
+        "liaison": "u1",
+        "friends": ["u1", "u5"],
+        "updatedAt": "2025-05-08T18:45:20.452Z"
       },
-      "location": "Palo Alto",
-      "height": "5'5",
-      "year": "Freshman",
-      "interests": ["Art", "Dance", "Yoga", "Reading", "Cooking"],
-      "dateActivities": [
-        "Art Museum",
-        "Dance Class",
-        "Cooking Together",
-        "Book Club"
+      "friends": [
+        {
+          "id": "friend_0",
+          "name": "Madison",
+          "avatar": null,
+          "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
+          "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"]
+        },
+        {
+          "id": "friend_1",
+          "name": "Emma",
+          "avatar": null,
+          "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
+          "dateActivities": ["Swimming Pool", "Art Studio", "Volunteer Event", "Dog Park"]
+        }
       ],
-      "photos": ["sarah1.jpg", "sarah2.jpg"],
-      "bio": "Art history major who loves dance and yoga",
-      "sexuality": "straight",
-      "lookingFor": "men",
-      "UserType": "both",
-      "friends": ["u1", "u5"],
-      "matches": {
-        "u2": { "approvalRate": 0, "matchBack": 0 },
-        "u4": { "approvalRate": 0, "matchBack": 0 },
-        "u6": { "approvalRate": 0, "matchBack": 0 }
-      }
+      "matches": [
+        { "id": "u2", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u4", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u6", "approvalRate": 0, "matchBack": 0 }
+      ],
+      "swipingPool": {}
     },
     {
-      "id": "u4",
+      "id": "user_1746724905004_d0hij6j",
       "name": "Michael",
-      "profileDataExists": true,
+      "createdAt": "2025-05-08T17:12:42.224Z",
+      "updatedAt": "2025-05-08T18:48:30.464Z",
+      "phoneNumber": "+17206336714",
+      "userType": "Dater & Match Maker",
+      "isStanfordVerified": true,
+      "stanfordEmail": "michael@stanford.edu",
       "profileData": {
         "age": 23,
         "gender": "male",
-        "height": "5'11",
+        "height": "5'11\"",
         "year": "Senior",
-        "interestsCount": 4,
-        "activitiesCount": 3,
-        "photosCount": 4
+        "city": "Stanford",
+        "sexuality": "straight",
+        "interests": ["Engineering", "Basketball", "Music", "Travel"],
+        "dateActivities": ["Basketball Game", "Concert", "Road Trip", "Study Session"],
+        "photos": [
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/michael1.jpg",
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/michael2.jpg"
+        ],
+        "liaison": "u2",
+        "friends": ["u2", "u6"],
+        "updatedAt": "2025-05-08T18:48:30.452Z"
       },
-      "location": "Stanford",
-      "height": "5'11",
-      "year": "Senior",
-      "interests": ["Engineering", "Basketball", "Music", "Travel"],
-      "dateActivities": [
-        "Basketball Game",
-        "Concert",
-        "Road Trip",
-        "Study Session"
+      "friends": [
+        {
+          "id": "friend_0",
+          "name": "Alex",
+          "avatar": null,
+          "interests": ["Computer Science", "Gaming", "Hiking", "Photography"],
+          "dateActivities": ["Coffee at Coupa", "Hiking at Dish", "Study at Green Library"]
+        },
+        {
+          "id": "friend_1",
+          "name": "David",
+          "avatar": null,
+          "interests": ["Physics", "Soccer", "Chess", "Photography"],
+          "dateActivities": ["Soccer Game", "Chess Club", "Photo Walk", "Study Group"]
+        }
       ],
-      "photos": ["michael1.jpg", "michael2.jpg"],
-      "bio": "Engineering student who loves sports and music",
-      "sexuality": "straight",
-      "lookingFor": "women",
-      "UserType": "both",
-      "friends": ["u2", "u6"],
-      "matches": {
-        "u1": { "approvalRate": 0, "matchBack": 0 },
-        "u3": { "approvalRate": 0, "matchBack": 0 },
-        "u5": { "approvalRate": 0, "matchBack": 0 }
-      }
+      "matches": [
+        { "id": "u1", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u3", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u5", "approvalRate": 0, "matchBack": 0 }
+      ],
+      "swipingPool": {}
     },
     {
-      "id": "u5",
+      "id": "user_1746724905005_e1jkl7k",
       "name": "Emma",
-      "profileDataExists": true,
+      "createdAt": "2025-05-08T17:18:12.224Z",
+      "updatedAt": "2025-05-08T18:55:10.464Z",
+      "phoneNumber": "+17206336715",
+      "userType": "Dater & Match Maker",
+      "isStanfordVerified": true,
+      "stanfordEmail": "emma@stanford.edu",
       "profileData": {
         "age": 22,
         "gender": "female",
-        "height": "5'6",
+        "height": "5'6\"",
         "year": "Junior",
-        "interestsCount": 5,
-        "activitiesCount": 4,
-        "photosCount": 3
+        "city": "Stanford",
+        "sexuality": "straight",
+        "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
+        "dateActivities": ["Swimming Pool", "Art Studio", "Volunteer Event", "Dog Park"],
+        "photos": [
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/emma1.jpg",
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/emma2.jpg"
+        ],
+        "liaison": "u7",
+        "friends": ["u1", "u3", "u7"],
+        "updatedAt": "2025-05-08T18:55:10.452Z"
       },
-      "location": "Mountain View",
-      "height": "5'6",
-      "year": "Junior",
-      "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
-      "dateActivities": [
-        "Swimming Pool",
-        "Art Studio",
-        "Volunteer Event",
-        "Dog Park"
+      "friends": [
+        {
+          "id": "friend_0",
+          "name": "Madison",
+          "avatar": null,
+          "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
+          "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"]
+        },
+        {
+          "id": "friend_1",
+          "name": "Sarah",
+          "avatar": null,
+          "interests": ["Art", "Dance", "Yoga", "Reading", "Cooking"],
+          "dateActivities": ["Art Museum", "Dance Class", "Cooking Together", "Book Club"]
+        },
+        {
+          "id": "friend_2",
+          "name": "Sophie",
+          "avatar": null,
+          "interests": ["Psychology", "Dance", "Reading", "Cooking", "Yoga"],
+          "dateActivities": ["Dance Class", "Book Club", "Cooking Together", "Yoga Session"]
+        }
       ],
-      "photos": ["emma1.jpg", "emma2.jpg"],
-      "bio": "Biology major who loves swimming and painting",
-      "sexuality": "straight",
-      "lookingFor": "men",
-      "UserType": "both",
-      "friends": ["u1", "u3", "u7"],
-      "matches": {
-        "u2": { "approvalRate": 0, "matchBack": 0 },
-        "u4": { "approvalRate": 0, "matchBack": 0 },
-        "u6": { "approvalRate": 0, "matchBack": 0 }
-      }
+      "matches": [
+        { "id": "u2", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u4", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u6", "approvalRate": 0, "matchBack": 0 }
+      ],
+      "swipingPool": {}
     },
     {
-      "id": "u6",
+      "id": "user_1746724905006_f2lmn8l",
       "name": "David",
-      "profileDataExists": true,
+      "createdAt": "2025-05-08T17:25:50.224Z",
+      "updatedAt": "2025-05-08T18:40:20.464Z",
+      "phoneNumber": "+17206336716",
+      "userType": "Dater & Match Maker",
+      "isStanfordVerified": true,
+      "stanfordEmail": "david@stanford.edu",
       "profileData": {
         "age": 21,
         "gender": "male",
-        "height": "6'2",
+        "height": "6'2\"",
         "year": "Sophomore",
-        "interestsCount": 4,
-        "activitiesCount": 3,
-        "photosCount": 4
+        "city": "Stanford",
+        "sexuality": "straight",
+        "interests": ["Physics", "Soccer", "Chess", "Photography"],
+        "dateActivities": ["Soccer Game", "Chess Club", "Photo Walk", "Study Group"],
+        "photos": [
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/david1.jpg",
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/david2.jpg"
+        ],
+        "liaison": "u4",
+        "friends": ["u2", "u4"],
+        "updatedAt": "2025-05-08T18:40:20.452Z"
       },
-      "location": "San Jose",
-      "height": "6'2",
-      "year": "Sophomore",
-      "interests": ["Physics", "Soccer", "Chess", "Photography"],
-      "dateActivities": [
-        "Soccer Game",
-        "Chess Club",
-        "Photo Walk",
-        "Study Group"
+      "friends": [
+        {
+          "id": "friend_0",
+          "name": "Alex",
+          "avatar": null,
+          "interests": ["Computer Science", "Gaming", "Hiking", "Photography"],
+          "dateActivities": ["Coffee at Coupa", "Hiking at Dish", "Study at Green Library"]
+        },
+        {
+          "id": "friend_1",
+          "name": "Michael",
+          "avatar": null,
+          "interests": ["Engineering", "Basketball", "Music", "Travel"],
+          "dateActivities": ["Basketball Game", "Concert", "Road Trip", "Study Session"]
+        }
       ],
-      "photos": ["david1.jpg", "david2.jpg"],
-      "bio": "Physics major who loves soccer and chess",
-      "sexuality": "straight",
-      "lookingFor": "women",
-      "UserType": "both",
-      "friends": ["u2", "u4"],
-      "matches": {
-        "u1": { "approvalRate": 0, "matchBack": 0 },
-        "u3": { "approvalRate": 0, "matchBack": 0 },
-        "u5": { "approvalRate": 0, "matchBack": 0 }
-      }
+      "matches": [
+        { "id": "u1", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u3", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u5", "approvalRate": 0, "matchBack": 0 }
+      ],
+      "swipingPool": {}
     },
     {
-      "id": "u7",
+      "id": "user_1746724905007_g3nop9m",
       "name": "Sophie",
-      "profileDataExists": true,
+      "createdAt": "2025-05-08T17:30:45.224Z",
+      "updatedAt": "2025-05-08T18:53:15.464Z",
+      "phoneNumber": "+17206336717",
+      "userType": "Dater & Match Maker",
+      "isStanfordVerified": true,
+      "stanfordEmail": "sophie@stanford.edu",
       "profileData": {
         "age": 20,
         "gender": "female",
-        "height": "5'4",
+        "height": "5'4\"",
         "year": "Freshman",
-        "interestsCount": 5,
-        "activitiesCount": 4,
-        "photosCount": 3
+        "city": "Stanford",
+        "sexuality": "straight",
+        "interests": ["Psychology", "Dance", "Reading", "Cooking", "Yoga"],
+        "dateActivities": ["Dance Class", "Book Club", "Cooking Together", "Yoga Session"],
+        "photos": [
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/sophie1.jpg",
+          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/sophie2.jpg"
+        ],
+        "liaison": "u5",
+        "friends": ["u1", "u5"],
+        "updatedAt": "2025-05-08T18:53:15.452Z"
       },
-      "location": "Stanford",
-      "height": "5'4",
-      "year": "Freshman",
-      "interests": ["Psychology", "Dance", "Reading", "Cooking", "Yoga"],
-      "dateActivities": [
-        "Dance Class",
-        "Book Club",
-        "Cooking Together",
-        "Yoga Session"
+      "friends": [
+        {
+          "id": "friend_0",
+          "name": "Madison",
+          "avatar": null,
+          "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
+          "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"]
+        },
+        {
+          "id": "friend_1",
+          "name": "Emma",
+          "avatar": null,
+          "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
+          "dateActivities": ["Swimming Pool", "Art Studio", "Volunteer Event", "Dog Park"]
+        }
       ],
-      "photos": ["sophie1.jpg", "sophie2.jpg"],
-      "bio": "Psychology major who loves dance and yoga",
-      "sexuality": "straight",
-      "lookingFor": "men",
-      "UserType": "both",
-      "friends": ["u1", "u5"],
-      "matches": {
-        "u2": { "approvalRate": 0, "matchBack": 0 },
-        "u4": { "approvalRate": 0, "matchBack": 0 },
-        "u6": { "approvalRate": 0, "matchBack": 0 }
-      }
+      "matches": [
+        { "id": "u2", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u4", "approvalRate": 0, "matchBack": 0 },
+        { "id": "u6", "approvalRate": 0, "matchBack": 0 }
+      ],
+      "swipingPool": {}
     }
   ]
 }

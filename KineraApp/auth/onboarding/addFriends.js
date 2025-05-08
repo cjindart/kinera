@@ -55,12 +55,21 @@ export default function AddFriendsScreen({ navigation }) {
     );
 
     try {
+      // Prepare the structured friend objects with all required data
+      const structuredFriends = friends.map((friend, index) => ({
+        id: `friend_${index}`,
+        name: friend.name,
+        avatar: null,
+        interests: friend.profileData?.interests || friend.interests || [],
+        dateActivities: friend.profileData?.dateActivities || friend.dateActivities || []
+      }));
+
       // Use updateProfile instead of directly manipulating AsyncStorage
       const result = await updateProfile({
-        friends: friends.map((friend) => friend.id),
+        friends: structuredFriends,
         profileData: {
           // Add friends data to profileData object to ensure it's saved in Firestore
-          friends: friends.map((friend) => friend.id),
+          friends: structuredFriends,
         },
         // Create matches data structure
         matches: friends.reduce((acc, friend) => {
