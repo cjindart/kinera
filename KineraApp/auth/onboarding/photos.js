@@ -128,10 +128,10 @@ export default function PhotosScreen({ navigation, route }) {
       });
 
       // Navigate to next screen
-      navigation.navigate("userType", {
-        ...route.params,
-        photos: validPhotos,
-      });
+      // navigation.navigate("userType", {
+      //   ...route.params,
+      //   photos: validPhotos,
+      // });
     } catch (error) {
       console.error("Error saving photos to AsyncStorage:", error);
     }

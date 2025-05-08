@@ -20,7 +20,7 @@ export default function AddFriendsScreen({ navigation }) {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [friends, setFriends] = useState([]);
-  const { updateProfile, user } = useAuth();
+  const { updateProfile, user, setUser } = useAuth();
 
   const handleSearch = (text) => {
     setSearch(text);

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Step1Screen({ navigation }) {
   const [phone, setPhone] = useState("");
@@ -50,6 +51,7 @@ export default function Step1Screen({ navigation }) {
       await AsyncStorage.mergeItem("user", JSON.stringify(userData));
       //send to backend
       console.log(userData);
+      navigation.navigate("photos", userData);
     } catch (error) {
       console.error("Error saving user data:", error);
       Alert.alert("Error", "There was a problem saving your information.");
