@@ -9,41 +9,55 @@ import { isDev } from './devCheck';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  // TODO: Replace with your actual Firebase config from the Firebase Console:
-  // 1. Go to https://console.firebase.google.com/
-  // 2. Select your project (or create a new one)
-  // 3. Click the gear icon next to "Project Overview" and select "Project settings"
-  // 4. Scroll down to "Your apps" section and select your web app (or create one)
-  // 5. Copy the firebaseConfig object values and replace these placeholders
+// Load configuration from environment variables or constants
+// In a real app with Expo, you would typically use Constants.manifest.extra
+// populated via app.config.js that pulls from .env files
+const getFirebaseConfig = () => {
+  // Check for Expo variables first
+  const expoConstants = Constants.expoConfig?.extra || {};
   
-  // IMPORTANT: Replace the placeholders below with your actual Firebase configuration
-  // Example:
-  // apiKey: "AIzaSyBvX-XyZ123456789abcdefghijk",
-  // authDomain: "kinera-app.firebaseapp.com",
-  // projectId: "kinera-app",
-  // ...etc
+  // Configuration sources in order of precedence:
+  // 1. Expo Constants (populated from app.config.js)
+  // 2. Environment variables
+  // 3. Fallback to a development configuration
   
-  apiKey: "AIzaSyAxuR1sWinugIoS5XGwYGqbZb21wX14j9I",
-  authDomain: "vouch-e7830.firebaseapp.com",
-  projectId: "vouch-e7830",
-  storageBucket: "vouch-e7830.firebasestorage.app",
-  messagingSenderId: "812279492746",
-  appId: "1:812279492746:web:2db7e5ff4747c1ee2c3d73",
-  measurementId: "G-N8511L2EKX"
+  return {
+    apiKey: expoConstants.firebaseApiKey || process.env.FIREBASE_API_KEY,
+    authDomain: expoConstants.firebaseAuthDomain || process.env.FIREBASE_AUTH_DOMAIN,
+    projectId: expoConstants.firebaseProjectId || process.env.FIREBASE_PROJECT_ID,
+    storageBucket: expoConstants.firebaseStorageBucket || process.env.FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: expoConstants.firebaseMessagingSenderId || process.env.FIREBASE_MESSAGING_SENDER_ID,
+    appId: expoConstants.firebaseAppId || process.env.FIREBASE_APP_ID,
+    measurementId: expoConstants.firebaseMeasurementId || process.env.FIREBASE_MEASUREMENT_ID
+  };
 };
+
+// Get the Firebase configuration
+const firebaseConfig = getFirebaseConfig();
+
+/**
+ * IMPORTANT: If you're checking out this code from a public repository,
+ * you should replace the Firebase config values with your own values.
+ * 
+ * For security in production:
+ * 1. Create a .env file at the root of the KineraApp directory
+ * 2. Add your Firebase configuration values (see .env.example)
+ * 3. Use app.config.js to load these values into Expo constants
+ */
 
 /**
  * Determines if the app is running in development mode
  * @returns {boolean} True if in development mode
  */
 export const isDevelopmentMode = () => {
+  // Check environment variable first
+  const envDevMode = process.env.FORCE_DEVELOPMENT_MODE === 'true';
+  const expoDevMode = Constants.expoConfig?.extra?.forceDevelopmentMode === true;
+  
   // *** TOGGLE THIS VALUE TO SWITCH BETWEEN DEV AND PROD MODE ***
   // Set to true for development mode (simulated authentication)
   // Set to false for production mode (real Firebase authentication)
-  const FORCE_DEVELOPMENT_MODE = true;  // <-- SET TO TRUE FOR DEVELOPMENT TESTING
+  const FORCE_DEVELOPMENT_MODE = expoDevMode || envDevMode || true;  // <-- SET TO TRUE FOR DEVELOPMENT TESTING
   
   // If forced by developer, override automatic detection
   if (typeof FORCE_DEVELOPMENT_MODE === 'boolean') {
@@ -120,9 +134,14 @@ if (!isDevelopmentMode() && !isExpoGo) {
     if (Platform.OS === 'web') {
       console.log('Initializing Firebase App Check');
       
+      // Get reCAPTCHA key from environment variables or config
+      const recaptchaKey = Constants.expoConfig?.extra?.firebaseRecaptchaKey || 
+                           process.env.FIREBASE_RECAPTCHA_KEY || 
+                           '';
+      
       // Replace with your reCAPTCHA site key
       const appCheck = initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider('6LdC-8AmAAAAAFY9ELk4-KqaTBfnJLwOuXbPPa9A'),
+        provider: new ReCaptchaV3Provider(recaptchaKey),
         isTokenAutoRefreshEnabled: true
       });
       
