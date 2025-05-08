@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { usePhoneAuth, RecaptchaVerifier } from '../utils/phoneAuthHelper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,12 +37,28 @@ const COLORS = {
 };
 
 export default function LoginScreen({ navigation }) {
-  const { sendVerificationCode, verifyCode } = useAuth();
+  // Use the full auth context
+  const auth = useAuth();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState('initial'); // 'initial', 'signup', 'login'
+  
+  // Use the phoneAuth hook for Firebase Phone Authentication
+  const { 
+    recaptchaVerifier, 
+    loading, 
+    error, 
+    sendVerificationCode, 
+    confirmVerificationCode 
+  } = usePhoneAuth();
+
+  // Display any errors from phone authentication
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error);
+    }
+  }, [error]);
 
   const formatPhoneNumber = (text) => {
     // Remove non-numeric characters
@@ -66,16 +84,19 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    setLoading(true);
     try {
+      // Format the phone number for Firebase (E.164 format)
+      const formattedPhone = `+1${phoneNumber.replace(/\D/g, '')}`;
+      
       // Send verification code
-      await sendVerificationCode(phoneNumber);
-      setIsVerifying(true);
+      const success = await sendVerificationCode(formattedPhone);
+      
+      if (success) {
+        setIsVerifying(true);
+      }
     } catch (error) {
       console.error("Error sending verification code:", error);
       Alert.alert("Error", "Failed to send verification code. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -85,33 +106,54 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    setLoading(true);
     try {
       // Verify the code
-      const result = await verifyCode(verificationCode);
+      const result = await confirmVerificationCode(verificationCode);
       
       if (result.success) {
-        // Based on response, direct to registration or home
-        if (result.isNewUser) {
-          // New user, go to registration
-          console.log("New user - navigating to Registration");
-          navigation.navigate("Registration");
-        } else {
-          // Existing user, go to main app
-          console.log("Existing user - navigating to Main");
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "Main" }],
-          });
+        console.log("LoginScreen: Verification successful, result:", result);
+        
+        // IMPORTANT: Force isNewUser to true regardless of Firebase result
+        // This ensures all users go through onboarding
+        const forceOnboarding = true;
+        
+        // Store the isNewUser flag in AsyncStorage, forcing it to true
+        await AsyncStorage.setItem('isNewUser', 'true');
+        
+        // Use register method from AuthContext to properly set up the user
+        // This ensures the user is stored in the AuthContext state
+        if (auth.register) {
+          try {
+            // Register the user in the auth context, always set isNewUser to true
+            const registerSuccess = await auth.register({
+              id: result.user.uid,
+              phoneNumber: result.phoneNumber,
+              isNewUser: true, // Force isNewUser to true
+              isAuthenticated: true
+            });
+            
+            console.log("User registered in AuthContext:", registerSuccess);
+          } catch (registerError) {
+            console.error("Error registering user in AuthContext:", registerError);
+            // Continue anyway, as we already have successful Firebase auth
+          }
         }
+        
+        // ALWAYS go to registration/onboarding flow regardless of Firebase isNewUser status
+        console.log("Forcing navigation to Registration for onboarding flow");
+        navigation.reset({
+          index: 0,
+          routes: [{ 
+            name: "Registration",
+            params: { forceOnboarding: true }
+          }]
+        });
       } else {
         Alert.alert("Invalid Code", "The verification code you entered is invalid. Please try again.");
       }
     } catch (error) {
       console.error("Error verifying code:", error);
       Alert.alert("Error", "Failed to verify code. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -223,6 +265,9 @@ export default function LoginScreen({ navigation }) {
   return (
     <ImageBackground source={SUNSET_BG} style={styles.backgroundImage}>
       <SafeAreaView style={styles.container}>
+        {/* Invisible reCAPTCHA component needed for Firebase Phone Auth */}
+        <RecaptchaVerifier recaptchaVerifier={recaptchaVerifier} />
+        
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}

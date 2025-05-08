@@ -55,25 +55,23 @@ export default function AddFriendsScreen({ navigation }) {
     );
 
     try {
-      // Get existing user data first
-      const existingUserData = await AsyncStorage.getItem("userData");
-      let userData = existingUserData ? JSON.parse(existingUserData) : {};
-
-      // Add/update fields
-      userData = {
-        ...userData,
+      // Use updateProfile instead of directly manipulating AsyncStorage
+      const result = await updateProfile({
         friends: friends.map((friend) => friend.id),
+        profileData: {
+          // Add friends data to profileData object to ensure it's saved in Firestore
+          friends: friends.map((friend) => friend.id),
+        },
+        // Create matches data structure
         matches: friends.reduce((acc, friend) => {
           acc[friend.id] = { approvalRate: 0, matchBack: 0 };
           return acc;
-        }, {}),
-      };
+        }, {})
+      });
 
-      // Save the updated user data
-      await AsyncStorage.setItem("userData", JSON.stringify(userData));
-
-      // Update the user context
-      setUser(userData);
+      if (!result) {
+        throw new Error("Failed to update profile");
+      }
 
       // Navigate to Main
       navigation.reset({

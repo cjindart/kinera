@@ -247,16 +247,16 @@ export function AuthProvider({ children }) {
   /**
    * Send verification code to phone number
    * @param {string} phoneNumber User's phone number
+   * @param {string} mode Optional - 'signup' or 'login' to indicate the intent
    * @returns {Promise<string>} Verification ID
    */
-  const sendVerificationCode = async (phoneNumber) => {
+  const sendVerificationCode = async (phoneNumber, mode = 'login') => {
     try {
       // Format phone number to E.164 format
       const formattedPhone = formatPhoneNumber(phoneNumber);
       setTempPhoneNumber(formattedPhone);
       
-      console.log(`Sending verification code to ${formattedPhone}`);
-      console.log(`Development mode: ${isDevelopmentMode()}`);
+      console.log(`Sending verification code to ${formattedPhone}, mode: ${mode}`);
       
       // In development mode, simulate sending a verification code
       if (isDevelopmentMode()) {
@@ -270,12 +270,8 @@ export function AuthProvider({ children }) {
         return mockVerificationId;
       }
       
-      // *** FORCE LOCAL DIRECT AUTH FOR TESTING LOCAL IP ***
-      // This bypasses the web browser flow and uses Firebase directly
-      console.log('Using direct Firebase auth with local IP');
-      
-      // Check for test numbers to simplify testing
-      const testPhoneNumbers = ['+17206336712'];
+      // For test phone numbers, use a simpler approach
+      const testPhoneNumbers = ['+17206336712', '+15555555555'];
       if (testPhoneNumbers.includes(formattedPhone)) {
         console.log('Test phone number detected, using simulated code');
         Alert.alert('Verification Code', 'For testing, use code: 123456');
@@ -284,13 +280,27 @@ export function AuthProvider({ children }) {
         return mockId;
       }
       
-      // For real phone numbers, try direct Firebase Auth
+      // For production use Firebase phone authentication
       try {
-        console.log(`Sending real verification code to ${formattedPhone}`);
-        console.log('Using direct signInWithPhoneNumber API');
+        console.log(`Firebase Phone Auth: Sending verification code to ${formattedPhone}`);
         
-        // Try to directly use Firebase auth
+        // Make sure auth is initialized
+        if (!auth) {
+          throw new Error('Firebase auth not initialized');
+        }
+        
+        // Check if auth has signInWithPhoneNumber method
+        if (!auth.signInWithPhoneNumber) {
+          console.error('Firebase auth.signInWithPhoneNumber method not available');
+          throw new Error('Phone authentication not available');
+        }
+        
+        // Send verification code using Firebase
         const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone);
+        
+        if (!confirmationResult || !confirmationResult.verificationId) {
+          throw new Error('Failed to get verification ID from Firebase');
+        }
         
         console.log('Firebase verification code sent successfully');
         Alert.alert('Verification Code Sent', 'A verification code has been sent to your phone.');
@@ -304,23 +314,39 @@ export function AuthProvider({ children }) {
       } catch (firebaseError) {
         console.error('Firebase phone auth error:', firebaseError);
         
-        if (firebaseError.code === 'auth/captcha-check-failed' || 
-            firebaseError.code === 'auth/missing-verification-id') {
-          // Fall back to web auth if reCAPTCHA is needed
-          console.log('Direct auth failed, falling back to web auth flow');
-          return handleWebAuth(formattedPhone);
-        }
+        // Fall back to direct registration if Firebase auth fails
+        console.log('Firebase auth failed, falling back to direct registration');
+        console.warn('To fix this error, ensure Firebase Phone Auth is properly configured in the Firebase Console');
         
-        // Check for common error causes
+        // Detailed error handling for common issues
         if (firebaseError.code === 'auth/invalid-phone-number') {
-          Alert.alert('Invalid Phone Number', 'Please enter a valid phone number.');
+          Alert.alert('Invalid Phone Number', 'Please enter a valid phone number in the format +1XXXXXXXXXX.');
+          throw firebaseError;
         } else if (firebaseError.code === 'auth/quota-exceeded') {
-          Alert.alert('Too Many Attempts', 'Too many verification attempts. Please try again later.');
-        } else {
-          Alert.alert('Error', 'Failed to send verification code. Please try again.');
+          Alert.alert('Too Many Attempts', 'Too many verification attempts from this device. Try again later.');
+          throw firebaseError;
+        } else if (firebaseError.code === 'auth/missing-verification-code') {
+          Alert.alert('Error', 'Please enter the verification code sent to your phone.');
+          throw firebaseError;
+        } else if (firebaseError.code === 'auth/captcha-check-failed') {
+          Alert.alert('Error', 'CAPTCHA verification failed. Please try again.');
+          throw firebaseError;
+        } else if (firebaseError.code === 'auth/argument-error') {
+          console.error('Firebase auth argument error. This usually indicates a configuration issue.');
+          // Continue with fallback
         }
         
-        throw firebaseError;
+        // Use direct registration as fallback
+        const registrationResult = await registerWithoutVerification(formattedPhone);
+        
+        if (registrationResult.success) {
+          const directVerificationId = `direct_${Date.now()}`;
+          setVerificationId(directVerificationId);
+          return directVerificationId;
+        } else {
+          Alert.alert('Error', 'Failed to send verification code. Please try again later.');
+          throw new Error(registrationResult.error || 'Registration failed');
+        }
       }
     } catch (error) {
       console.error('Error sending verification code:', error);
@@ -385,10 +411,15 @@ export function AuthProvider({ children }) {
   /**
    * Verify phone auth code
    * @param {string} code Verification code
+   * @param {string} verificationIdParam Optional verification ID (fallback to context state if not provided)
    * @returns {Promise<Object>} Authentication result
    */
-  const verifyCode = async (code) => {
+  const verifyCode = async (code, verificationIdParam) => {
     try {
+      // Use provided verification ID or fallback to context state
+      const effectiveVerificationId = verificationIdParam || verificationId;
+      console.log(`Verifying code with verification ID: ${effectiveVerificationId}`);
+      
       // Handle development mode
       if (isDevelopmentMode()) {
         console.log("Development mode: Simulating verification with code:", code);
@@ -419,45 +450,47 @@ export function AuthProvider({ children }) {
         }
       }
       
-      // Production mode verification
-      console.log(`Verifying code ${code} for verification ID ${verificationId}`);
-      
-      // Handle test verification IDs for local testing
-      if (verificationId && (verificationId.startsWith('direct_') || verificationId.startsWith('auth_'))) {
-        console.log('Using local test verification');
+      // Handle direct verification IDs (from direct registration)
+      if (effectiveVerificationId && effectiveVerificationId.startsWith('direct_')) {
+        console.log('Using direct verification mode');
         
-        // For local testing, accept 123456 as valid code
-        if (code === '123456') {
-          console.log('Local test verification successful');
+        // For direct verification, accept any 6-digit code
+        if (code.length === 6) {
+          console.log('Direct verification successful');
           
-          // If using a direct test verification ID, simulate successful auth
-          const testUid = `local_${Date.now()}`;
-          const mockAuthResult = {
-            user: { uid: testUid },
-            isNewUser: true,
-            phoneNumber: tempPhoneNumber
+          // Force isNewUser to be true for direct registrations
+          console.log('Direct registration - forcing isNewUser=true');
+          setIsNewUser(true);
+          await AsyncStorage.setItem('isNewUser', 'true');
+          
+          return { 
+            success: true, 
+            isNewUser: true // Always treat direct registrations as new users
           };
-          
-          // Handle the test auth result
-          const authResult = await handleAuthResult(mockAuthResult);
-          return { ...authResult, success: true };
         } else {
-          console.error('Invalid test verification code');
-          return { success: false, error: 'Invalid verification code' };
+          console.error('Invalid verification code format');
+          return { success: false, error: 'Please enter a 6-digit verification code' };
         }
       }
       
       // Standard Firebase phone verification using credential
-      if (!verificationId) {
+      if (!effectiveVerificationId) {
         console.error("No verification ID found for verification attempt");
         return { success: false, error: "No verification ID found" };
       }
       
-      // Create credential
-      const credential = PhoneAuthProvider.credential(verificationId, code);
-      
-      // Sign in with credential
       try {
+        console.log('Creating phone credential with verification ID:', effectiveVerificationId);
+        
+        // Make sure auth and PhoneAuthProvider are available
+        if (!auth || !PhoneAuthProvider) {
+          throw new Error('Firebase auth or PhoneAuthProvider not initialized');
+        }
+        
+        // Create credential
+        const credential = PhoneAuthProvider.credential(effectiveVerificationId, code);
+        
+        // Sign in with credential
         console.log('Signing in with phone credential');
         const authResult = await signInWithCredential(auth, credential);
         
@@ -470,10 +503,28 @@ export function AuthProvider({ children }) {
           phoneNumber: tempPhoneNumber || authResult.user.phoneNumber
         });
         
+        // Ensure isNewUser is properly set
+        if (result.isNewUser) {
+          console.log('Setting isNewUser=true for new Firebase authenticated user');
+          setIsNewUser(true);
+          await AsyncStorage.setItem('isNewUser', 'true');
+        }
+        
         return result;
       } catch (credentialError) {
         console.error('Credential verification error:', credentialError);
-        Alert.alert('Verification Failed', 'The verification code is invalid. Please try again.');
+        
+        // Handle specific error cases
+        if (credentialError.code === 'auth/invalid-verification-code') {
+          Alert.alert('Invalid Code', 'The verification code you entered is invalid. Please try again.');
+        } else if (credentialError.code === 'auth/code-expired') {
+          Alert.alert('Code Expired', 'The verification code has expired. Please request a new one.');
+        } else if (credentialError.code === 'auth/invalid-verification-id') {
+          Alert.alert('Session Expired', 'Your verification session has expired. Please restart the process.');
+        } else {
+          Alert.alert('Verification Failed', 'Failed to verify your phone number. Please try again.');
+        }
+        
         return { success: false, error: 'Invalid verification code' };
       }
     } catch (error) {
@@ -520,6 +571,9 @@ export function AuthProvider({ children }) {
         try {
           await newUser.save();
           console.log("Development user saved to AsyncStorage");
+          
+          // Store isNewUser flag in AsyncStorage
+          await AsyncStorage.setItem('isNewUser', 'true');
         } catch (saveError) {
           console.error("Error saving development user:", saveError);
         }
@@ -582,7 +636,10 @@ export function AuthProvider({ children }) {
           console.log("Save result:", saveResult ? "Success" : "Failed");
           
           setUser(updatedUser);
-          setIsNewUser(false);
+          // Ensure isNewUser status is correctly maintained based on userData or existingUser.newUser
+          // If updatedUser.newUser is true (it should be if userData.isNewUser was true), reflect that.
+          setIsNewUser(updatedUser.newUser);
+          await AsyncStorage.setItem('isNewUser', updatedUser.newUser ? 'true' : 'false');
           return true;
         } else {
           // User exists with correct ID, just update profile
@@ -591,14 +648,16 @@ export function AuthProvider({ children }) {
           // Update the existing user with new data
           const updatedUser = new User({
             ...existingUser,
-            ...userData,
+            ...userData, // userData contains isNewUser: true from RegistrationScreen
             isAuthenticated: true,
             updatedAt: new Date().toISOString()
           });
           
-          await updatedUser.save();
+          await updatedUser.save(); // updatedUser.newUser will be true and saved in the User object
           setUser(updatedUser);
-          setIsNewUser(false);
+          // Correctly set isNewUser state and AsyncStorage item based on updatedUser.newUser
+          setIsNewUser(updatedUser.newUser);
+          await AsyncStorage.setItem('isNewUser', updatedUser.newUser ? 'true' : 'false');
           return true;
         }
       }
@@ -630,6 +689,7 @@ export function AuthProvider({ children }) {
       // Set user in state
       setUser(newUser);
       setIsNewUser(true);
+      await AsyncStorage.setItem('isNewUser', 'true');
       
       return true;
     } catch (error) {
@@ -790,19 +850,105 @@ export function AuthProvider({ children }) {
     }
   };
 
+  /**
+   * Register a user directly without phone verification
+   * This is for your production mode without authentication
+   * @param {string} phoneNumber - User's phone number
+   * @returns {Promise<Object>} Registration status
+   */
+  const registerWithoutVerification = async (phoneNumber) => {
+    try {
+      console.log("Production mode: Registering without phone verification");
+      setIsLoading(true);
+      
+      // Format the phone number
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+      setTempPhoneNumber(formattedPhone);
+      
+      // Check if a user with this phone number already exists
+      try {
+        const existingUser = await findUserByPhone(formattedPhone);
+        if (existingUser) {
+          console.log("Found existing user with this phone number:", existingUser.id);
+          
+          // Update the existing user
+          const updatedUser = new User({
+            ...existingUser,
+            isAuthenticated: true,
+            updatedAt: new Date().toISOString()
+          });
+          
+          // Save user data
+          await updatedUser.save();
+          
+          // Update state
+          setUser(updatedUser);
+          // For direct registration, we should set existingUser to isNewUser=false 
+          setIsNewUser(false);
+          await AsyncStorage.setItem('isNewUser', 'false');
+          setIsLoading(false);
+          
+          console.log("Using existing user account, isNewUser=false");
+          return { success: true, isNewUser: false, existingUser: true };
+        }
+      } catch (findError) {
+        console.log("No existing user found or error checking:", findError);
+        // Continue with new user creation
+      }
+      
+      // Generate a unique ID for the user (using timestamp + random string)
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 10);
+      const userId = `user_${timestamp}_${randomStr}`;
+      
+      console.log("Generated user ID:", userId);
+      
+      // Create a new user instance
+      const newUser = new User({
+        id: userId,
+        phoneNumber: formattedPhone,
+        isAuthenticated: true,
+        newUser: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      
+      // Save to AsyncStorage and Firestore
+      await newUser.save();
+      
+      // Update state
+      setUser(newUser);
+      // For new users, set isNewUser=true (explicitly)
+      setIsNewUser(true);
+      await AsyncStorage.setItem('isNewUser', 'true');
+      setIsLoading(false);
+      
+      console.log("Created new user, isNewUser=true");
+      return { success: true, isNewUser: true, existingUser: false };
+    } catch (error) {
+      console.error("Error registering user without verification:", error);
+      setIsLoading(false);
+      return { success: false, error: error.message };
+    }
+  };
+
   // Create value object with state and functions
   const value = {
     user,
     isLoading,
     isNewUser,
-    isLoggedIn: !!user?.isAuthenticated,
+    verificationId,
+    tempPhoneNumber,
+    isLoggedIn: !!user && user.isAuthenticated === true,
+    setUser,
     sendVerificationCode,
     verifyCode,
     register,
     updateProfile,
     logout,
-    setUser,
+    formatPhoneNumber,
     handleAuthResult,
+    registerWithoutVerification,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

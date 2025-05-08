@@ -50,6 +50,11 @@ const firebaseConfig = getFirebaseConfig();
  * @returns {boolean} True if in development mode
  */
 export const isDevelopmentMode = () => {
+  // FORCE PRODUCTION MODE - return false regardless of other checks
+  console.log('🚀 Running in PRODUCTION (FORCED) mode');
+  return false;
+  
+  /* Original implementation disabled
   // Check environment variable first
   const envDevMode = process.env.FORCE_DEVELOPMENT_MODE === 'true';
   const expoDevMode = Constants.expoConfig?.extra?.forceDevelopmentMode === true;
@@ -57,7 +62,7 @@ export const isDevelopmentMode = () => {
   // *** TOGGLE THIS VALUE TO SWITCH BETWEEN DEV AND PROD MODE ***
   // Set to true for development mode (simulated authentication)
   // Set to false for production mode (real Firebase authentication)
-  const FORCE_DEVELOPMENT_MODE = expoDevMode || envDevMode || true;  // <-- SET TO TRUE FOR DEVELOPMENT TESTING
+  const FORCE_DEVELOPMENT_MODE = expoDevMode || envDevMode || false;  // <-- SET TO FALSE FOR PRODUCTION MODE
   
   // If forced by developer, override automatic detection
   if (typeof FORCE_DEVELOPMENT_MODE === 'boolean') {
@@ -77,6 +82,7 @@ export const isDevelopmentMode = () => {
   }
   
   return inDevMode;
+  */
 };
 
 /**

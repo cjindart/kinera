@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../../context/AuthContext";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import onboarding screens
 import BasicInfoScreen from "./basicInfo";
@@ -16,16 +17,62 @@ import StanfordEmailScreen from "./stanfordEmail";
 
 const OnboardingStack = createNativeStackNavigator();
 
-export default function OnboardingNavigator({ navigation }) {
-  const { user, isNewUser, updateProfile } = useAuth();
+export default function OnboardingNavigator({ navigation, route }) {
+  const { user, isNewUser: contextIsNewUser } = useAuth();
+  const [isNewUser, setIsNewUser] = useState(true);
   
-  // Force new user flag to be set if coming from auth flow
+  // Simpler, more deterministic approach to decide if we should show onboarding
   useEffect(() => {
-    if (!isNewUser) {
-      // This prevents users from accessing onboarding again after completing it
-      navigation.replace("Main");
-    }
-  }, [isNewUser, navigation]);
+    const checkOnboardingStatus = async () => {
+      try {
+        console.log("OnboardingNavigator: Checking if user should see onboarding...");
+        
+        // HIGHEST PRIORITY: Check for explicit params from the navigation
+        if (route?.params?.forceOnboarding) {
+          console.log("OnboardingNavigator: forceOnboarding param received, showing onboarding");
+          setIsNewUser(true);
+          return;
+        }
+        
+        // Next, check AsyncStorage for authoritative isNewUser value
+        const storedValue = await AsyncStorage.getItem('isNewUser');
+        console.log(`OnboardingNavigator: AsyncStorage isNewUser = '${storedValue}'`);
+        
+        if (storedValue === 'true') {
+          // AsyncStorage says user is new, so show onboarding
+          console.log("OnboardingNavigator: AsyncStorage indicates new user, showing onboarding");
+          setIsNewUser(true);
+          return;
+        }
+        
+        // If we don't have explicit storage value, check context
+        if (contextIsNewUser === true) {
+          console.log("OnboardingNavigator: Context indicates new user, showing onboarding");
+          setIsNewUser(true);
+          return;
+        }
+        
+        // Additional safety: If coming from Registration screen, always show onboarding
+        const previousScreen = route?.params?.comingFrom;
+        if (previousScreen === 'Registration') {
+          console.log("OnboardingNavigator: Coming from Registration, forcing onboarding");
+          setIsNewUser(true);
+          return;
+        }
+        
+        // If we get here, user should not see onboarding
+        console.log("OnboardingNavigator: User is not new, redirecting to Main");
+        setIsNewUser(false);
+        navigation.replace("Main");
+      } catch (error) {
+        console.error("OnboardingNavigator: Error checking onboarding status:", error);
+        // Default to showing onboarding on error
+        setIsNewUser(true);
+      }
+    };
+    
+    checkOnboardingStatus();
+  }, [navigation, route, contextIsNewUser]);
 
   return (
     <OnboardingStack.Navigator

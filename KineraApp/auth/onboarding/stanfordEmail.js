@@ -16,6 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import { sendVerificationEmail, verifyEmailCode } from '../../services/emailVerification';
 import Constants from 'expo-constants';
 import { isDevelopmentMode } from '../../utils/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Color scheme
 const COLORS = {

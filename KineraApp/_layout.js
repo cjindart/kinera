@@ -118,7 +118,17 @@ function TabNavigator() {
 }
 
 export default function Layout() {
-  const { isLoggedIn, isLoading } = useAuth();
+  const { user, isLoading, isNewUser } = useAuth();
+  
+  // Determine if user is logged in
+  const isLoggedIn = !!user && user.isAuthenticated === true;
+  
+  console.log("Layout render - Auth state:", { 
+    hasUser: !!user, 
+    isAuthenticated: !!user?.isAuthenticated,
+    isLoading,
+    isNewUser
+  });
 
   // Show loading screen while checking auth status
   if (isLoading) {
@@ -132,7 +142,7 @@ export default function Layout() {
   return (
     <NavigationContainer>
       <RootStack.Navigator
-        initialRouteName={isLoggedIn ? "Main" : "Auth"}
+        initialRouteName={isLoggedIn ? (isNewUser ? "Auth" : "Main") : "Auth"}
         screenOptions={{ headerShown: false }}
       >
         <RootStack.Screen name="Auth" component={AuthNavigator} />

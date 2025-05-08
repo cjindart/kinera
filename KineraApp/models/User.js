@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
-import { db, isDevelopmentMode } from "../utils/firebase";
+import { db, isDevelopmentMode, logFirebaseOperation } from "../utils/firebase";
 import { initializeFirestore } from "../utils/firestoreSetup";
 
 /**
@@ -164,15 +164,13 @@ class User {
           // Save to Firestore
           const userRef = doc(db, "users", this.id);
 
-          // For new users, use set() with merge: true to create the document
+          // Always use setDoc with merge:true which works for both new and existing documents
+          await setDoc(userRef, userData, { merge: true });
+          console.log(this.newUser ? "New user created in Firestore" : "Existing user updated in Firestore");
+          
+          // Clear the newUser flag after saving
           if (this.newUser) {
-            await setDoc(userRef, userData, { merge: true });
-            console.log("New user created in Firestore");
-            delete this.newUser; // Clear the newUser flag after first save
-          } else {
-            // For existing users, update fields that have changed
-            await updateDoc(userRef, userData);
-            console.log("Existing user updated in Firestore");
+            delete this.newUser;
           }
 
           console.log(

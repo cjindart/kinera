@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { USER_TYPES } from '../models/User';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Color scheme
 const COLORS = {
@@ -29,7 +30,7 @@ const COLORS = {
   buttonShadow: "#E98E42",
 };
 
-export default function RegistrationScreen({ navigation }) {
+export default function RegistrationScreen({ navigation, route }) {
   const { register } = useAuth();
   const [name, setName] = useState("");
   const [userType, setUserType] = useState(USER_TYPES.DATER_SWIPER);
@@ -44,15 +45,37 @@ export default function RegistrationScreen({ navigation }) {
 
     setLoading(true);
     try {
+      // Check if we received forceOnboarding from parameters
+      const forceOnboarding = route?.params?.forceOnboarding || false;
+      console.log("Registration with forceOnboarding:", forceOnboarding);
+      
       // Register the new user
       const success = await register({
         name,
-        userType
+        userType,
+        isNewUser: true  // Explicitly set isNewUser flag to true
       });
       
       if (success) {
-        // Navigate to onboarding for new users
-        navigation.navigate("Onboarding");
+        // Store isNewUser in AsyncStorage to persist across app restarts
+        await AsyncStorage.setItem('isNewUser', 'true');
+        
+        console.log("Registration successful, navigating to onboarding flow");
+        
+        // Use reset instead of navigate to clear the stack and force onboarding
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: "Onboarding",
+              params: { 
+                screen: "basicInfo",
+                forceOnboarding: true,  // Always force onboarding
+                comingFrom: 'Registration'  // Add this to help identify the source
+              }
+            }
+          ]
+        });
       } else {
         Alert.alert("Registration Failed", "There was a problem creating your account. Please try again.");
       }

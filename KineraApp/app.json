@@ -34,7 +34,8 @@
         ],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "FirebaseAppDelegateProxyEnabled": true
       },
       "bundleIdentifier": "com.vouch.app",
       "associatedDomains": [
