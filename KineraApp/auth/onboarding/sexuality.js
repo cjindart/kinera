@@ -5,10 +5,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 
 const OPTIONS = [
-  { label: "Girls", value: "girls" },
-  { label: "Guys", value: "guys" },
-  { label: "Both!", value: "both" },
-  { label: "Everyone in between", value: "everyone_in_between" },
+  { label: "Straight", value: "straight" },
+  { label: "Gay", value: "gay" },
+  { label: "Bisexual", value: "bisexual" },
+  { label: "Pansexual", value: "pansexual" },
 ];
 
 export default function SexualityScreen({ navigation, route }) {
@@ -17,19 +17,22 @@ export default function SexualityScreen({ navigation, route }) {
 
   const handleContinue = async () => {
     if (!selected) return;
-    
+
     try {
       console.log("Submitting sexuality:", { sexuality: selected });
-      
+
       // Save sexuality to profileData using the standard format
       await updateProfile({
         profileData: {
-          sexuality: selected
-        }
+          sexuality: selected,
+        },
       });
-      
+
       // Navigate to next screen
-      navigation.navigate("ageAndHeight", { ...route?.params, lookingFor: selected });
+      navigation.navigate("ageAndHeight", {
+        ...route?.params,
+        lookingFor: selected,
+      });
     } catch (error) {
       console.error("Error saving sexuality:", error);
       Alert.alert("Error", "There was a problem saving your selection.");

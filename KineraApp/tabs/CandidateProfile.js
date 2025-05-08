@@ -29,21 +29,21 @@ const COLORS = {
 const { width, height } = Dimensions.get("window");
 
 export default function CandidateProfile({ route, navigation }) {
-  // Get candidate info from route params or use default values
-  const candidateInfo = route.params?.candidateInfo || {
-    name: "Madison",
-    age: "22",
-    gender: "Woman",
-    height: "5'7\"",
-    year: "Sophomore",
-    interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
-  };
+  // Get candidate info from route params
+  const candidateInfo = route.params?.candidateInfo;
+
+  if (!candidateInfo) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.errorText}>No candidate information available</Text>
+      </SafeAreaView>
+    );
+  }
 
   // State for tracking selected interests
-  const [selectedInterests, setSelectedInterests] = useState(["Music"]);
+  const [selectedInterests, setSelectedInterests] = useState([]);
 
-  // Toggle function for interests (for highlighting/selecting)
+  // Toggle function for interests
   const toggleInterest = (interest) => {
     if (selectedInterests.includes(interest)) {
       setSelectedInterests(
@@ -54,8 +54,8 @@ export default function CandidateProfile({ route, navigation }) {
     }
   };
 
-  // Mock images array for demonstration
-  const profileImages = [null, null, null]; // Placeholders for demo images
+  // Get photos from profileData or use placeholder
+  const profileImages = candidateInfo.profileData?.photos || [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -90,16 +90,26 @@ export default function CandidateProfile({ route, navigation }) {
             {/* Main profile picture */}
             <View style={styles.photoCard}>
               <View style={styles.photoFrame}>
-                <Ionicons name="person" size={100} color={COLORS.mutedBlue} />
+                {profileImages[0] ? (
+                  <Image
+                    source={{ uri: profileImages[0] }}
+                    style={styles.photoImage}
+                  />
+                ) : (
+                  <Ionicons name="person" size={100} color={COLORS.mutedBlue} />
+                )}
               </View>
             </View>
 
             {/* Additional photos */}
-            {profileImages.map((image, index) => (
+            {profileImages.slice(1).map((image, index) => (
               <View key={`additional-photo-${index}`} style={styles.photoCard}>
                 <View style={styles.photoFrame}>
-                  <Ionicons name="image" size={60} color={COLORS.mutedBlue} />
-                  <Text style={styles.photoText}>Photo {index + 1}</Text>
+                  {image ? (
+                    <Image source={{ uri: image }} style={styles.photoImage} />
+                  ) : (
+                    <Ionicons name="image" size={60} color={COLORS.mutedBlue} />
+                  )}
                 </View>
               </View>
             ))}
@@ -111,7 +121,7 @@ export default function CandidateProfile({ route, navigation }) {
               key="main-photo-indicator"
               style={[styles.indicatorDot, styles.activeDot]}
             />
-            {profileImages.map((_, index) => (
+            {profileImages.slice(1).map((_, index) => (
               <View
                 key={`photo-indicator-${index}`}
                 style={styles.indicatorDot}
@@ -130,7 +140,9 @@ export default function CandidateProfile({ route, navigation }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{candidateInfo.age}</Text>
+            <Text style={styles.summaryText}>
+              {candidateInfo.profileData?.age}
+            </Text>
           </View>
 
           <View style={styles.summaryBlock}>
@@ -141,7 +153,9 @@ export default function CandidateProfile({ route, navigation }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{candidateInfo.gender}</Text>
+            <Text style={styles.summaryText}>
+              {candidateInfo.profileData?.gender}
+            </Text>
           </View>
 
           <View style={styles.summaryBlock}>
@@ -152,7 +166,9 @@ export default function CandidateProfile({ route, navigation }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{candidateInfo.height}</Text>
+            <Text style={styles.summaryText}>
+              {candidateInfo.profileData?.height}cm
+            </Text>
           </View>
 
           <View style={styles.summaryBlock}>
@@ -163,7 +179,9 @@ export default function CandidateProfile({ route, navigation }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{candidateInfo.year}</Text>
+            <Text style={styles.summaryText}>
+              {candidateInfo.profileData?.year}
+            </Text>
           </View>
         </View>
 
@@ -171,7 +189,7 @@ export default function CandidateProfile({ route, navigation }) {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionLabel}>Interests:</Text>
           <View style={styles.tagsContainer}>
-            {candidateInfo.interests.map((interest, index) => (
+            {candidateInfo.profileData?.interests?.map((interest, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
@@ -199,11 +217,13 @@ export default function CandidateProfile({ route, navigation }) {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionLabel}>Favorite date activities:</Text>
           <View style={styles.tagsContainer}>
-            {candidateInfo.dateActivities.map((activity, index) => (
-              <View key={index} style={styles.tagPill}>
-                <Text style={styles.tagText}>{activity}</Text>
-              </View>
-            ))}
+            {candidateInfo.profileData?.dateActivities?.map(
+              (activity, index) => (
+                <View key={index} style={styles.tagPill}>
+                  <Text style={styles.tagText}>{activity}</Text>
+                </View>
+              )
+            )}
           </View>
         </View>
 
@@ -281,10 +301,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginHorizontal: "4%", // Center the frame
   },
-  photoText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: COLORS.mutedBlue,
+  photoImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   photoIndicators: {
     flexDirection: "row",
@@ -371,5 +391,11 @@ const styles = StyleSheet.create({
   // Extra bottom padding
   bottomPadding: {
     height: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: COLORS.primaryNavy,
+    textAlign: "center",
+    marginTop: 20,
   },
 });

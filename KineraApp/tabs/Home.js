@@ -18,17 +18,34 @@ const { width, height } = Dimensions.get("window");
 
 export default function AvailabilityScreen() {
   const navigation = useNavigation();
-  const [currentCandidateIndex, setcurrentCandidateIndex] = useState(0);
-  const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
+  const [currentCandidateIndex, setCurrentCandidateIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [matchmakerFriends, setMatchmakerFriends] = useState([]);
+  const [swipedCandidates, setSwipedCandidates] = useState({});
+
+  // Function to update matchmaker friends list
+  const updateMatchmakerFriends = (user) => {
+    if (user?.friends) {
+      const filteredFriends = mockData.users.filter(
+        (mockUser) =>
+          user.friends.includes(mockUser.id) && mockUser.userType !== "Dater" // Only include non-daters
+      );
+      setMatchmakerFriends(filteredFriends);
+    } else {
+      setMatchmakerFriends([]);
+    }
+  };
 
   useEffect(() => {
     const loadUserData = async () => {
       try {
         const userData = await AsyncStorage.getItem("userData");
         if (userData) {
-          setCurrentUser(JSON.parse(userData));
+          const parsedUser = JSON.parse(userData);
+          setCurrentUser(parsedUser);
+          updateMatchmakerFriends(parsedUser);
         }
       } catch (error) {
         console.error("Error loading user data:", error);
@@ -38,20 +55,32 @@ export default function AvailabilityScreen() {
     };
 
     loadUserData();
-  }, []);
 
-  // Get all users who are either "gettingSetUp" or "both"
-  const availableUsers = mockData.users.filter(
-    (user) => user.setupStatus === "gettingSetUp" || user.setupStatus === "both"
-  );
+    // This listener will trigger whenever you return to the Home screen
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadUserData();
+    });
 
-  // Get current user and friend
-  const currentCandidate = availableUsers[currentCandidateIndex];
-  const currentFriend = currentCandidate?.friends?.[currentFriendIndex]
-    ? mockData.users.find(
-        (user) => user.id === currentCandidate.friends[currentFriendIndex]
+    return unsubscribe;
+  }, [navigation]);
+
+  //console.log("currentUser", currentUser);
+  console.log("matchmakerFriends", matchmakerFriends);
+  // Get current friend from the filtered list
+  const currentFriend = matchmakerFriends[currentFriendIndex];
+
+  // Get candidates from current friend's swiping pool
+  const candidates = currentFriend?.swipingPool
+    ? Object.keys(currentFriend.swipingPool).map((userId) =>
+        mockData.users.find((user) => user.id === userId)
       )
-    : null;
+    : [];
+
+  // Get current candidate
+  const currentCandidate = candidates[currentCandidateIndex];
+  // console.log("Current candidate index:", currentCandidateIndex);
+  // console.log("Total candidates:", candidates.length);
+  // console.log("Current candidate:", currentCandidate);
 
   if (loading) {
     return (
@@ -61,7 +90,7 @@ export default function AvailabilityScreen() {
     );
   }
 
-  if (!currentCandidate || !currentFriend) {
+  if (!currentUser || !currentFriend || !currentCandidate) {
     return (
       <View style={[styles.container, styles.errorContainer]}>
         <Text style={styles.errorText}>No candidates available</Text>
@@ -70,29 +99,70 @@ export default function AvailabilityScreen() {
   }
 
   const handleCardPress = () => {
-    console.log("Card pressed, attempting navigation");
     if (navigation && navigation.navigate) {
       navigation.navigate("CandidateProfile", {
         candidateInfo: currentCandidate,
       });
-    } else {
-      console.error("Navigation is not available:", navigation);
     }
   };
 
   const handlePreviousFriend = () => {
-    if (currentCandidate?.friends) {
+    if (matchmakerFriends.length > 0) {
       setCurrentFriendIndex((prev) =>
-        prev === 0 ? currentCandidate.friends.length - 1 : prev - 1
+        prev === 0 ? matchmakerFriends.length - 1 : prev - 1
       );
+      setCurrentCandidateIndex(0); // Reset candidate index when changing friends
     }
   };
 
   const handleNextFriend = () => {
-    if (currentCandidate?.friends) {
+    if (matchmakerFriends.length > 0) {
       setCurrentFriendIndex((prev) =>
-        prev === currentCandidate.friends.length - 1 ? 0 : prev + 1
+        prev === matchmakerFriends.length - 1 ? 0 : prev + 1
       );
+      setCurrentCandidateIndex(0); // Reset candidate index when changing friends
+    }
+  };
+
+  const handleSwipe = (direction) => {
+    if (candidates.length > 0) {
+      // Mark current candidate as swiped
+      const candidateId = currentCandidate.id;
+      setSwipedCandidates((prev) => ({
+        ...prev,
+        [candidateId]: true,
+      }));
+
+      // Move to next candidate
+      setCurrentCandidateIndex((currentCandidateIndex + 1) % candidates.length);
+    }
+  };
+
+  const handlePreviousCandidate = async () => {
+    // await handleMatchLogic(false); // Handle rejection logic
+    handleSwipe("left"); // Handle swiping logic
+  };
+
+  const handleNextCandidate = async () => {
+    // await handleMatchLogic(true); // Handle approval logic
+    handleSwipe("right"); // Handle swiping logic
+  };
+
+  const handleReverseSwipe = () => {
+    if (candidates.length > 0) {
+      // Find previous swiped candidate
+      let prevIndex = currentCandidateIndex;
+      do {
+        prevIndex = prevIndex === 0 ? candidates.length - 1 : prevIndex - 1;
+      } while (
+        !swipedCandidates[candidates[prevIndex].id] &&
+        prevIndex !== currentCandidateIndex
+      );
+
+      // If we found a swiped candidate, go back to it
+      if (swipedCandidates[candidates[prevIndex].id]) {
+        setCurrentCandidateIndex(prevIndex);
+      }
     }
   };
 
@@ -113,10 +183,18 @@ export default function AvailabilityScreen() {
 
         <View style={styles.friendInfo}>
           <Image
-            source={require("../assets/photos/daniel.png")}
+            source={
+              currentFriend.profileData?.photos?.[0]
+                ? { uri: currentFriend.profileData.photos[0] }
+                : require("../assets/photos/daniel.png")
+            }
             style={styles.temp}
           />
-          <Text color="#325475">{currentFriend.name}</Text>
+          <Text style={styles.friendName}>{currentFriend.name}</Text>
+          <Text style={styles.friendSubtext}>
+            {currentFriend.profileData?.year} •{" "}
+            {currentFriend.profileData?.gender}
+          </Text>
         </View>
 
         <TouchableOpacity onPress={handleNextFriend}>
@@ -125,31 +203,51 @@ export default function AvailabilityScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Candidate Card - Now Tappable */}
+      {/* Candidate Card */}
       <TouchableOpacity
         style={styles.cardContainer}
         onPress={handleCardPress}
         activeOpacity={0.7}
       >
-        <View style={styles.cardContainer}>
+        <View style={styles.card}>
           <Image
-            source={require("../assets/photos/image.png")}
+            source={
+              currentCandidate.profileData?.photos?.[0]
+                ? { uri: currentCandidate.profileData.photos[0] }
+                : require("../assets/photos/image.png")
+            }
             style={styles.cardImage}
           />
         </View>
         <Text style={styles.cardText}>
-          {currentCandidate.name} {"\n"} {currentCandidate.age}
+          {currentCandidate.name} {"\n"}
+          {currentCandidate.profileData?.age} •{" "}
+          {currentCandidate.profileData?.year}
           {"\n"}
-          {currentCandidate.location}
+          {currentCandidate.profileData?.city}
         </Text>
       </TouchableOpacity>
 
-      {/* Approve/Reject Buttons */}
+      {/* Approve/Reject/Reverse Buttons */}
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.rejectButton}>
+        <TouchableOpacity
+          style={styles.rejectButton}
+          onPress={handlePreviousCandidate}
+        >
           <Text style={styles.buttonText}>✕</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.acceptButton}>
+
+        <TouchableOpacity
+          style={styles.reverseButton}
+          onPress={handleReverseSwipe}
+        >
+          <Text style={styles.buttonText}>↺</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.acceptButton}
+          onPress={handleNextCandidate}
+        >
           <Text style={styles.buttonText}>✓</Text>
         </TouchableOpacity>
       </View>
@@ -248,12 +346,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     marginBottom: height * 0.025,
+    alignItems: "center",
   },
   rejectButton: {
     backgroundColor: "#F7C4A5",
     width: width * 0.18,
     height: width * 0.18,
     borderRadius: width * 0.09,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  reverseButton: {
+    backgroundColor: "#A9B9CC",
+    width: width * 0.15,
+    height: width * 0.15,
+    borderRadius: width * 0.075,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -281,5 +388,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#325475",
     textAlign: "center",
+  },
+  friendName: {
+    fontSize: width * 0.04,
+    fontWeight: "bold",
+    color: "#325475",
+    marginTop: 5,
+  },
+  friendSubtext: {
+    fontSize: width * 0.035,
+    color: "#325475",
+    marginTop: 2,
   },
 });
