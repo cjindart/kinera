@@ -1,361 +1,334 @@
 {
   "users": [
     {
-      "id": "user_1746724905001_a7bcd3e",
-      "name": "Madison",
-      "createdAt": "2025-05-08T16:56:22.224Z",
-      "updatedAt": "2025-05-08T18:51:20.464Z",
-      "phoneNumber": "+17206336711",
+      "id": "user1",
+      "name": "Michael Chen",
+      "phoneNumber": "+1234567890",
       "userType": "Dater & Match Maker",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "mchen@stanford.edu",
       "isStanfordVerified": true,
-      "stanfordEmail": "madison@stanford.edu",
       "profileData": {
         "age": 22,
-        "gender": "female",
-        "height": "5'7\"",
-        "year": "Sophomore",
-        "city": "Stanford",
+        "gender": "male",
+        "height": 180,
+        "year": "Senior",
+        "interests": ["Basketball", "Photography", "Cooking"],
+        "dateActivities": ["Coffee", "Hiking", "Museum visits"],
+        "photos": ["https://example.com/michael1.jpg"],
         "sexuality": "straight",
-        "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
-        "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"],
-        "photos": [
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/madison1.jpg",
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/madison2.jpg"
-        ],
-        "liaison": "u4",
-        "friends": ["u3", "u5", "u7"],
-        "updatedAt": "2025-05-08T18:51:20.452Z"
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
       },
-      "friends": [
-        {
-          "id": "friend_0",
-          "name": "Sarah",
-          "avatar": null,
-          "interests": ["Art", "Dance", "Yoga", "Reading", "Cooking"],
-          "dateActivities": ["Art Museum", "Dance Class", "Cooking Together", "Book Club"]
-        },
-        {
-          "id": "friend_1",
-          "name": "Emma",
-          "avatar": null,
-          "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
-          "dateActivities": ["Swimming Pool", "Art Studio", "Volunteer Event", "Dog Park"]
-        },
-        {
-          "id": "friend_2",
-          "name": "Sophie",
-          "avatar": null,
-          "interests": ["Psychology", "Dance", "Reading", "Cooking", "Yoga"],
-          "dateActivities": ["Dance Class", "Book Club", "Cooking Together", "Yoga Session"]
-        }
-      ],
-      "matches": [
-        { "id": "u2", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u4", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u6", "approvalRate": 0, "matchBack": 0 }
-      ],
-      "swipingPool": {}
+      "sexuality": "straight",
+      "friends": ["user2", "user3", "user4", "user5"],
+      "swipingPool": {
+        "user6": { "status": "pending" },
+        "user7": { "status": "pending" },
+        "user8": { "status": "pending" },
+        "user9": { "status": "pending" },
+        "user10": { "status": "pending" }
+      },
+      "matches": []
     },
     {
-      "id": "user_1746724905002_b8def4f",
-      "name": "Alex",
-      "createdAt": "2025-05-08T16:58:15.224Z",
-      "updatedAt": "2025-05-08T18:50:10.464Z",
-      "phoneNumber": "+17206336712",
-      "userType": "Dater & Match Maker",
+      "id": "user2",
+      "name": "David Kim",
+      "phoneNumber": "+1234567891",
+      "userType": "Dater",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "dkim@stanford.edu",
       "isStanfordVerified": true,
-      "stanfordEmail": "alex@stanford.edu",
       "profileData": {
         "age": 21,
         "gender": "male",
-        "height": "6'0\"",
+        "height": 178,
         "year": "Junior",
-        "city": "Stanford",
+        "interests": ["Music", "Rock climbing", "Reading"],
+        "dateActivities": ["Concert", "Rock climbing", "Bookstore"],
+        "photos": ["https://example.com/david1.jpg"],
         "sexuality": "straight",
-        "interests": ["Computer Science", "Gaming", "Hiking", "Photography"],
-        "dateActivities": ["Coffee at Coupa", "Hiking at Dish", "Study at Green Library"],
-        "photos": [
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/alex1.jpg",
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/alex2.jpg"
-        ],
-        "liaison": "u6",
-        "friends": ["u4", "u6"],
-        "updatedAt": "2025-05-08T18:50:10.452Z"
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
       },
-      "friends": [
-        {
-          "id": "friend_0",
-          "name": "Michael",
-          "avatar": null,
-          "interests": ["Engineering", "Basketball", "Music", "Travel"],
-          "dateActivities": ["Basketball Game", "Concert", "Road Trip", "Study Session"]
-        },
-        {
-          "id": "friend_1",
-          "name": "David",
-          "avatar": null,
-          "interests": ["Physics", "Soccer", "Chess", "Photography"],
-          "dateActivities": ["Soccer Game", "Chess Club", "Photo Walk", "Study Group"]
-        }
-      ],
-      "matches": [
-        { "id": "u1", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u3", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u5", "approvalRate": 0, "matchBack": 0 }
-      ],
-      "swipingPool": {}
+      "sexuality": "straight",
+      "friends": ["user1", "user3", "user4", "user5"],
+      "swipingPool": {
+        "user6": { "status": "pending" },
+        "user7": { "status": "pending" },
+        "user8": { "status": "pending" },
+        "user9": { "status": "pending" },
+        "user10": { "status": "pending" }
+      },
+      "matches": []
     },
     {
-      "id": "user_1746724905003_c9fgh5i",
-      "name": "Sarah",
-      "createdAt": "2025-05-08T17:05:22.224Z",
-      "updatedAt": "2025-05-08T18:45:20.464Z",
-      "phoneNumber": "+17206336713",
+      "id": "user3",
+      "name": "James Wilson",
+      "phoneNumber": "+1234567892",
       "userType": "Dater & Match Maker",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "jwilson@stanford.edu",
       "isStanfordVerified": true,
-      "stanfordEmail": "sarah@stanford.edu",
-      "profileData": {
-        "age": 20,
-        "gender": "female",
-        "height": "5'5\"",
-        "year": "Freshman",
-        "city": "Stanford",
-        "sexuality": "straight",
-        "interests": ["Art", "Dance", "Yoga", "Reading", "Cooking"],
-        "dateActivities": ["Art Museum", "Dance Class", "Cooking Together", "Book Club"],
-        "photos": [
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/sarah1.jpg",
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/sarah2.jpg"
-        ],
-        "liaison": "u1",
-        "friends": ["u1", "u5"],
-        "updatedAt": "2025-05-08T18:45:20.452Z"
-      },
-      "friends": [
-        {
-          "id": "friend_0",
-          "name": "Madison",
-          "avatar": null,
-          "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
-          "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"]
-        },
-        {
-          "id": "friend_1",
-          "name": "Emma",
-          "avatar": null,
-          "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
-          "dateActivities": ["Swimming Pool", "Art Studio", "Volunteer Event", "Dog Park"]
-        }
-      ],
-      "matches": [
-        { "id": "u2", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u4", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u6", "approvalRate": 0, "matchBack": 0 }
-      ],
-      "swipingPool": {}
-    },
-    {
-      "id": "user_1746724905004_d0hij6j",
-      "name": "Michael",
-      "createdAt": "2025-05-08T17:12:42.224Z",
-      "updatedAt": "2025-05-08T18:48:30.464Z",
-      "phoneNumber": "+17206336714",
-      "userType": "Dater & Match Maker",
-      "isStanfordVerified": true,
-      "stanfordEmail": "michael@stanford.edu",
       "profileData": {
         "age": 23,
         "gender": "male",
-        "height": "5'11\"",
+        "height": 185,
         "year": "Senior",
-        "city": "Stanford",
+        "interests": ["Soccer", "Coding", "Travel"],
+        "dateActivities": ["Soccer game", "Tech meetup", "Travel planning"],
+        "photos": ["https://example.com/james1.jpg"],
         "sexuality": "straight",
-        "interests": ["Engineering", "Basketball", "Music", "Travel"],
-        "dateActivities": ["Basketball Game", "Concert", "Road Trip", "Study Session"],
-        "photos": [
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/michael1.jpg",
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/michael2.jpg"
-        ],
-        "liaison": "u2",
-        "friends": ["u2", "u6"],
-        "updatedAt": "2025-05-08T18:48:30.452Z"
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
       },
-      "friends": [
-        {
-          "id": "friend_0",
-          "name": "Alex",
-          "avatar": null,
-          "interests": ["Computer Science", "Gaming", "Hiking", "Photography"],
-          "dateActivities": ["Coffee at Coupa", "Hiking at Dish", "Study at Green Library"]
-        },
-        {
-          "id": "friend_1",
-          "name": "David",
-          "avatar": null,
-          "interests": ["Physics", "Soccer", "Chess", "Photography"],
-          "dateActivities": ["Soccer Game", "Chess Club", "Photo Walk", "Study Group"]
-        }
-      ],
-      "matches": [
-        { "id": "u1", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u3", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u5", "approvalRate": 0, "matchBack": 0 }
-      ],
-      "swipingPool": {}
+      "sexuality": "straight",
+      "friends": ["user1", "user2", "user4", "user5"],
+      "swipingPool": {
+        "user6": { "status": "pending" },
+        "user7": { "status": "pending" },
+        "user8": { "status": "pending" },
+        "user9": { "status": "pending" },
+        "user10": { "status": "pending" }
+      },
+      "matches": []
     },
     {
-      "id": "user_1746724905005_e1jkl7k",
-      "name": "Emma",
-      "createdAt": "2025-05-08T17:18:12.224Z",
-      "updatedAt": "2025-05-08T18:55:10.464Z",
-      "phoneNumber": "+17206336715",
-      "userType": "Dater & Match Maker",
+      "id": "user4",
+      "name": "Alex Rodriguez",
+      "phoneNumber": "+1234567893",
+      "userType": "Dater",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "arodriguez@stanford.edu",
       "isStanfordVerified": true,
-      "stanfordEmail": "emma@stanford.edu",
+      "profileData": {
+        "age": 20,
+        "gender": "male",
+        "height": 182,
+        "year": "Sophomore",
+        "interests": ["Dance", "Art", "Fitness"],
+        "dateActivities": ["Dance class", "Art gallery", "Gym"],
+        "photos": ["https://example.com/alex1.jpg"],
+        "sexuality": "straight",
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
+      },
+      "sexuality": "straight",
+      "friends": ["user1", "user2", "user3", "user5"],
+      "swipingPool": {
+        "user6": { "status": "pending" },
+        "user7": { "status": "pending" },
+        "user8": { "status": "pending" },
+        "user9": { "status": "pending" },
+        "user10": { "status": "pending" }
+      },
+      "matches": []
+    },
+    {
+      "id": "user5",
+      "name": "Ryan Patel",
+      "phoneNumber": "+1234567894",
+      "userType": "Dater & Match Maker",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "rpatel@stanford.edu",
+      "isStanfordVerified": true,
+      "profileData": {
+        "age": 22,
+        "gender": "male",
+        "height": 183,
+        "year": "Junior",
+        "interests": ["Tennis", "Chess", "Cooking"],
+        "dateActivities": ["Tennis match", "Chess club", "Cooking class"],
+        "photos": ["https://example.com/ryan1.jpg"],
+        "sexuality": "straight",
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
+      },
+      "sexuality": "straight",
+      "friends": ["user1", "user2", "user3", "user4"],
+      "swipingPool": {
+        "user6": { "status": "pending" },
+        "user7": { "status": "pending" },
+        "user8": { "status": "pending" },
+        "user9": { "status": "pending" },
+        "user10": { "status": "pending" }
+      },
+      "matches": []
+    },
+    {
+      "id": "user6",
+      "name": "Sarah Johnson",
+      "phoneNumber": "+1234567895",
+      "userType": "Dater",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "sjohnson@stanford.edu",
+      "isStanfordVerified": true,
+      "profileData": {
+        "age": 21,
+        "gender": "female",
+        "height": 168,
+        "year": "Junior",
+        "interests": ["Swimming", "Painting", "Yoga"],
+        "dateActivities": ["Swimming", "Art studio", "Yoga class"],
+        "photos": ["https://example.com/sarah1.jpg"],
+        "sexuality": "straight",
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
+      },
+      "sexuality": "straight",
+      "friends": ["user7", "user8", "user9", "user10"],
+      "swipingPool": {
+        "user1": { "status": "pending" },
+        "user2": { "status": "pending" },
+        "user3": { "status": "pending" },
+        "user4": { "status": "pending" },
+        "user5": { "status": "pending" }
+      },
+      "matches": []
+    },
+    {
+      "id": "user7",
+      "name": "Emily Chen",
+      "phoneNumber": "+1234567896",
+      "userType": "Dater & Match Maker",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "echen@stanford.edu",
+      "isStanfordVerified": true,
       "profileData": {
         "age": 22,
         "gender": "female",
-        "height": "5'6\"",
-        "year": "Junior",
-        "city": "Stanford",
+        "height": 165,
+        "year": "Senior",
+        "interests": ["Dance", "Photography", "Reading"],
+        "dateActivities": ["Dance class", "Photo walk", "Book club"],
+        "photos": ["https://example.com/emily1.jpg"],
         "sexuality": "straight",
-        "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
-        "dateActivities": ["Swimming Pool", "Art Studio", "Volunteer Event", "Dog Park"],
-        "photos": [
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/emma1.jpg",
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/emma2.jpg"
-        ],
-        "liaison": "u7",
-        "friends": ["u1", "u3", "u7"],
-        "updatedAt": "2025-05-08T18:55:10.452Z"
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
       },
-      "friends": [
-        {
-          "id": "friend_0",
-          "name": "Madison",
-          "avatar": null,
-          "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
-          "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"]
-        },
-        {
-          "id": "friend_1",
-          "name": "Sarah",
-          "avatar": null,
-          "interests": ["Art", "Dance", "Yoga", "Reading", "Cooking"],
-          "dateActivities": ["Art Museum", "Dance Class", "Cooking Together", "Book Club"]
-        },
-        {
-          "id": "friend_2",
-          "name": "Sophie",
-          "avatar": null,
-          "interests": ["Psychology", "Dance", "Reading", "Cooking", "Yoga"],
-          "dateActivities": ["Dance Class", "Book Club", "Cooking Together", "Yoga Session"]
-        }
-      ],
-      "matches": [
-        { "id": "u2", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u4", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u6", "approvalRate": 0, "matchBack": 0 }
-      ],
-      "swipingPool": {}
+      "sexuality": "straight",
+      "friends": ["user6", "user8", "user9", "user10"],
+      "swipingPool": {
+        "user1": { "status": "pending" },
+        "user2": { "status": "pending" },
+        "user3": { "status": "pending" },
+        "user4": { "status": "pending" },
+        "user5": { "status": "pending" }
+      },
+      "matches": []
     },
     {
-      "id": "user_1746724905006_f2lmn8l",
-      "name": "David",
-      "createdAt": "2025-05-08T17:25:50.224Z",
-      "updatedAt": "2025-05-08T18:40:20.464Z",
-      "phoneNumber": "+17206336716",
-      "userType": "Dater & Match Maker",
+      "id": "user8",
+      "name": "Sophia Martinez",
+      "phoneNumber": "+1234567897",
+      "userType": "Dater",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "smartinez@stanford.edu",
       "isStanfordVerified": true,
-      "stanfordEmail": "david@stanford.edu",
-      "profileData": {
-        "age": 21,
-        "gender": "male",
-        "height": "6'2\"",
-        "year": "Sophomore",
-        "city": "Stanford",
-        "sexuality": "straight",
-        "interests": ["Physics", "Soccer", "Chess", "Photography"],
-        "dateActivities": ["Soccer Game", "Chess Club", "Photo Walk", "Study Group"],
-        "photos": [
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/david1.jpg",
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/david2.jpg"
-        ],
-        "liaison": "u4",
-        "friends": ["u2", "u4"],
-        "updatedAt": "2025-05-08T18:40:20.452Z"
-      },
-      "friends": [
-        {
-          "id": "friend_0",
-          "name": "Alex",
-          "avatar": null,
-          "interests": ["Computer Science", "Gaming", "Hiking", "Photography"],
-          "dateActivities": ["Coffee at Coupa", "Hiking at Dish", "Study at Green Library"]
-        },
-        {
-          "id": "friend_1",
-          "name": "Michael",
-          "avatar": null,
-          "interests": ["Engineering", "Basketball", "Music", "Travel"],
-          "dateActivities": ["Basketball Game", "Concert", "Road Trip", "Study Session"]
-        }
-      ],
-      "matches": [
-        { "id": "u1", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u3", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u5", "approvalRate": 0, "matchBack": 0 }
-      ],
-      "swipingPool": {}
-    },
-    {
-      "id": "user_1746724905007_g3nop9m",
-      "name": "Sophie",
-      "createdAt": "2025-05-08T17:30:45.224Z",
-      "updatedAt": "2025-05-08T18:53:15.464Z",
-      "phoneNumber": "+17206336717",
-      "userType": "Dater & Match Maker",
-      "isStanfordVerified": true,
-      "stanfordEmail": "sophie@stanford.edu",
       "profileData": {
         "age": 20,
         "gender": "female",
-        "height": "5'4\"",
-        "year": "Freshman",
-        "city": "Stanford",
+        "height": 170,
+        "year": "Sophomore",
+        "interests": ["Soccer", "Music", "Cooking"],
+        "dateActivities": ["Soccer game", "Concert", "Cooking class"],
+        "photos": ["https://example.com/sophia1.jpg"],
         "sexuality": "straight",
-        "interests": ["Psychology", "Dance", "Reading", "Cooking", "Yoga"],
-        "dateActivities": ["Dance Class", "Book Club", "Cooking Together", "Yoga Session"],
-        "photos": [
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/sophie1.jpg",
-          "file:///var/mobile/Containers/Data/Application/81661FA7-6969-4A1D-AE81-FD42C4C8CBBB/Library/Caches/ExponentExperienceData/@anonymous/kinera-9739d487-0716-426f-a617-659eb165afe7/ImagePicker/sophie2.jpg"
-        ],
-        "liaison": "u5",
-        "friends": ["u1", "u5"],
-        "updatedAt": "2025-05-08T18:53:15.452Z"
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
       },
-      "friends": [
-        {
-          "id": "friend_0",
-          "name": "Madison",
-          "avatar": null,
-          "interests": ["Politics", "Sports", "Music", "Fizz", "Pets"],
-          "dateActivities": ["Voyager", "Jazz night", "Study date", "RA basement"]
-        },
-        {
-          "id": "friend_1",
-          "name": "Emma",
-          "avatar": null,
-          "interests": ["Biology", "Swimming", "Painting", "Volunteering", "Dogs"],
-          "dateActivities": ["Swimming Pool", "Art Studio", "Volunteer Event", "Dog Park"]
-        }
-      ],
-      "matches": [
-        { "id": "u2", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u4", "approvalRate": 0, "matchBack": 0 },
-        { "id": "u6", "approvalRate": 0, "matchBack": 0 }
-      ],
-      "swipingPool": {}
+      "sexuality": "straight",
+      "friends": ["user6", "user7", "user9", "user10"],
+      "swipingPool": {
+        "user1": { "status": "pending" },
+        "user2": { "status": "pending" },
+        "user3": { "status": "pending" },
+        "user4": { "status": "pending" },
+        "user5": { "status": "pending" }
+      },
+      "matches": []
+    },
+    {
+      "id": "user9",
+      "name": "Olivia Kim",
+      "phoneNumber": "+1234567898",
+      "userType": "Dater & Match Maker",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "okim@stanford.edu",
+      "isStanfordVerified": true,
+      "profileData": {
+        "age": 21,
+        "gender": "female",
+        "height": 167,
+        "year": "Junior",
+        "interests": ["Tennis", "Art", "Travel"],
+        "dateActivities": ["Tennis match", "Art gallery", "Travel planning"],
+        "photos": ["https://example.com/olivia1.jpg"],
+        "sexuality": "straight",
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
+      },
+      "sexuality": "straight",
+      "friends": ["user6", "user7", "user8", "user10"],
+      "swipingPool": {
+        "user1": { "status": "pending" },
+        "user2": { "status": "pending" },
+        "user3": { "status": "pending" },
+        "user4": { "status": "pending" },
+        "user5": { "status": "pending" }
+      },
+      "matches": []
+    },
+    {
+      "id": "user10",
+      "name": "Isabella Wang",
+      "phoneNumber": "+1234567899",
+      "userType": "Dater",
+      "isAuthenticated": true,
+      "updatedAt": "2024-03-20T00:00:00.000Z",
+      "createdAt": "2024-03-20T00:00:00.000Z",
+      "stanfordEmail": "iwang@stanford.edu",
+      "isStanfordVerified": true,
+      "profileData": {
+        "age": 22,
+        "gender": "female",
+        "height": 166,
+        "year": "Senior",
+        "interests": ["Yoga", "Reading", "Photography"],
+        "dateActivities": ["Yoga class", "Book club", "Photo walk"],
+        "photos": ["https://example.com/isabella1.jpg"],
+        "sexuality": "straight",
+        "city": "Stanford",
+        "updatedAt": "2024-03-20T00:00:00.000Z"
+      },
+      "sexuality": "straight",
+      "friends": ["user6", "user7", "user8", "user9"],
+      "swipingPool": {
+        "user1": { "status": "pending" },
+        "user2": { "status": "pending" },
+        "user3": { "status": "pending" },
+        "user4": { "status": "pending" },
+        "user5": { "status": "pending" }
+      },
+      "matches": []
     }
   ]
 }
