@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { db, isDevelopmentMode } from '../utils/firebase';
+import { db, isDevelopmentMode, logFirebaseOperation } from '../utils/firebase';
 import { initializeFirestore } from '../utils/firestoreSetup';
 
 /**
@@ -63,8 +63,13 @@ class User {
     this.updatedAt = userData.updatedAt || new Date().toISOString();
     this.createdAt = userData.createdAt || new Date().toISOString();
     
-    // Profile data - combined from both direct properties and profileData object
+    // Stanford email verification
+    this.stanfordEmail = userData.stanfordEmail || null;
+    this.isStanfordVerified = userData.isStanfordVerified || false;
+    
+    // Profile data - standardize all profile-related fields into profileData object
     this.profileData = {
+      ...userData.profileData,
       age: userData.profileData?.age || userData.age || null,
       gender: userData.profileData?.gender || userData.gender || null,
       height: userData.profileData?.height || userData.height || null,
@@ -72,11 +77,16 @@ class User {
       interests: userData.profileData?.interests || userData.interests || [],
       dateActivities: userData.profileData?.dateActivities || userData.activities || [],
       photos: userData.profileData?.photos || userData.photos || [],
+      sexuality: userData.profileData?.sexuality || userData.sexuality || userData.lookingFor || null,
+      city: userData.profileData?.city || userData.city || null,
       updatedAt: userData.profileData?.updatedAt || new Date().toISOString()
     };
     
     // Handle lookingFor/sexuality field which might be named differently
     this.sexuality = userData.sexuality || userData.lookingFor || null;
+    if (userData.profileData?.sexuality) {
+      this.sexuality = userData.profileData.sexuality;
+    }
     
     // Social connections - friends might be just names or objects
     this.friends = userData.friends || [];
@@ -96,64 +106,68 @@ class User {
 
   /**
    * Save user data to AsyncStorage and Firestore
+   * @returns {Promise<void>}
    */
   async save() {
     try {
+      const startTime = Date.now();
+      
+      // Validate critical fields
+      this._validateFields();
+      
       // First save to AsyncStorage for local persistence (this must always work)
       try {
+        // Save the full user data to AsyncStorage
         await AsyncStorage.setItem("user", JSON.stringify(this));
-        console.log("User data saved to AsyncStorage");
+        console.log("User data saved to AsyncStorage successfully");
       } catch (localError) {
         console.error("Error saving to AsyncStorage:", localError);
         // Don't return here, still try Firestore if needed
       }
       
-      // Save to Firestore if user has an ID and not in development mode
-      if (this.id && !isDevelopmentMode()) {
-        try {
-          console.log("Attempting to save user data to Firestore...");
-          console.log("User ID:", this.id);
-          console.log("User data contains name:", !!this.name);
-          
-          const userRef = doc(db, "users", this.id);
-          
-          // Simplify the data for troubleshooting
-          const simplifiedData = {
-            id: this.id,
-            name: this.name || "Unknown",
-            updatedAt: new Date().toISOString()
-          };
-          
-          await setDoc(userRef, simplifiedData, { merge: true });
-          console.log("Basic user data saved to Firestore successfully");
-          
-          // Now try to save the full user data
-          try {
-            await setDoc(userRef, this.toFirestore(), { merge: true });
-            console.log("Complete user data saved to Firestore");
-          } catch (fullDataError) {
-            console.error("Error saving full data to Firestore:", fullDataError);
-            // Already saved basic data, so consider this a partial success
-          }
-        } catch (firebaseError) {
-          console.error("Error saving to Firestore:", firebaseError);
-          console.log("Firebase error details:", {
-            code: firebaseError.code,
-            message: firebaseError.message,
-            stack: firebaseError.stack
-          });
-          console.log("Continuing with local storage only");
-        }
-      } else if (isDevelopmentMode()) {
-        console.log("Development mode: Skipping Firestore save, using local storage only");
-      } else if (!this.id) {
-        console.warn("Cannot save to Firestore: User ID is missing");
+      // Skip Firestore save in development mode
+      if (isDevelopmentMode()) {
+        console.log("Development mode: Skipping Firestore save, using AsyncStorage only");
+        return true;
       }
       
-      // If we got here, consider the operation successful because at least AsyncStorage should have worked
+      // Save to Firestore if user has an ID
+      if (this.id) {
+        try {
+          console.log("Saving user data to Firestore...");
+          console.log("User ID:", this.id);
+          
+          // Create a clean copy of the user data without circular references
+          const userData = this.toFirestore();
+          
+          // Save to Firestore
+          const userRef = doc(db, "users", this.id);
+          
+          // For new users, use set() with merge: true to create the document
+          if (this.newUser) {
+            await setDoc(userRef, userData, { merge: true });
+            console.log("New user created in Firestore");
+            delete this.newUser; // Clear the newUser flag after first save
+          } else {
+            // For existing users, update fields that have changed
+            await updateDoc(userRef, userData);
+            console.log("Existing user updated in Firestore");
+          }
+          
+          console.log(`User data saved to Firestore successfully (${Date.now() - startTime}ms)`);
+        } catch (firestoreError) {
+          console.error("Error saving to Firestore:", firestoreError);
+          logFirebaseOperation("user.save", `Failed to save user ${this.id}`, firestoreError);
+          // Don't throw, the user data is already saved locally
+        }
+      } else {
+        console.warn("No user ID available, skipping Firestore save");
+      }
+      
       return true;
     } catch (error) {
-      console.error("Unexpected error in save method:", error);
+      console.error("Error in user.save():", error);
+      // We still don't throw here to prevent app crashes, as the data may have been saved locally
       return false;
     }
   }
@@ -168,6 +182,8 @@ class User {
       name: this.name,
       phoneNumber: this.phoneNumber,
       userType: this.userType,
+      stanfordEmail: this.stanfordEmail,
+      isStanfordVerified: this.isStanfordVerified,
       profileData: this.profileData,
       sexuality: this.sexuality,
       friends: this.friends,
@@ -199,17 +215,23 @@ class User {
 
   /**
    * Load user data from AsyncStorage
-   * @returns {User} User instance or null if not found
+   * @returns {Promise<User|null>} User instance or null if not found
    */
   static async load() {
     try {
+      // Try to load the complete user object first
       const userData = await AsyncStorage.getItem("user");
+      
       if (userData) {
-        return new User(JSON.parse(userData));
+        console.log("Found complete user data in AsyncStorage");
+        const parsedUser = JSON.parse(userData);
+        return new User(parsedUser);
       }
+      
+      console.log("No user data found in AsyncStorage");
       return null;
     } catch (error) {
-      console.error("Error loading user data:", error);
+      console.error("Error loading user data from AsyncStorage:", error);
       return null;
     }
   }
@@ -358,6 +380,57 @@ class User {
     } catch (error) {
       console.error("Error logging out user:", error);
       return false;
+    }
+  }
+
+  /**
+   * Validate required fields and fix any inconsistencies
+   * @private
+   */
+  _validateFields() {
+    // Ensure profileData exists
+    if (!this.profileData) {
+      this.profileData = {};
+    }
+    
+    // Ensure timestamps are valid
+    this.updatedAt = new Date().toISOString();
+    this.profileData.updatedAt = new Date().toISOString();
+    
+    // If we have no createdAt, set it
+    if (!this.createdAt) {
+      this.createdAt = new Date().toISOString();
+    }
+    
+    // Move any fields that should be in profileData
+    if (this.age && !this.profileData.age) {
+      this.profileData.age = this.age;
+      delete this.age;
+    }
+    
+    if (this.gender && !this.profileData.gender) {
+      this.profileData.gender = this.gender;
+      delete this.gender;
+    }
+    
+    if (this.height && !this.profileData.height) {
+      this.profileData.height = this.height;
+      delete this.height;
+    }
+    
+    if (this.interests && !this.profileData.interests) {
+      this.profileData.interests = this.interests;
+      delete this.interests;
+    }
+    
+    if (this.activities && !this.profileData.dateActivities) {
+      this.profileData.dateActivities = this.activities;
+      delete this.activities;
+    }
+    
+    if (this.photos && !this.profileData.photos) {
+      this.profileData.photos = this.photos;
+      delete this.photos;
     }
   }
 }

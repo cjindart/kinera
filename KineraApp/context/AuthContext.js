@@ -9,8 +9,15 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db, isDevelopmentMode } from '../utils/firebase';
-import { findUserByPhone } from '../utils/firestoreSetup';
-import { testFirebaseConnection, testUserDataWrite } from '../utils/firebaseDebug';
+import { findUserByPhone, migrateUserData } from '../utils/firestoreSetup';
+import { 
+  testFirebaseConnection, 
+  testUserDataWrite, 
+  checkDuplicateUsers,
+  mergeDuplicateUsers 
+} from '../utils/firebaseDebug';
+import { Alert } from 'react-native';
+import Constants from 'expo-constants';
 
 // Create the context
 const AuthContext = createContext(null);
@@ -130,58 +137,115 @@ export function AuthProvider({ children }) {
       // Store temporary phone number
       setTempPhoneNumber(phoneNumber);
       
-      if (firebaseUser) {
-        // In development mode, still create a user object
-        if (isDevelopmentMode()) {
-          console.log('Development mode: Creating simulated user');
-          setIsNewUser(true);
-          return { success: true, isNewUser: true };
-        }
-        
-        // If user is in Firestore, fetch their data
-        if (!isNew) {
-          const userData = await fetchUserData(firebaseUser.uid);
-          if (userData) {
-            setUser(userData);
-            setIsNewUser(false);
-            
-            return { success: true, isNewUser: false };
-          }
-          
-          // If we couldn't find user in Firestore but Firebase says they exist,
-          // check by phone number
-          const userByPhone = await findUserByPhone(phoneNumber);
-          if (userByPhone) {
-            // User found by phone, update their ID
-            const updatedUser = new User({
-              ...userByPhone,
-              id: firebaseUser.uid,
-              isAuthenticated: true
-            });
-            
-            await updatedUser.save();
-            setUser(updatedUser);
-            setIsNewUser(false);
-            
-            return { success: true, isNewUser: false };
-          }
-        }
-        
-        // If it's a new user or we couldn't find user data
+      // In development mode, we simulate success even without a Firebase user
+      if (isDevelopmentMode()) {
+        console.log('Development mode: Simulating successful authentication');
         setIsNewUser(true);
         return { success: true, isNewUser: true };
       }
       
-      return { success: false };
+      // Return early if no firebase user (failed auth) in production mode
+      if (!firebaseUser) {
+        return { success: false };
+      }
+      
+      const firebaseUid = firebaseUser.uid;
+      console.log("Firebase Auth successful, UID:", firebaseUid);
+      
+      // Check if there are duplicate users with this phone number
+      console.log("Checking for duplicate users with phone number:", phoneNumber);
+      
+      // First, check for duplicates
+      const duplicateCheck = await checkDuplicateUsers(phoneNumber);
+      console.log("Duplicate check results:", JSON.stringify(duplicateCheck));
+      
+      // If we have duplicates, merge them into the Firebase UID account
+      if (duplicateCheck.hasDuplicates) {
+        console.log("Merging duplicate users...");
+        const mergeResult = await mergeDuplicateUsers(phoneNumber, firebaseUid);
+        console.log("Merge result:", JSON.stringify(mergeResult));
+        
+        if (mergeResult.success) {
+          // Use the merged user data
+          const mergedUser = new User({
+            ...mergeResult.mergedUserData,
+            isAuthenticated: true
+          });
+          
+          await mergedUser.save();
+          setUser(mergedUser);
+          setIsNewUser(false);
+          return { success: true, isNewUser: false };
+        }
+      }
+      
+      // Continue with regular flow - first check by Firebase UID
+      const userByUid = await fetchUserData(firebaseUid);
+      if (userByUid) {
+        console.log("User found by Firebase UID");
+        setUser(userByUid);
+        setIsNewUser(false);
+        return { success: true, isNewUser: false };
+      }
+      
+      // If not found by UID, check by phone number
+      const userByPhone = await findUserByPhone(phoneNumber);
+      if (userByPhone) {
+        console.log("User found by phone number, ID:", userByPhone.id);
+        
+        // If we need to migrate from a local ID to Firebase UID
+        if (userByPhone.id !== firebaseUid) {
+          console.log("Migrating user from local ID to Firebase UID");
+          
+          // Try to migrate the data
+          const migrationSuccess = await migrateUserData(userByPhone.id, firebaseUid);
+          
+          if (migrationSuccess) {
+            console.log("Migration successful");
+          } else {
+            console.warn("Migration failed, will create updated user object");
+          }
+          
+          // Create updated user with Firebase UID
+          const updatedUser = new User({
+            ...userByPhone,
+            id: firebaseUid,
+            previousId: userByPhone.id,
+            isAuthenticated: true,
+            updatedAt: new Date().toISOString()
+          });
+          
+          // Save the updated user data
+          await updatedUser.save();
+          setUser(updatedUser);
+          setIsNewUser(false);
+          return { success: true, isNewUser: false };
+        } else {
+          // User already has the correct Firebase UID
+          const existingUser = new User({
+            ...userByPhone,
+            isAuthenticated: true
+          });
+          
+          await existingUser.save();
+          setUser(existingUser);
+          setIsNewUser(false);
+          return { success: true, isNewUser: false };
+        }
+      }
+      
+      // If it's a new user or we couldn't find user data
+      console.log("No existing user found, will create new user");
+      setIsNewUser(true);
+      return { success: true, isNewUser: true };
     } catch (error) {
       console.error('Error handling auth result:', error);
-      return { success: false };
+      return { success: false, error: error.message };
     }
   };
 
   /**
    * Send verification code to phone number
-   * This method is kept for backward compatibility but will be deprecated
    * @param {string} phoneNumber User's phone number
    * @returns {Promise<string>} Verification ID
    */
@@ -191,78 +255,230 @@ export function AuthProvider({ children }) {
       const formattedPhone = formatPhoneNumber(phoneNumber);
       setTempPhoneNumber(formattedPhone);
       
+      console.log(`Sending verification code to ${formattedPhone}`);
+      console.log(`Development mode: ${isDevelopmentMode()}`);
+      
+      // In development mode, simulate sending a verification code
       if (isDevelopmentMode()) {
-        console.log(`Development mode: Simulating verification code sent to ${formattedPhone}`);
-      } else {
-        console.log(`Sending verification code to ${formattedPhone}`);
-        // In a real app, this would use Firebase's recaptcha verification
+        console.log(`Development mode: Simulating verification for ${formattedPhone}`);
+        Alert.alert("Test Mode", "Use verification code: 123456");
+        
+        // Generate a mock verification ID
+        const mockVerificationId = `verify_${Date.now()}`;
+        setVerificationId(mockVerificationId);
+        
+        return mockVerificationId;
       }
       
-      // Generate a mock verification ID
-      const mockVerificationId = `verify_${Date.now()}`;
-      setVerificationId(mockVerificationId);
+      // *** FORCE LOCAL DIRECT AUTH FOR TESTING LOCAL IP ***
+      // This bypasses the web browser flow and uses Firebase directly
+      console.log('Using direct Firebase auth with local IP');
       
-      return mockVerificationId;
+      // Check for test numbers to simplify testing
+      const testPhoneNumbers = ['+17206336712'];
+      if (testPhoneNumbers.includes(formattedPhone)) {
+        console.log('Test phone number detected, using simulated code');
+        Alert.alert('Verification Code', 'For testing, use code: 123456');
+        const mockId = `direct_${Date.now()}`;
+        setVerificationId(mockId);
+        return mockId;
+      }
+      
+      // For real phone numbers, try direct Firebase Auth
+      try {
+        console.log(`Sending real verification code to ${formattedPhone}`);
+        console.log('Using direct signInWithPhoneNumber API');
+        
+        // Try to directly use Firebase auth
+        const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone);
+        
+        console.log('Firebase verification code sent successfully');
+        Alert.alert('Verification Code Sent', 'A verification code has been sent to your phone.');
+        
+        // Store the verification ID
+        const authVerificationId = confirmationResult.verificationId;
+        setVerificationId(authVerificationId);
+        
+        console.log('Verification ID stored:', authVerificationId);
+        return authVerificationId;
+      } catch (firebaseError) {
+        console.error('Firebase phone auth error:', firebaseError);
+        
+        if (firebaseError.code === 'auth/captcha-check-failed' || 
+            firebaseError.code === 'auth/missing-verification-id') {
+          // Fall back to web auth if reCAPTCHA is needed
+          console.log('Direct auth failed, falling back to web auth flow');
+          return handleWebAuth(formattedPhone);
+        }
+        
+        // Check for common error causes
+        if (firebaseError.code === 'auth/invalid-phone-number') {
+          Alert.alert('Invalid Phone Number', 'Please enter a valid phone number.');
+        } else if (firebaseError.code === 'auth/quota-exceeded') {
+          Alert.alert('Too Many Attempts', 'Too many verification attempts. Please try again later.');
+        } else {
+          Alert.alert('Error', 'Failed to send verification code. Please try again.');
+        }
+        
+        throw firebaseError;
+      }
     } catch (error) {
       console.error('Error sending verification code:', error);
       throw error;
     }
   };
+  
+  /**
+   * Helper function to handle web-based authentication
+   * @param {string} phoneNumber Formatted phone number
+   * @returns {Promise<string>} Verification ID
+   */
+  const handleWebAuth = async (phoneNumber) => {
+    try {
+      // Fall back to web browser authentication
+      console.log('Using web browser authentication flow');
+      const { openAuthDomain } = require('../utils/authRedirect');
+      
+      const result = await openAuthDomain('phoneAuth', {
+        phoneNumber: phoneNumber,
+        redirectUri: Constants.linkingUri
+      });
+      
+      if (result.success) {
+        console.log('Phone verification handled through authorized domain');
+        
+        // Generate a verification ID to track this session
+        const authVerificationId = `auth_${Date.now()}`;
+        setVerificationId(authVerificationId);
+        
+        if (result.data && result.data.phoneVerified === 'true') {
+          console.log('Phone verified through web flow');
+          // Handle automatically verified phone
+          
+          // Get the UID from authentication
+          const firebaseUid = result.data.uid;
+          
+          if (firebaseUid) {
+            // Process the authenticated result
+            await handleAuthResult({
+              user: { uid: firebaseUid },
+              isNewUser: false, // We'll check for this in handleAuthResult
+              phoneNumber: phoneNumber
+            });
+          }
+        }
+        
+        return authVerificationId;
+      } else if (result.canceled) {
+        console.log('User canceled phone verification');
+        throw new Error('Phone verification canceled');
+      } else {
+        console.error('Error during phone verification:', result.error);
+        throw new Error(result.error || 'Failed to verify phone');
+      }
+    } catch (error) {
+      console.error('Web auth error:', error);
+      throw error;
+    }
+  };
 
   /**
-   * Verify phone number with code
-   * This method is kept for backward compatibility but will be deprecated
+   * Verify phone auth code
    * @param {string} code Verification code
-   * @returns {Promise<boolean>} Success status
+   * @returns {Promise<Object>} Authentication result
    */
   const verifyCode = async (code) => {
     try {
-      // In a real app, this would verify the code with Firebase
-      // For this implementation, we'll simulate the verification process
-      console.log(`Verifying code ${code} for verification ID ${verificationId}`);
-      
-      // Fast path for development mode
-      if (isDevelopmentMode() && code === '123456') {
-        console.log('Development mode: Skipping Firestore checks and creating new user');
-        setIsNewUser(true);
-        return { success: true, isNewUser: true };
-      }
-      
-      // Simulate verification success (in a real app, this would check the code)
-      if (code === '123456') {
-        try {
-          // Check if user exists
-          const userByPhone = await findUserByPhone(tempPhoneNumber);
-          
-          if (userByPhone) {
-            // User exists - return user data
-            const existingUser = new User({
-              ...userByPhone,
-              isAuthenticated: true
-            });
+      // Handle development mode
+      if (isDevelopmentMode()) {
+        console.log("Development mode: Simulating verification with code:", code);
+        
+        // For development testing, accept any 6-digit code
+        if (code.length === 6) {
+          // Simulate successful verification
+          if (code === "123456") {
+            console.log("Development mode: Test verification successful");
             
-            await existingUser.save();
-            setUser(existingUser);
-            setIsNewUser(false);
+            // Create mock authentication result
+            const mockResult = {
+              user: { uid: `dev_${Date.now()}` },
+              isNewUser: true,
+              phoneNumber: tempPhoneNumber || "+1234567890"
+            };
             
-            return { success: true, isNewUser: false };
+            // Process the mock auth result
+            const authResult = await handleAuthResult(mockResult);
+            return { ...authResult };
           } else {
-            // New user - set flag for registration
-            setIsNewUser(true);
+            console.log("Development mode: Using non-test code");
             return { success: true, isNewUser: true };
           }
-        } catch (error) {
-          console.error('Error checking user in Firestore:', error);
-          // If Firestore fails, still allow user to proceed as new user
-          setIsNewUser(true);
-          return { success: true, isNewUser: true };
+        } else {
+          console.error("Development mode: Invalid code format");
+          return { success: false, error: "Invalid code format" };
         }
       }
       
-      return { success: false };
+      // Production mode verification
+      console.log(`Verifying code ${code} for verification ID ${verificationId}`);
+      
+      // Handle test verification IDs for local testing
+      if (verificationId && (verificationId.startsWith('direct_') || verificationId.startsWith('auth_'))) {
+        console.log('Using local test verification');
+        
+        // For local testing, accept 123456 as valid code
+        if (code === '123456') {
+          console.log('Local test verification successful');
+          
+          // If using a direct test verification ID, simulate successful auth
+          const testUid = `local_${Date.now()}`;
+          const mockAuthResult = {
+            user: { uid: testUid },
+            isNewUser: true,
+            phoneNumber: tempPhoneNumber
+          };
+          
+          // Handle the test auth result
+          const authResult = await handleAuthResult(mockAuthResult);
+          return { ...authResult, success: true };
+        } else {
+          console.error('Invalid test verification code');
+          return { success: false, error: 'Invalid verification code' };
+        }
+      }
+      
+      // Standard Firebase phone verification using credential
+      if (!verificationId) {
+        console.error("No verification ID found for verification attempt");
+        return { success: false, error: "No verification ID found" };
+      }
+      
+      // Create credential
+      const credential = PhoneAuthProvider.credential(verificationId, code);
+      
+      // Sign in with credential
+      try {
+        console.log('Signing in with phone credential');
+        const authResult = await signInWithCredential(auth, credential);
+        
+        console.log("Phone verification successful");
+        
+        // Get user data
+        const result = await handleAuthResult({
+          user: authResult.user,
+          isNewUser: authResult._tokenResponse?.isNewUser,
+          phoneNumber: tempPhoneNumber || authResult.user.phoneNumber
+        });
+        
+        return result;
+      } catch (credentialError) {
+        console.error('Credential verification error:', credentialError);
+        Alert.alert('Verification Failed', 'The verification code is invalid. Please try again.');
+        return { success: false, error: 'Invalid verification code' };
+      }
     } catch (error) {
       console.error('Error verifying code:', error);
-      return { success: false };
+      return { success: false, error: error.message };
     }
   };
 
@@ -275,26 +491,123 @@ export function AuthProvider({ children }) {
     try {
       console.log("Starting registration process...");
       
-      // In a real app, we would use the Firebase user ID
-      // For development mode, generate a user ID
-      const userId = auth.currentUser?.uid || `user_${Date.now()}`;
-      console.log("Using user ID:", userId);
-      
-      // Check Firestore connectivity before trying to write
-      if (!isDevelopmentMode()) {
-        console.log("Testing Firebase connection before registration...");
-        const connectionTest = await testFirebaseConnection();
-        console.log("Firebase connection test results:", connectionTest);
+      // Check if we're in development mode and handle accordingly
+      if (isDevelopmentMode()) {
+        console.log("Development mode: Creating simulated user");
         
-        if (connectionTest.errors.length > 0) {
-          console.warn("Firebase connectivity issues detected, but will attempt registration anyway");
+        // Create a local user ID for development
+        const devUserId = `dev_${Date.now()}`;
+        
+        // Create new user object with local ID
+        const newUser = new User({
+          ...userData,
+          id: devUserId,
+          phoneNumber: tempPhoneNumber || '1234567890',
+          isAuthenticated: true,
+          newUser: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        
+        console.log("Created development user:", {
+          id: newUser.id,
+          name: newUser.name,
+          hasPhoneNumber: !!newUser.phoneNumber,
+          userType: newUser.userType,
+        });
+        
+        // Save locally
+        try {
+          await newUser.save();
+          console.log("Development user saved to AsyncStorage");
+        } catch (saveError) {
+          console.error("Error saving development user:", saveError);
+        }
+        
+        // Set user in state
+        setUser(newUser);
+        setIsNewUser(true);
+        
+        return true;
+      }
+      
+      // PRODUCTION MODE - Use Firebase Auth
+      
+      // ALWAYS use Firebase Auth UID when available
+      if (!auth.currentUser) {
+        console.error("No authenticated user found. Cannot register without Firebase Auth.");
+        return false;
+      }
+      
+      const userId = auth.currentUser.uid;
+      console.log("Using Firebase Auth UID:", userId);
+      
+      // Check if a user with this phone number already exists in Firestore
+      let existingUser = null;
+      try {
+        console.log("Checking for existing user with phone:", tempPhoneNumber);
+        const userByPhone = await findUserByPhone(tempPhoneNumber);
+        
+        if (userByPhone) {
+          console.log("Found existing user with this phone number:", userByPhone.id);
+          existingUser = userByPhone;
+        } else {
+          console.log("No existing user found with this phone number");
+        }
+      } catch (findError) {
+        console.error("Error checking for existing user:", findError);
+        // Continue with registration even if check fails
+      }
+      
+      // Handle existing user
+      if (existingUser) {
+        if (existingUser.id !== userId) {
+          // This is a case where the user exists but with a different ID
+          console.log("User exists with different ID. Will update to use Firebase UID.");
+          
+          // Create updated user with Firebase UID
+          const updatedUser = new User({
+            ...existingUser,
+            id: userId,
+            name: userData.name || existingUser.name,
+            userType: userData.userType || existingUser.userType,
+            previousId: existingUser.id,
+            isAuthenticated: true,
+            updatedAt: new Date().toISOString()
+          });
+          
+          // Save with new ID
+          console.log("Saving updated user with Firebase UID");
+          const saveResult = await updatedUser.save();
+          console.log("Save result:", saveResult ? "Success" : "Failed");
+          
+          setUser(updatedUser);
+          setIsNewUser(false);
+          return true;
+        } else {
+          // User exists with correct ID, just update profile
+          console.log("User exists with correct ID. Updating profile data.");
+          
+          // Update the existing user with new data
+          const updatedUser = new User({
+            ...existingUser,
+            ...userData,
+            isAuthenticated: true,
+            updatedAt: new Date().toISOString()
+          });
+          
+          await updatedUser.save();
+          setUser(updatedUser);
+          setIsNewUser(false);
+          return true;
         }
       }
       
-      // Create new user object
+      // Create new user for Firestore
+      console.log("Creating new user in Firestore");
       const newUser = new User({
         ...userData,
-        id: userId,
+        id: userId, // Always use Firebase UID
         phoneNumber: tempPhoneNumber,
         isAuthenticated: true,
         newUser: true,
@@ -309,31 +622,10 @@ export function AuthProvider({ children }) {
         userType: newUser.userType,
       });
       
-      // Initialize in Firestore if not in development mode
-      let firebaseSuccess = true;
-      if (!isDevelopmentMode()) {
-        try {
-          console.log("Attempting to initialize user in Firestore...");
-          await newUser.initialize();
-          console.log("User initialized in Firestore successfully");
-        } catch (firebaseError) {
-          console.error("Error initializing in Firestore:", firebaseError);
-          firebaseSuccess = false;
-          // Don't return, continue with local storage
-        }
-      } else {
-        console.log('Development mode: Skipping Firestore save for registration');
-      }
-      
-      // Always save locally
-      try {
-        console.log("Saving user to AsyncStorage...");
-        await newUser.save();
-        console.log("User saved to AsyncStorage successfully");
-      } catch (saveError) {
-        console.error("Error saving user locally:", saveError);
-        // Still continue
-      }
+      // Initialize in Firestore
+      console.log("Initializing user in Firestore...");
+      const saveResult = await newUser.save();
+      console.log("Firestore save result:", saveResult ? "Success" : "Failed");
       
       // Set user in state
       setUser(newUser);
@@ -342,21 +634,7 @@ export function AuthProvider({ children }) {
       return true;
     } catch (error) {
       console.error('Error registering user:', error);
-      // Try to save to AsyncStorage anyway as a last resort
-      try {
-        const fallbackUser = new User({
-          ...userData,
-          id: `local_${Date.now()}`,
-          isAuthenticated: true,
-          newUser: true
-        });
-        await AsyncStorage.setItem("user", JSON.stringify(fallbackUser));
-        setUser(fallbackUser);
-        return true; // Return success since we have at least local data
-      } catch (fallbackError) {
-        console.error("Even fallback save failed:", fallbackError);
-        return false;
-      }
+      return false;
     }
   };
 
@@ -368,52 +646,72 @@ export function AuthProvider({ children }) {
   const updateProfile = async (profileData) => {
     try {
       console.log("Starting profile update process...");
-      if (!user) {
-        console.error("Cannot update profile: No user is logged in");
-        return false;
+      
+      let userToUpdate = null;
+      
+      // Get user instance to update (from context or AsyncStorage if needed)
+      if (user) {
+        userToUpdate = new User({ ...user });
+      } else {
+        // Try to load from AsyncStorage if no user in context
+        const loadedUser = await User.load();
+        if (loadedUser) {
+          userToUpdate = loadedUser;
+        } else {
+          console.error("Cannot update profile: No user is logged in");
+          return false;
+        }
       }
       
-      console.log("Updating profile with data:", JSON.stringify({
-        name: profileData.name,
-        hasProfileData: !!profileData.profileData
-      }));
+      console.log("Updating profile for user:", userToUpdate.id || "new user");
       
-      // Update user object
-      user.updateProfile(profileData);
+      // Update basic user fields
+      if (profileData.name) userToUpdate.name = profileData.name;
+      if (profileData.userType) userToUpdate.userType = profileData.userType;
+      if (profileData.stanfordEmail) userToUpdate.stanfordEmail = profileData.stanfordEmail;
+      if (profileData.isStanfordVerified !== undefined) userToUpdate.isStanfordVerified = profileData.isStanfordVerified;
       
-      // Try saving to AsyncStorage first
-      try {
-        console.log("Saving updated user to AsyncStorage...");
-        await AsyncStorage.setItem("user", JSON.stringify(user));
-        console.log("User saved to AsyncStorage successfully");
-      } catch (storageError) {
-        console.error("Error saving to AsyncStorage:", storageError);
-        // Continue with Firestore attempt
+      // Ensure profileData object exists
+      userToUpdate.profileData = userToUpdate.profileData || {};
+      
+      // Update profile data - prioritize structured data
+      if (profileData.profileData) {
+        // Merge with existing profileData
+        userToUpdate.profileData = {
+          ...userToUpdate.profileData,
+          ...profileData.profileData
+        };
+      } else {
+        // Handle individual fields - all profile fields should go into profileData
+        if (profileData.age !== undefined) userToUpdate.profileData.age = profileData.age;
+        if (profileData.gender !== undefined) userToUpdate.profileData.gender = profileData.gender;
+        if (profileData.height !== undefined) userToUpdate.profileData.height = profileData.height;
+        if (profileData.year !== undefined) userToUpdate.profileData.year = profileData.year;
+        if (profileData.interests !== undefined) userToUpdate.profileData.interests = profileData.interests;
+        if (profileData.dateActivities !== undefined) userToUpdate.profileData.dateActivities = profileData.dateActivities;
+        if (profileData.photos !== undefined) userToUpdate.profileData.photos = profileData.photos;
+        if (profileData.activities !== undefined) userToUpdate.profileData.dateActivities = profileData.activities;
       }
       
-      // If in production mode, test writing user data to Firestore
-      if (!isDevelopmentMode()) {
-        console.log("Testing user data write to Firestore...");
-        const writeTest = await testUserDataWrite({
-          id: user.id,
-          name: user.name
-        });
-        console.log("Firestore write test results:", writeTest);
+      // Update timestamps
+      userToUpdate.updatedAt = new Date().toISOString();
+      userToUpdate.profileData.updatedAt = new Date().toISOString();
+      
+      // Set authentication flag if it's a new user
+      if (profileData.isNewUser) {
+        userToUpdate.isAuthenticated = true;
       }
       
-      // Save full user data
-      try {
-        console.log("Saving complete user data...");
-        await user.save();
-        console.log("User data saved successfully");
-      } catch (saveError) {
-        console.error("Error in user.save():", saveError);
-        // We already saved to AsyncStorage, so continue
+      // Save user data (this will handle both AsyncStorage and Firestore)
+      console.log("Saving updated profile...");
+      const saveResult = await userToUpdate.save();
+      
+      if (!saveResult && !isDevelopmentMode()) {
+        console.warn("Failed to save user data to Firestore");
       }
       
-      // Update state with new user object to trigger re-renders
-      console.log("Updating state with new user data");
-      setUser({ ...user });
+      // Update the user in state
+      setUser(userToUpdate);
       
       return true;
     } catch (error) {
@@ -465,6 +763,31 @@ export function AuthProvider({ children }) {
     }
     
     return cleaned;
+  };
+
+  /**
+   * Get the local IP address from app.json configuration
+   * @returns {string|null} Local IP address or null
+   */
+  const getLocalIp = () => {
+    try {
+      // Try to get from Constants.expoConfig.extra.localIp
+      const localIp = Constants.expoConfig?.extra?.localIp;
+      if (localIp) {
+        return localIp;
+      }
+      
+      // Try to extract from hostUri
+      const hostUri = Constants.expoConfig?.extra?.hostUri || Constants.expoConfig?.hostUri;
+      if (hostUri && hostUri.includes('10.27.145.110')) {
+        return '10.27.145.110';
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting local IP:', error);
+      return null;
+    }
   };
 
   // Create value object with state and functions

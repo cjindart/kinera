@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
 
 // Define user types here instead of importing from User.js to avoid circular dependency
 const USER_TYPES = {
@@ -114,6 +114,161 @@ export const saveActivity = async (activityData) => {
   } catch (error) {
     console.error('Error saving activity:', error);
     throw error;
+  }
+};
+
+/**
+ * Migrate user data from one ID to another
+ * This is used when a user has a local ID but gets authenticated with Firebase Auth
+ * @param {string} oldId - The old local ID
+ * @param {string} newId - The new Firebase Auth UID
+ * @returns {Promise<boolean>} Success status
+ */
+export const migrateUserData = async (oldId, newId) => {
+  try {
+    console.log(`Migrating user data from ${oldId} to ${newId}`);
+    
+    // Get the old user data
+    const oldUserRef = doc(db, 'users', oldId);
+    const oldUserDoc = await getDoc(oldUserRef);
+    
+    if (!oldUserDoc.exists()) {
+      console.log(`No user document found with ID ${oldId}`);
+      return false;
+    }
+    
+    const userData = oldUserDoc.data();
+    
+    // Create new document with the same data but new ID
+    const newUserRef = doc(db, 'users', newId);
+    
+    // Update the data with the new ID and metadata
+    const updatedData = {
+      ...userData,
+      id: newId,
+      previousId: oldId,
+      updatedAt: new Date().toISOString(),
+      migratedAt: new Date().toISOString()
+    };
+    
+    // Save to the new location
+    await setDoc(newUserRef, updatedData);
+    
+    // Mark the old document as migrated
+    await setDoc(oldUserRef, {
+      migratedTo: newId,
+      active: false,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    
+    console.log(`Successfully migrated user data from ${oldId} to ${newId}`);
+    return true;
+  } catch (error) {
+    console.error('Error migrating user data:', error);
+    return false;
+  }
+};
+
+/**
+ * Merge all duplicate users with the same phone number into a single user
+ * @param {string} phoneNumber - The phone number to check for duplicates
+ * @param {string} primaryUserId - The user ID to keep (usually the Firebase Auth UID)
+ * @returns {Promise<Object>} Result of the merge operation
+ */
+export const mergeDuplicateUsers = async (phoneNumber, primaryUserId) => {
+  const result = {
+    success: false,
+    mergedCount: 0,
+    errors: [],
+    mergedUserData: null
+  };
+  
+  try {
+    // Find all users with this phone number
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('phoneNumber', '==', phoneNumber));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log(`No users found with phone number ${phoneNumber}`);
+      return result;
+    }
+    
+    // Get all users with this phone number
+    const users = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    if (users.length <= 1) {
+      console.log('No duplicate users found to merge');
+      result.success = true;
+      return result;
+    }
+    
+    console.log(`Found ${users.length} users with phone number ${phoneNumber}`);
+    
+    // Find the primary user (the one with Firebase Auth UID)
+    let primaryUser = users.find(user => user.id === primaryUserId);
+    
+    // If primary user not found, use the newest user
+    if (!primaryUser) {
+      primaryUser = users.sort((a, b) => {
+        return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+      })[0];
+    }
+    
+    console.log(`Using ${primaryUser.id} as primary user`);
+    
+    // Merge data from all users
+    const mergedData = {
+      ...primaryUser,
+      id: primaryUserId,
+      previousIds: users.filter(u => u.id !== primaryUserId).map(u => u.id),
+      updatedAt: new Date().toISOString(),
+      mergedAt: new Date().toISOString()
+    };
+    
+    // Loop through other users and merge their data
+    for (const user of users.filter(u => u.id !== primaryUser.id)) {
+      // Merge profile data if primary user has none
+      if (!primaryUser.profileData?.age && user.profileData?.age) {
+        mergedData.profileData = {
+          ...mergedData.profileData,
+          ...user.profileData
+        };
+      }
+      
+      // Merge friends if not already in the list
+      if (user.friends && user.friends.length > 0) {
+        const existingFriendIds = (mergedData.friends || []).map(f => f.id);
+        const newFriends = user.friends.filter(f => !existingFriendIds.includes(f.id));
+        mergedData.friends = [...(mergedData.friends || []), ...newFriends];
+      }
+      
+      // Mark old document as merged
+      const oldUserRef = doc(db, 'users', user.id);
+      await setDoc(oldUserRef, {
+        active: false,
+        mergedTo: primaryUserId,
+        mergedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      result.mergedCount++;
+    }
+    
+    // Save merged data to primary user
+    const primaryUserRef = doc(db, 'users', primaryUserId);
+    await setDoc(primaryUserRef, mergedData, { merge: true });
+    
+    result.success = true;
+    result.mergedUserData = mergedData;
+    
+    return result;
+  } catch (error) {
+    console.error('Error merging duplicate users:', error);
+    result.errors.push(error.message);
+    return result;
   }
 };
 

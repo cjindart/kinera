@@ -13,6 +13,12 @@
             "match /activities/{activityId}": {
               "allow read": "request.auth != null",
               "allow write": "request.auth != null && (resource == null || resource.data.creatorId == request.auth.uid)"
+            },
+            "match /test_users/{testDocId}": {
+              "allow read, write": "request.auth != null"
+            },
+            "match /debug_tests/{testDocId}": {
+              "allow read, write": "request.auth != null"
             }
           }
         }
@@ -26,6 +32,9 @@
           "match /profiles/{userId}/{allImages=**}": {
             "allow read": "request.auth != null",
             "allow write": "request.auth != null && request.auth.uid == userId"
+          },
+          "match /debug_tests/{testFile=**}": {
+            "allow read, write": "request.auth != null"
           }
         }
       }

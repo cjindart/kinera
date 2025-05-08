@@ -7,44 +7,48 @@ import {
   StyleSheet,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Step1Screen({ navigation }) {
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const { user, updateProfile } = useAuth();
 
   // Load existing user data when component mounts
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const userData = await AsyncStorage.getItem('user');
-        if (userData) {
-          const parsedData = JSON.parse(userData);
-          // Set the phone and name from existing data
-          if (parsedData.phoneNumber) setPhone(parsedData.phoneNumber);
-          if (parsedData.name) setName(parsedData.name);
-        }
-      } catch (error) {
-        console.error("Error loading user data:", error);
-      }
-    };
-    
-    loadUserData();
-  }, []);
+    if (user) {
+      // Set the phone and name from existing data
+      if (user.phoneNumber) setPhone(user.phoneNumber);
+      if (user.name) setName(user.name);
+    }
+  }, [user]);
 
   const handleContinue = async () => {
-    const userData = { phone, name, city };
-    try {
-      await AsyncStorage.mergeItem("user", JSON.stringify(userData));
-      //send to backend
-      console.log(userData);
-    } catch (error) {
-      console.error("Error saving user data to AsyncStorage:", error);
+    if (!city.trim()) {
+      Alert.alert("Missing Information", "Please enter your city");
+      return;
     }
-    navigation.navigate("photos", userData);
+    
+    try {
+      // Update profile with basic information
+      await updateProfile({
+        name: name,
+        phoneNumber: phone,
+        profileData: {
+          city: city
+        }
+      });
+      
+      // Navigate to next screen
+      navigation.navigate("photos", { phone, name, city });
+    } catch (error) {
+      console.error("Error saving user data:", error);
+      Alert.alert("Error", "There was a problem saving your information.");
+    }
   };
 
   return (

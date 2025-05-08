@@ -3,7 +3,16 @@ import { Linking, Platform } from "react-native";
 import Layout from "./_layout";
 import { AuthProvider } from "./context/AuthContext";
 import * as WebBrowser from 'expo-web-browser';
-import { auth } from "./utils/firebase";
+import { auth, isDevelopmentMode } from "./utils/firebase";
+import { setupDeepLinking } from "./utils/authRedirect";
+import Constants from 'expo-constants';
+
+// Import development setup utilities conditionally
+if (__DEV__ || isDevelopmentMode()) {
+  // This will run the development setup code
+  require('./devSetup');
+  console.log('Development setup imported');
+}
 
 export default function App() {
   // Initialize web browser sessions for authentication flows
@@ -11,44 +20,27 @@ export default function App() {
     WebBrowser.maybeCompleteAuthSession();
     
     // Handle deep links for Firebase authentication
-    setupDeepLinking();
+    const cleanupDeepLinking = setupDeepLinking();
+    
+    // Get local IP information
+    const localIp = Constants.expoConfig?.extra?.localIp || '10.27.145.110';
+    
+    // Log environment information
+    if (isDevelopmentMode()) {
+      console.log('🛠️ Running in development mode - Firebase Auth simulated');
+    } else {
+      console.log(`🚀 Running in PRODUCTION mode on local IP (${localIp})`);
+      console.log('Using real Firebase services with direct authentication');
+      console.log('Stanford email verification will be simulated for testing');
+    }
     
     return () => {
-      // Clean up deep link handling if needed
+      // Clean up deep linking
+      if (cleanupDeepLinking) {
+        cleanupDeepLinking();
+      }
     };
   }, []);
-  
-  // Set up deep link handling for Firebase authentication
-  const setupDeepLinking = () => {
-    // Handle initial URL that opened the app
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        console.log("App opened with URL:", url);
-        handleUrl(url);
-      }
-    }).catch(err => console.error('Error getting initial URL', err));
-    
-    // Add event listener for deep links while the app is running
-    const linkingListener = Linking.addEventListener('url', (event) => {
-      console.log("Deep link received:", event.url);
-      handleUrl(event.url);
-    });
-    
-    return () => {
-      // Clean up
-      linkingListener.remove();
-    };
-  };
-  
-  // Handle URL for Firebase authentication
-  const handleUrl = (url) => {
-    if (url && typeof url === 'string') {
-      // Pass URL to Firebase Auth for handling
-      if (Platform.OS === 'ios' && auth && typeof auth.canHandleURL === 'function') {
-        auth.canHandleURL(url);
-      }
-    }
-  };
 
   return (
     <AuthProvider>

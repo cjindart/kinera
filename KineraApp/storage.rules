@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Profile photos rules
+    match /profiles/{userId}/{allImages=**} {
+      allow read: request.auth != null;
+      allow write: request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Test storage for development and debugging
+    match /debug_tests/{testFile=**} {
+      allow read, write: request.auth != null;
+    }
+  }
+}

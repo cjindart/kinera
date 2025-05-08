@@ -21,6 +21,7 @@ import { useAuth } from "../context/AuthContext";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import FirebaseTest from '../components/FirebaseTest';
 
 // Use try-catch for imports that might not be available
 let ImagePicker;
@@ -118,6 +119,7 @@ export default function ProfileScreen() {
   const [gender, setGender] = useState("");
   const [height, setHeight] = useState("");
   const [year, setYear] = useState("");
+  const [city, setCity] = useState("");
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [interests, setInterests] = useState([]);
   const [dateActivities, setDateActivities] = useState([]);
@@ -137,6 +139,7 @@ export default function ProfileScreen() {
           gender: user.profileData.gender,
           height: user.profileData.height,
           year: user.profileData.year,
+          sexuality: user.profileData.sexuality,
           interestsCount: user.profileData.interests?.length || 0,
           activitiesCount: user.profileData.dateActivities?.length || 0,
           photosCount: user.profileData.photos?.length || 0
@@ -160,6 +163,7 @@ export default function ProfileScreen() {
         setGender(user.profileData.gender || "");
         setHeight(user.profileData.height || "");
         setYear(user.profileData.year || user.profileData.classYear || "");
+        setCity(user.profileData.city || "");
         
         // Interests and activities
         const userInterests = user.profileData.interests || [];
@@ -260,23 +264,25 @@ export default function ProfileScreen() {
         // Get all photo URLs
         const allPhotos = mainPhoto ? [mainPhoto, ...additionalPhotos.filter(Boolean)] : [];
         
-        // Update profile data
-        const profileData = {
+        // Create profile update using the standardized structure
+        const profileUpdate = {
           profileData: {
             age: age ? parseInt(age, 10) : null,
             gender,
             height,
             year,
+            city,
             interests,
             dateActivities,
-            photos: allPhotos
+            photos: allPhotos,
+            updatedAt: new Date().toISOString()
           }
         };
         
-        console.log("Saving profile data:", profileData);
+        console.log("Saving profile data:", profileUpdate);
         
-        // Save to Firebase/Firestore via AuthContext
-        await updateProfile(profileData);
+        // Save using AuthContext's updateProfile
+        await updateProfile(profileUpdate);
         
         console.log("Profile data saved successfully");
       } catch (error) {
@@ -320,15 +326,6 @@ export default function ProfileScreen() {
     if (isEditing) {
       // In edit mode, remove the interest
       setInterests(interests.filter((item) => item !== interest));
-    } else {
-      // In view mode, select/deselect the interest
-      if (selectedInterests.includes(interest)) {
-        setSelectedInterests(
-          selectedInterests.filter((item) => item !== interest)
-        );
-      } else {
-        setSelectedInterests([...selectedInterests, interest]);
-      }
     }
   };
 
@@ -767,6 +764,16 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* City display */}
+        {city && (
+          <View style={styles.cityContainer}>
+            <View style={styles.cityIconContainer}>
+              <Ionicons name="location-outline" size={22} color={COLORS.primaryNavy} />
+            </View>
+            <Text style={styles.cityText}>{city}</Text>
+          </View>
+        )}
+
         {/* 4. Interest Tags Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
@@ -806,20 +813,10 @@ export default function ProfileScreen() {
                 style={[
                   styles.tagPill,
                   isEditing ? styles.editableTagPill : null,
-                  !isEditing &&
-                    selectedInterests.includes(interest) &&
-                    styles.selectedTagPill,
                 ]}
-                onPress={() => toggleInterest(interest)}
+                onPress={() => isEditing && toggleInterest(interest)}
               >
-                <Text
-                  style={[
-                    styles.tagText,
-                    !isEditing &&
-                      selectedInterests.includes(interest) &&
-                      styles.selectedTagText,
-                  ]}
-                >
+                <Text style={styles.tagText}>
                   {interest}
                 </Text>
                 {isEditing && (
@@ -969,6 +966,12 @@ export default function ProfileScreen() {
 
         {/* Add bottom padding to account for tab bar */}
         <View style={styles.bottomPadding} />
+
+        {/* Add Firebase Test Component */}
+        <View style={styles.testSection}>
+          <Text style={styles.sectionTitle}>Firebase Services Test</Text>
+          <FirebaseTest />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -1194,16 +1197,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.paleBlue,
     borderColor: COLORS.mutedBlue,
   },
-  selectedTagPill: {
-    backgroundColor: COLORS.accentOrange,
-    borderColor: COLORS.accentOrange,
-  },
   tagText: {
     fontSize: 14,
     color: COLORS.primaryNavy,
-  },
-  selectedTagText: {
-    color: COLORS.offWhite,
   },
   removeIconContainer: {
     position: "absolute",
@@ -1291,5 +1287,37 @@ const styles = StyleSheet.create({
   // Extra bottom padding
   bottomPadding: {
     height: 20,
+  },
+
+  // Add Firebase Test Component
+  testSection: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#325475',
+    marginBottom: 10,
+  },
+
+  // City display styles
+  cityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  cityIconContainer: {
+    marginRight: 8,
+  },
+  cityText: {
+    fontSize: 16,
+    color: COLORS.primaryNavy,
+    fontWeight: '500',
   },
 });

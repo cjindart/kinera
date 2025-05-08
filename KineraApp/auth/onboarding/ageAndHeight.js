@@ -6,10 +6,11 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
+  Alert
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 const AGE_RANGE = Array.from({ length: 13 }, (_, i) => 18 + i); // 18-30
 const CLASS_OPTIONS = [
@@ -28,24 +29,33 @@ export default function AgeClassHeightScreen({ navigation, route }) {
   const [classYear, setClassYear] = useState("Sophomore");
   const [feet, setFeet] = useState(5);
   const [inches, setInches] = useState(7);
+  const { updateProfile } = useAuth();
 
   const handleContinue = async () => {
-    // Placeholder for backend logic
-    const userData = {
-      age,
-      classYear,
-      height: `${feet}'${inches}"`,
-    };
-    console.log("Submitting to backend:", userData);
     try {
-      await AsyncStorage.mergeItem("user", JSON.stringify(userData));
+      const height = `${feet}'${inches}"`;
+      console.log("Saving age, class year, and height:", { age, classYear, height });
+      
+      // Save data using the standardized structure
+      await updateProfile({
+        profileData: {
+          age: age,
+          year: classYear,
+          height: height
+        }
+      });
+      
+      // Navigate to next screen
+      navigation.navigate("interests", {
+        ...route?.params,
+        age,
+        classYear,
+        height
+      });
     } catch (error) {
-      console.error("Error saving age/class/height to AsyncStorage:", error);
+      console.error("Error saving data:", error);
+      Alert.alert("Error", "There was a problem saving your information.");
     }
-    navigation.navigate("interests", {
-      ...route?.params,
-      ...userData,
-    });
   };
 
   return (

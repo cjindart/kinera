@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  Image,
   StyleSheet,
   FlatList,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -29,7 +31,7 @@ export default function AddFriendsScreen({ navigation }) {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [friends, setFriends] = useState([]);
-  const { setUser } = useAuth();
+  const { updateProfile, user } = useAuth();
 
   const handleSearch = (text) => {
     setSearch(text);
@@ -56,75 +58,22 @@ export default function AddFriendsScreen({ navigation }) {
   };
 
   const handleFinish = async () => {
-    // Placeholder for backend logic
     console.log(
       "Submitting friends to backend:",
       friends.map((f) => f.name)
     );
+    
     try {
-      // Get existing user data first
-      const existingUserData = await AsyncStorage.getItem("user");
-      let userData = existingUserData ? JSON.parse(existingUserData) : {};
-      
-      // Add/update fields instead of replacing everything
-      userData = {
-        ...userData,
+      // Mark onboarding as complete and set friends list
+      await updateProfile({
+        isNewUser: false,
         isAuthenticated: true,
         friends: friends.map((f) => ({ 
           id: f.id,
           name: f.name,
           avatar: null // No avatars in demo data
         }))
-      };
-      
-      // Structure the data correctly for the User model
-      if (!userData.profileData) {
-        userData.profileData = {};
-      }
-      
-      // If individual fields were stored during onboarding, move them to profileData
-      if (userData.age) {
-        userData.profileData.age = userData.age;
-        delete userData.age;
-      }
-      
-      if (userData.gender) {
-        userData.profileData.gender = userData.gender;
-        delete userData.gender;
-      }
-      
-      if (userData.height) {
-        userData.profileData.height = userData.height;
-        delete userData.height;
-      }
-      
-      if (userData.classYear) {
-        userData.profileData.year = userData.classYear;
-        delete userData.classYear;
-      }
-      
-      if (userData.interests) {
-        userData.profileData.interests = userData.interests;
-        delete userData.interests;
-      }
-      
-      if (userData.activities) {
-        userData.profileData.dateActivities = userData.activities;
-        delete userData.activities;
-      }
-      
-      if (userData.photos) {
-        userData.profileData.photos = userData.photos;
-        delete userData.photos;
-      }
-      
-      // Save the updated user data
-      await AsyncStorage.setItem("user", JSON.stringify(userData));
-      
-      // Create User object and update AuthContext state to reflect changes immediately
-      const userObject = new User(userData);
-      console.log("Created user object after onboarding:", userObject);
-      setUser(userObject);
+      });
       
       // Navigate to Main
       navigation.reset({
@@ -150,7 +99,8 @@ export default function AddFriendsScreen({ navigation }) {
         ],
       });
     } catch (error) {
-      console.error("Error saving auth status:", error);
+      console.error("Error completing onboarding:", error);
+      Alert.alert("Error", "There was a problem saving your information. Please try again.");
     }
   };
 

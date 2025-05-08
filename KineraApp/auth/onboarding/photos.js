@@ -10,10 +10,11 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
 export default function PhotosScreen({ navigation, route }) {
   const [photos, setPhotos] = useState([null, null, null, null]);
+  const { updateProfile } = useAuth();
 
   useEffect(() => {
     (async () => {
@@ -106,25 +107,33 @@ export default function PhotosScreen({ navigation, route }) {
   };
 
   const handleContinue = async () => {
-    // Placeholder for backend logic
-    console.log("Submitting photos to backend:", photos);
     try {
-      await AsyncStorage.mergeItem("user", JSON.stringify({ photos }));
-      //send to backend
-      console.log({ photos });
+      // Filter out empty photos
+      const validPhotos = photos.filter(p => p !== null);
+      console.log("Saving photos:", validPhotos);
+      
+      // Only continue if at least one photo was added
+      if (validPhotos.length === 0) {
+        Alert.alert("Please add at least one photo");
+        return;
+      }
+      
+      // Save photos using the standardized structure
+      await updateProfile({
+        profileData: {
+          photos: validPhotos
+        }
+      });
+      
+      // Navigate to next screen
+      navigation.navigate("userType", {
+        ...route.params,
+        photos: validPhotos,
+      });
     } catch (error) {
-      console.error("Error saving photos to AsyncStorage:", error);
+      console.error("Error saving photos:", error);
+      Alert.alert("Error", "There was a problem saving your photos.");
     }
-
-    // Here you would upload the photos to Firebase
-    // For now, just pass them to the next step
-    //On the final onboarding step, you can upload the images to Firebase Storage
-    // and save their URLs to Firestore.
-    // You'll need to convert the local URI to a blob and use the Firebase Storage SDK.
-    navigation.navigate("userType", {
-      ...route.params, // pass previous onboarding data
-      photos,
-    });
   };
 
   return (

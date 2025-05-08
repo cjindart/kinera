@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, Platform, Linking } from 'react-native';
 import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import { app, auth } from './firebase';
+import { app, auth, isDevelopmentMode } from './firebase';
 import { PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -111,15 +111,18 @@ const PhoneAuth = ({ onAuthSuccess, onCancel }) => {
 
   // Check if we should use development mode
   const isDevelopment = () => {
-    // For now, always use development mode for easier testing
-    return true;
+    // Use the central isDevelopmentMode function
+    return isDevelopmentMode();
   };
 
   // Check if test verification should be used
   const shouldUseTestVerification = (phone) => {
-    // On Spark plan or in dev mode, we should use test verification
-    // Either the test number or a real number added to the Firebase test numbers
-    return isDevelopment() || phone === "+11234567890";
+    // Either in dev mode or using a test number registered in Firebase console
+    const knownTestNumbers = [
+      "+11234567890",
+      "+17206336712" // Cole's number that's registered for testing
+    ];
+    return isDevelopment() || knownTestNumbers.includes(phone);
   };
 
   // Send verification code
@@ -263,6 +266,10 @@ const PhoneAuth = ({ onAuthSuccess, onCancel }) => {
         
         setDebugInfo('Simulating successful verification');
         
+        // Log what we're doing
+        console.log('Using mock user for test verification:', mockUser.uid);
+        console.log('Phone number:', formatPhoneForAuth(phoneNumber));
+        
         // Simulate success after a short delay to make it feel more realistic
         setTimeout(() => {
           onAuthSuccess({
@@ -293,18 +300,39 @@ const PhoneAuth = ({ onAuthSuccess, onCancel }) => {
       
       // User successfully signed in
       if (userCredential.user) {
-        // Check if user is new by comparing user creation time with last sign-in time
-        const user = userCredential.user;
-        const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
+        // Get the formatted phone number
+        const formattedPhone = formatPhoneForAuth(phoneNumber);
         
-        console.log('User authenticated:', user.uid);
+        // Check if user exists in Firestore by firebase UID
+        let isNewUser = true;
+        
+        try {
+          // Import findUserByPhone from firestore setup
+          const { findUserByPhone } = require('./firestoreSetup');
+          const existingUser = await findUserByPhone(formattedPhone);
+          
+          // If we found a user with this phone number, they're not new
+          if (existingUser) {
+            console.log('Found existing user in Firestore:', existingUser.id);
+            isNewUser = false;
+          } else {
+            console.log('No existing user found in Firestore. This is a new user');
+            isNewUser = true;
+          }
+        } catch (err) {
+          console.error('Error checking if user exists in Firestore:', err);
+          // Fall back to metadata check if Firestore check fails
+          isNewUser = userCredential.user.metadata.creationTime === userCredential.user.metadata.lastSignInTime;
+        }
+        
+        console.log('User authenticated:', userCredential.user.uid);
         console.log('Is new user:', isNewUser);
         
         // Pass the result to the parent component
         onAuthSuccess({
-          user: user,
+          user: userCredential.user,
           isNewUser: isNewUser,
-          phoneNumber: formatPhoneForAuth(phoneNumber)
+          phoneNumber: formattedPhone
         });
       }
     } catch (error) {

@@ -12,6 +12,7 @@ import PhotosScreen from "./photos";
 import InterestsScreen from "./interests";
 import ActivitiesScreen from "./activities";
 import AddFriendsScreen from "./addFriends";
+import StanfordEmailScreen from "./stanfordEmail";
 
 const OnboardingStack = createNativeStackNavigator();
 
@@ -51,6 +52,9 @@ export default function OnboardingNavigator({ navigation }) {
       
       {/* Activities selection - shown to both user types */}
       <OnboardingStack.Screen name="activities" component={ActivitiesScreen} />
+      
+      {/* Stanford email verification - before adding friends */}
+      <OnboardingStack.Screen name="stanfordEmail" component={StanfordEmailScreen} />
       
       {/* Add Friends - last screen, shown to all user types */}
       <OnboardingStack.Screen name="addFriends" component={AddFriendsScreen} />

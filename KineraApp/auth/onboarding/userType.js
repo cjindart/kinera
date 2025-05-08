@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../context/AuthContext";
 
 // Our app colors matching the login screen
 const COLORS = {
@@ -86,11 +87,11 @@ export default function Step3PurposeScreen({ navigation, route }) {
     if (!selected) return;
     
     try {
-      // Save user type to AsyncStorage
-      await AsyncStorage.mergeItem(
-        "user",
-        JSON.stringify({ userType: selected })
-      );
+      // Update the user profile using AuthContext
+      const { updateProfile } = useAuth();
+      
+      // Save the userType in the standard format
+      await updateProfile({ userType: selected });
       
       // Navigate based on selection
       if (selected === "match_maker") {
