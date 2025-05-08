@@ -37,10 +37,10 @@ export default function SelectLiaison({ navigation }) {
 
   // Convert friends array to liaison format
   const liaisons =
-    user?.profileData?.friends?.map((friend, index) => ({
-      id: index + 1,
-      name: friend,
-      image: null,
+    user?.profileData?.friends?.map((friend) => ({
+      id: friend.id,
+      name: friend.name,
+      image: friend.avatar,
     })) || [];
 
   const handleSetLiaison = async () => {
@@ -85,7 +85,11 @@ export default function SelectLiaison({ navigation }) {
       activeOpacity={0.8}
     >
       <View style={styles.liaisonImageFrame}>
-        <Ionicons name="person" size={48} color={COLORS.mutedBlue} />
+        {item.image ? (
+          <Image source={{ uri: item.image }} style={styles.liaisonImage} />
+        ) : (
+          <Ionicons name="person" size={48} color={COLORS.mutedBlue} />
+        )}
       </View>
       <Text style={styles.liaisonName}>{item.name}</Text>
     </TouchableOpacity>
@@ -251,5 +255,10 @@ const styles = StyleSheet.create({
   submitTextDisabled: {
     color: COLORS.primaryNavy,
     opacity: 0.7,
+  },
+  liaisonImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 16,
   },
 });
