@@ -61,20 +61,64 @@ export const initializeFirestore = async (userId, userData = null) => {
  */
 export const findUserByPhone = async (phoneNumber) => {
   try {
+    if (!phoneNumber) {
+      console.log('No phone number provided for lookup');
+      return null;
+    }
+    
+    console.log(`Looking up user by phone number: ${phoneNumber}`);
+    
+    // Normalize the phone number for more reliable lookup
+    // Extract digits only for flexible matching
+    const normalizedPhone = phoneNumber.replace(/\D/g, '');
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${normalizedPhone}`;
+    
+    console.log(`Normalized phone for search: ${normalizedPhone}`);
+    console.log(`Formatted phone for search: ${formattedPhone}`);
+    
+    // Try multiple formats to increase chances of finding the user
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('phoneNumber', '==', phoneNumber));
-    const querySnapshot = await getDocs(q);
+    
+    // First try with the fully formatted phone
+    let q = query(usersRef, where('phoneNumber', '==', formattedPhone));
+    let querySnapshot = await getDocs(q);
+    
+    // If not found, try with the raw format provided
+    if (querySnapshot.empty && phoneNumber !== formattedPhone) {
+      console.log(`No results with formatted phone, trying original format: ${phoneNumber}`);
+      q = query(usersRef, where('phoneNumber', '==', phoneNumber));
+      querySnapshot = await getDocs(q);
+    }
+    
+    // If still not found, try with just the digits (if it has 10 digits)
+    if (querySnapshot.empty && normalizedPhone.length === 10) {
+      console.log(`No results, trying with just 10 digits: ${normalizedPhone}`);
+      q = query(usersRef, where('phoneNumber', '==', normalizedPhone));
+      querySnapshot = await getDocs(q);
+    }
     
     if (!querySnapshot.empty) {
       // User found
       const userData = querySnapshot.docs[0].data();
+      const userId = querySnapshot.docs[0].id;
+      console.log(`User found with phone ${phoneNumber}, ID: ${userId}`);
+      
+      // Log found user data summary
+      console.log(`Found user data: ${JSON.stringify({
+        id: userId,
+        name: userData.name || 'Not set',
+        hasProfileData: !!userData.profileData,
+        profileDataFields: userData.profileData ? Object.keys(userData.profileData).length : 0
+      })}`);
+      
       return {
         ...userData,
-        id: querySnapshot.docs[0].id
+        id: userId
       };
     }
     
-    // User not found
+    // No user found with this phone number
+    console.log(`No user found with phone number: ${phoneNumber}`);
     return null;
   } catch (error) {
     console.error('Error finding user by phone:', error);

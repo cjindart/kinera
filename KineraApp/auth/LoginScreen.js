@@ -113,6 +113,19 @@ export default function LoginScreen({ navigation }) {
       if (result.success) {
         console.log("LoginScreen: Verification successful, result:", result);
         
+        // Retrieve the original phone number if needed
+        if (!result.phoneNumber) {
+          try {
+            const originalPhoneNumber = await AsyncStorage.getItem('originalPhoneNumber');
+            if (originalPhoneNumber) {
+              console.log("Retrieved original phone number from storage:", originalPhoneNumber);
+              result.phoneNumber = originalPhoneNumber;
+            }
+          } catch (err) {
+            console.warn("Failed to get original phone number from storage:", err);
+          }
+        }
+        
         // IMPORTANT: Different behavior for login vs signup modes
         const currentMode = mode; // 'login' or 'signup'
         console.log(`Current mode: ${currentMode}`);
@@ -150,10 +163,43 @@ export default function LoginScreen({ navigation }) {
           // Set the isNewUser flag to false explicitly for login mode
           await AsyncStorage.setItem('isNewUser', 'false');
           
-          // Register user with isNewUser flag set to false
+          // Look up the user by phone number in Firestore
+          console.log(`Looking up user by phone number: ${result.phoneNumber}`);
+          let existingUser = null;
+          
+          try {
+            // Try to find the user by phone number first
+            if (auth.findUserByPhone && result.phoneNumber) {
+              // Make sure phone number is properly formatted
+              const formattedPhone = result.phoneNumber.startsWith('+') ? 
+                result.phoneNumber : 
+                `+1${result.phoneNumber.replace(/\D/g, '')}`;
+              
+              console.log(`Searching Firestore with formatted phone: ${formattedPhone}`);
+              existingUser = await auth.findUserByPhone(formattedPhone);
+              console.log("Phone lookup result:", existingUser ? "User found" : "No user found");
+            }
+            
+            // If no user found by phone, try by UID (fallback)
+            if (!existingUser && auth.fetchUserData && result.user?.uid) {
+              console.log("Fallback: Fetching user data by UID");
+              existingUser = await auth.fetchUserData(result.user.uid);
+            }
+          } catch (error) {
+            console.error("Error looking up existing user:", error);
+          }
+          
+          // Register user with the right ID and phone number
           if (auth.register) {
+            // If we have an existing user, use their ID to maintain the same record
+            const userId = existingUser?.id || result.user.uid;
+            console.log(`Using user ID for login registration: ${userId}`);
+            
             await auth.register({
-              id: result.user.uid,
+              // Start with any existing data
+              ...(existingUser || {}),
+              // Ensure these fields are set correctly
+              id: userId,
               phoneNumber: result.phoneNumber,
               isNewUser: false,
               isAuthenticated: true

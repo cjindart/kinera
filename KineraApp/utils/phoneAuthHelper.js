@@ -44,6 +44,10 @@ export function usePhoneAuth() {
       setError(null);
 
       console.log(`Sending verification code to: ${phoneNumber}`);
+      
+      // Store the original phone number for later use
+      await AsyncStorage.setItem('originalPhoneNumber', phoneNumber);
+      console.log('Saved original phone number to storage:', phoneNumber);
 
       // Check if Firebase is initialized
       if (!auth) {
@@ -52,7 +56,9 @@ export function usePhoneAuth() {
 
       // Add test phone number support
       const testPhoneNumbers = ['+15555555555'];
-      if (testPhoneNumbers.includes(phoneNumber)) {
+      const originalPhoneNumber = phoneNumber;
+      const testPhoneNumber = originalPhoneNumber || '+15555555555';
+      if (testPhoneNumbers.includes(testPhoneNumber)) {
         console.log('Test phone number detected, using simulated code');
         // For testing purposes, use a fake verification ID
         const mockVerificationId = `test_${Date.now()}`;
@@ -75,7 +81,7 @@ export function usePhoneAuth() {
       // Send verification code
       const provider = new PhoneAuthProvider(auth);
       const verificationId = await provider.verifyPhoneNumber(
-        phoneNumber,
+        testPhoneNumber,
         captchaVerifier
       );
 
@@ -92,6 +98,9 @@ export function usePhoneAuth() {
       const mockVerificationId = `fallback_${Date.now()}`;
       setVerificationId(mockVerificationId);
       setLoading(false);
+      
+      // Log that we're preserving the original phone number
+      console.log('Preserving original phone number for fallback:', phoneNumber);
       
       // Show fallback message
       Alert.alert(
@@ -126,10 +135,22 @@ export function usePhoneAuth() {
         if (verificationCode === '123456') {
           console.log('Test verification successful');
           
-          // Create a mock user result
+          // Get the original phone number from AsyncStorage if available
+          let originalPhoneNumber = null;
+          try {
+            originalPhoneNumber = await AsyncStorage.getItem('originalPhoneNumber');
+            console.log('Retrieved original phone number from storage:', originalPhoneNumber);
+          } catch (err) {
+            console.warn('Failed to get original phone number from storage:', err);
+          }
+          
+          // Create a mock user result, using the original phone number if available
+          const userPhoneNumber = originalPhoneNumber || '+15555555555';
+          console.log('Using phone number for test user:', userPhoneNumber);
+          
           const mockUser = { 
             uid: `test_${Date.now()}`,
-            phoneNumber: '+15555555555',
+            phoneNumber: userPhoneNumber,
             metadata: { 
               creationTime: new Date().toISOString(),
               lastSignInTime: new Date().toISOString() 
@@ -147,7 +168,7 @@ export function usePhoneAuth() {
             success: true,
             user: mockUser,
             isNewUser: true,
-            phoneNumber: mockUser.phoneNumber
+            phoneNumber: userPhoneNumber
           };
         } else {
           setLoading(false);

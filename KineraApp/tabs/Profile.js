@@ -104,6 +104,50 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
   );
 };
 
+// LogoutButton component with press animation
+const LogoutButton = ({ onLogout }) => {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(translateY, {
+      toValue: 3,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+
+    // Call logout function when button is released
+    onLogout();
+  };
+
+  return (
+    <View style={styles.logoutButtonContainer}>
+      {/* Bottom layer - shadow/base */}
+      <View style={styles.logoutButtonShadow} />
+
+      {/* Top layer - animated */}
+      <Animated.View
+        style={[styles.logoutButtonTop, { transform: [{ translateY }] }]}
+      >
+        <Pressable
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={styles.logoutButtonPressable}
+        >
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+};
+
 export default function ProfileScreen() {
   // State to track whether profile is in edit mode
   const [isEditing, setIsEditing] = useState(false);
@@ -1401,23 +1445,11 @@ export default function ProfileScreen() {
 
         {/* 6. Divider */}
         <View style={styles.divider} />
-        <TouchableOpacity
-          onPress={handleLogout}
-          style={{
-            margin: "5%",
-            fontFamily: "Gill Sans",
-            fontWeight: "bold",
-            fontSize: 16,
-            color: COLORS.primaryNavy,
-            backgroundColor: COLORS.buttonPeach,
-            width: "20%",
-            borderRadius: 18,
-            padding: 10,
-            textAlign: "center",
-          }}
-        >
-          <Text>Logout</Text>
-        </TouchableOpacity>
+        
+        {/* Logout Button */}
+        <View style={styles.logoutButtonWrapper}>
+          <LogoutButton onLogout={handleLogout} />
+        </View>
 
         {/* Add bottom padding to account for tab bar */}
         <View style={styles.bottomPadding} />
@@ -1474,6 +1506,46 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 17, // Adjusted for inline placement
+    fontWeight: "bold",
+    color: "#000",
+  },
+  
+  // Logout Button Styles
+  logoutButtonWrapper: {
+    alignItems: "center",
+    marginVertical: 15,
+  },
+  logoutButtonContainer: {
+    width: 120,
+    height: 45,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoutButtonShadow: {
+    position: "absolute",
+    width: 110,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.buttonShadow,
+    bottom: 0,
+  },
+  logoutButtonTop: {
+    position: "absolute",
+    width: 110,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.buttonPeach,
+    bottom: 3,
+  },
+  logoutButtonPressable: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoutButtonText: {
+    fontSize: 18,
     fontWeight: "bold",
     color: "#000",
   },

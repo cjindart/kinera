@@ -138,12 +138,21 @@ export function AuthProvider({ children }) {
         return null;
       }
       
+      console.log(`Attempting to fetch user data from Firestore for ID: ${userId}`);
+      
       // Try to get user from Firestore
       const userDoc = await getDoc(doc(db, 'users', userId));
       
       if (userDoc.exists()) {
         // User exists in Firestore
         const userData = userDoc.data();
+        console.log(`User data found in Firestore: ${JSON.stringify({
+          hasName: !!userData.name,
+          hasProfileData: !!userData.profileData,
+          profileFields: userData.profileData ? Object.keys(userData.profileData).length : 0,
+          dataTimestamp: userData.updatedAt || 'unknown'
+        })}`);
+        
         const userInstance = new User({
           ...userData,
           id: userId,
@@ -152,13 +161,16 @@ export function AuthProvider({ children }) {
         
         // Save to AsyncStorage for local access
         await userInstance.save();
+        console.log('User data from Firestore saved to AsyncStorage');
         
         return userInstance;
+      } else {
+        console.log(`No user document found in Firestore with ID: ${userId}`);
       }
       
       return null;
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Error fetching user data from Firestore:', error);
       return null;
     }
   };
@@ -190,17 +202,30 @@ export function AuthProvider({ children }) {
       const firebaseUid = firebaseUser.uid;
       console.log("Firebase Auth successful, UID:", firebaseUid);
       
+      // Ensure the phone number is properly formatted
+      let formattedPhoneNumber = phoneNumber;
+      if (phoneNumber) {
+        // Normalize and format the phone number
+        const normalizedPhone = phoneNumber.replace(/\D/g, '');
+        formattedPhoneNumber = phoneNumber.startsWith('+') ? 
+          phoneNumber : 
+          `+1${normalizedPhone}`;
+        
+        console.log("Original phone:", phoneNumber);
+        console.log("Formatted phone for queries:", formattedPhoneNumber);
+      }
+      
       // Check if there are duplicate users with this phone number
-      console.log("Checking for duplicate users with phone number:", phoneNumber);
+      console.log("Checking for duplicate users with phone number:", formattedPhoneNumber);
       
       // First, check for duplicates
-      const duplicateCheck = await checkDuplicateUsers(phoneNumber);
+      const duplicateCheck = await checkDuplicateUsers(formattedPhoneNumber);
       console.log("Duplicate check results:", JSON.stringify(duplicateCheck));
       
       // If we have duplicates, merge them into the Firebase UID account
       if (duplicateCheck.hasDuplicates) {
         console.log("Merging duplicate users...");
-        const mergeResult = await mergeDuplicateUsers(phoneNumber, firebaseUid);
+        const mergeResult = await mergeDuplicateUsers(formattedPhoneNumber, firebaseUid);
         console.log("Merge result:", JSON.stringify(mergeResult));
         
         if (mergeResult.success) {
@@ -229,51 +254,56 @@ export function AuthProvider({ children }) {
       }
       
       // If not found by UID, check by phone number
-      const userByPhone = await findUserByPhone(phoneNumber);
-      if (userByPhone) {
-        console.log("User found by phone number, ID:", userByPhone.id);
-        
-        // If we need to migrate from a local ID to Firebase UID
-        if (userByPhone.id !== firebaseUid) {
-          console.log("Migrating user from local ID to Firebase UID");
+      if (formattedPhoneNumber) {
+        console.log("No user found by UID, checking by phone number:", formattedPhoneNumber);
+        const userByPhone = await findUserByPhone(formattedPhoneNumber);
+        if (userByPhone) {
+          console.log("User found by phone number, ID:", userByPhone.id);
           
-          // Try to migrate the data
-          const migrationSuccess = await migrateUserData(userByPhone.id, firebaseUid);
-          
-          if (migrationSuccess) {
-            console.log("Migration successful");
+          // If we need to migrate from a local ID to Firebase UID
+          if (userByPhone.id !== firebaseUid) {
+            console.log("Migrating user from local ID to Firebase UID");
+            
+            // Try to migrate the data
+            const migrationSuccess = await migrateUserData(userByPhone.id, firebaseUid);
+            
+            if (migrationSuccess) {
+              console.log("Migration successful");
+            } else {
+              console.warn("Migration failed, will create updated user object");
+            }
+            
+            // Create updated user with Firebase UID
+            const updatedUser = new User({
+              ...userByPhone,
+              id: firebaseUid,
+              previousId: userByPhone.id,
+              isAuthenticated: true,
+              updatedAt: new Date().toISOString()
+            });
+            
+            // Save the updated user data
+            await updatedUser.save();
+            safelySetUser(updatedUser);
+            setIsNewUser(false);
+            await AsyncStorage.setItem('isNewUser', 'false');
+            return { success: true, isNewUser: false };
           } else {
-            console.warn("Migration failed, will create updated user object");
+            // User already has the correct Firebase UID
+            const existingUser = new User({
+              ...userByPhone,
+              isAuthenticated: true
+            });
+            
+            await existingUser.save();
+            safelySetUser(existingUser);
+            setIsNewUser(false);
+            await AsyncStorage.setItem('isNewUser', 'false');
+            return { success: true, isNewUser: false };
           }
-          
-          // Create updated user with Firebase UID
-          const updatedUser = new User({
-            ...userByPhone,
-            id: firebaseUid,
-            previousId: userByPhone.id,
-            isAuthenticated: true,
-            updatedAt: new Date().toISOString()
-          });
-          
-          // Save the updated user data
-          await updatedUser.save();
-          safelySetUser(updatedUser);
-          setIsNewUser(false);
-          await AsyncStorage.setItem('isNewUser', 'false');
-          return { success: true, isNewUser: false };
-        } else {
-          // User already has the correct Firebase UID
-          const existingUser = new User({
-            ...userByPhone,
-            isAuthenticated: true
-          });
-          
-          await existingUser.save();
-          safelySetUser(existingUser);
-          setIsNewUser(false);
-          await AsyncStorage.setItem('isNewUser', 'false');
-          return { success: true, isNewUser: false };
         }
+      } else {
+        console.log("No phone number available to search for existing user");
       }
       
       // If it's a new user or we couldn't find user data
@@ -906,9 +936,16 @@ export function AuthProvider({ children }) {
       const formattedPhone = formatPhoneNumber(phoneNumber);
       setTempPhoneNumber(formattedPhone);
       
+      console.log(`Formatted phone for registration: ${formattedPhone}`);
+      console.log(`Searching for existing user with phone: ${formattedPhone}`);
+      
       // Check if a user with this phone number already exists
       try {
         const existingUser = await findUserByPhone(formattedPhone);
+        console.log("Phone lookup result:", existingUser ? 
+          `User found - ID: ${existingUser.id}, Name: ${existingUser.name || 'unnamed'}` : 
+          "No user found");
+        
         if (existingUser) {
           console.log("Found existing user with this phone number:", existingUser.id);
           
@@ -933,7 +970,7 @@ export function AuthProvider({ children }) {
           return { success: true, isNewUser: false, existingUser: true };
         }
       } catch (findError) {
-        console.log("No existing user found or error checking:", findError);
+        console.error("Error checking for existing user:", findError);
         // Continue with new user creation
       }
       
@@ -991,6 +1028,7 @@ export function AuthProvider({ children }) {
     handleAuthResult,
     registerWithoutVerification,
     fetchUserData,
+    findUserByPhone,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

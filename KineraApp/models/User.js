@@ -68,6 +68,15 @@ class User {
    * @param {Object} userData - User data object
    */
   constructor(userData = {}) {
+    // Log what data we're starting with
+    console.log(`Constructing User instance from data: ${JSON.stringify({
+      hasId: !!userData.id || !!userData.userId,
+      hasName: !!userData.name,
+      hasPhoneNumber: !!userData.phoneNumber || !!userData.phone,
+      hasProfileData: !!userData.profileData,
+      profileDataKeys: userData.profileData ? Object.keys(userData.profileData) : []
+    })}`);
+    
     // Basic info
     this.id = userData.id || userData.userId || null;
     this.name = userData.name || null;
@@ -142,6 +151,15 @@ class User {
     // Dating data
     this.swipingPool = userData.swipingPool || {};
     this.matches = userData.matches || [];
+    
+    // Log final constructed user
+    console.log(`User construction complete: ${JSON.stringify({
+      id: this.id,
+      hasName: !!this.name,
+      hasProfileData: !!this.profileData,
+      profileDataFields: Object.keys(this.profileData).length,
+      friendsCount: this.friends.length
+    })}`);
   }
 
   /**
