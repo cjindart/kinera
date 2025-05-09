@@ -9,6 +9,8 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { hasAccessToScreen } from "../utils/accessControl";
+import LockedScreen from "../components/LockedScreen";
 
 // Color constants based on the spec
 const COLORS = {
@@ -26,6 +28,8 @@ const COLORS = {
 export default function MatchPortal() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const userType = user?.userType || "";
+  const hasAccess = hasAccessToScreen(userType, "MatchPortal");
 
   // Profile data array
   const profiles = [
@@ -117,6 +121,8 @@ export default function MatchPortal() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {!hasAccess && <LockedScreen userType={userType} />}
     </View>
   );
 }
