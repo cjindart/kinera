@@ -265,9 +265,16 @@ class User {
    * This should be called when a new user is created
    * @param {Array} allUsers - Array of all users in the system
    */
-  async initialize(allUsers) {
-    // Set up initial swiping pool
-    this.updateSwipingPool(allUsers);
+  async initialize(allUsers = []) {
+    console.log(`Initializing user ${this.name || this.id} with ${allUsers?.length || 0} users`);
+    
+    // Set up initial swiping pool only if allUsers is a valid array
+    if (Array.isArray(allUsers)) {
+      this.updateSwipingPool(allUsers);
+    } else {
+      console.warn('No users provided for swiping pool initialization');
+      this.swipingPool = {}; // Initialize empty pool
+    }
 
     if (!isDevelopmentMode() && this.id) {
       try {
@@ -593,27 +600,53 @@ class User {
 
     // Skip if user is not a dater
     if (!this.isDater()) {
+      console.log(`User ${this.name || this.id} is not a dater, skipping swiping pool`);
+      return;
+    }
+
+    // Ensure allUsers is a valid array
+    if (!allUsers || !Array.isArray(allUsers)) {
+      console.warn(`Cannot update swiping pool: allUsers is ${allUsers ? 'not an array' : 'undefined'}`);
       return;
     }
 
     // Get user's gender and sexuality
     const userGender = this.profileData?.gender?.toLowerCase();
     const userSexuality = this.sexuality?.toLowerCase();
+    
+    console.log(`Updating swiping pool for ${this.name || this.id} (${userGender}, ${userSexuality})`);
 
     // Filter users based on matching rules
     const potentialMatches = allUsers.filter((potentialMatch) => {
+      // Skip if potentialMatch is not a valid object
+      if (!potentialMatch || typeof potentialMatch !== 'object') {
+        return false;
+      }
+      
       // Skip if it's the same user
       if (potentialMatch.id === this.id) {
         return false;
       }
 
       // Skip if potential match is not a dater
-      if (!potentialMatch.isDater()) {
+      if (typeof potentialMatch.isDater === 'function' && !potentialMatch.isDater()) {
+        return false;
+      } else if (
+        !potentialMatch.userType || 
+        (potentialMatch.userType !== 'Dater' && 
+         potentialMatch.userType !== 'Dater & Match Maker')
+      ) {
         return false;
       }
 
       const matchGender = potentialMatch.profileData?.gender?.toLowerCase();
-      const matchSexuality = potentialMatch.sexuality?.toLowerCase();
+      const matchSexuality = potentialMatch.sexuality?.toLowerCase() || 
+                             potentialMatch.profileData?.sexuality?.toLowerCase();
+      
+      // If either user is missing gender or sexuality, skip matching
+      if (!userGender || !userSexuality || !matchGender || !matchSexuality) {
+        return false;
+      }
 
       // Handle straight users
       if (userSexuality === "straight") {
@@ -644,6 +677,8 @@ class User {
 
       return false;
     });
+
+    console.log(`Found ${potentialMatches.length} potential matches for ${this.name || this.id}`);
 
     // Add filtered users to swiping pool with pending status
     potentialMatches.forEach((match) => {

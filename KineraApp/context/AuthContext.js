@@ -688,7 +688,24 @@ export function AuthProvider({ children }) {
       
       // Initialize Firestore collections
       if (isUserNew) {
-        await newUser.initialize();
+        try {
+          // Fetch all users or use an empty array if fetch fails
+          let allUsers = [];
+          try {
+            const { fetchAllUsers } = require('../services/userService');
+            allUsers = await fetchAllUsers() || [];
+            console.log(`Fetched ${allUsers.length} users for initialization`);
+          } catch (fetchError) {
+            console.warn('Error fetching users for initialization:', fetchError);
+            // Continue with empty array
+          }
+          
+          // Initialize with the fetched users
+          await newUser.initialize(allUsers);
+        } catch (initError) {
+          console.error('Error initializing user:', initError);
+          // Don't throw, the user is already saved
+        }
       }
       
       // Update auth context
