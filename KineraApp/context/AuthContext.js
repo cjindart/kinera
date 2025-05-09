@@ -787,14 +787,14 @@ export function AuthProvider({ children }) {
         const sanitizedFriends = profileData.friends.map((friend, index) => {
           if (typeof friend === 'string') {
             return {
-              id: `friend_${index}`,
+              id: `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
               name: friend,
               avatar: null
             };
           }
           if (typeof friend === 'object' && friend !== null) {
             return {
-              id: friend.id || `friend_${index}`,
+              id: friend.id || `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
               name: typeof friend.name === 'string' ? friend.name : 'Unknown',
               avatar: friend.avatar || null,
               interests: Array.isArray(friend.interests) ? friend.interests : [],
@@ -802,7 +802,7 @@ export function AuthProvider({ children }) {
             };
           }
           return {
-            id: `friend_${index}`,
+            id: `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
             name: 'Unknown',
             avatar: null
           };

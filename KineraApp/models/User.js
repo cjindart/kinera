@@ -124,7 +124,7 @@ class User {
         // If it's a string, convert to basic object
         if (typeof friend === "string") {
           return {
-            id: `friend_${index}`,
+            id: `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
             name: friend,
             avatar: null,
           };
@@ -132,7 +132,7 @@ class User {
         // If it's already an object, ensure it has the right format
         if (typeof friend === "object" && friend !== null) {
           return {
-            id: friend.id || `friend_${index}`,
+            id: friend.id || `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
             name: typeof friend.name === 'string' ? friend.name : 'Unknown',
             avatar: friend.avatar || null,
             interests: Array.isArray(friend.interests) ? friend.interests : [],
@@ -141,7 +141,7 @@ class User {
         }
         // Fallback for any other type
         return {
-          id: `friend_${index}`,
+          id: `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
           name: 'Unknown',
           avatar: null,
         };

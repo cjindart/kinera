@@ -684,9 +684,12 @@ export default function ProfileScreen() {
       const friend = mockData.users.find((user) => user.id === friendId);
       if (!friend) return;
 
+      // Generate a unique ID for the friend using timestamp and a random number
+      const uniqueId = `friend_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
       // Get the complete friend object with all data
       const friendObject = {
-        id: `friend_${user.friends ? user.friends.length : 0}`,
+        id: uniqueId,
         name: friend.name || "Unknown",
         avatar: null,
         interests: Array.isArray(friend.profileData?.interests) ? friend.profileData.interests : 
@@ -1333,7 +1336,7 @@ export default function ProfileScreen() {
               }
 
               return (
-                <View key={friendId} style={styles.friendItem}>
+                <View key={`friend-${index}-${friendId}`} style={styles.friendItem}>
                   <View style={styles.friendAvatar}>
                     {mockFriend?.photos?.[0] ? (
                       <Image
