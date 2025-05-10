@@ -50,6 +50,7 @@ export default function Step1Screen({ navigation }) {
     try {
       await AsyncStorage.mergeItem("user", JSON.stringify(userData));
       //send to backend
+      console.log("BasicInfo: Saving user data and navigating to photos screen");
       console.log(userData);
       navigation.navigate("photos", userData);
     } catch (error) {

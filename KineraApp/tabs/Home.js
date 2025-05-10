@@ -212,7 +212,7 @@ export default function AvailabilityScreen() {
   
   // Get current friend
   const currentFriend = matchmakerFriends[currentFriendIndex];
-  
+
   // Get current candidate
   const currentCandidate = candidates[currentCandidateIndex];
 
@@ -700,7 +700,7 @@ export default function AvailabilityScreen() {
         console.log(`Found ${friends.length} friend objects`);
         setMatchmakerFriends(friends);
         setCurrentFriendIndex(0);
-        
+
         // If a friend has a swipingPool, use that
         if (friends.length > 0) {
           const firstFriend = friends[0];
@@ -721,7 +721,7 @@ export default function AvailabilityScreen() {
             const allUsers = mockData.users.filter(u => u.id !== user.id && u.id !== firstFriend.id);
             setCandidates(allUsers);
             setCurrentCandidateIndex(0);
-          }
+      }
         }
       }
       

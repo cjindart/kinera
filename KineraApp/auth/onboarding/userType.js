@@ -50,6 +50,7 @@ const USER_TYPE_OPTIONS = [
 export default function Step3PurposeScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
   const [userName, setUserName] = useState("");
+  const { updateProfile } = useAuth();
   
   // Get username when component mounts
   useEffect(() => {
@@ -65,14 +66,28 @@ export default function Step3PurposeScreen({ navigation, route }) {
             console.log("User type already set during login:", parsedData.userType);
             setSelected(parsedData.userType);
             
-            // Skip to next screen after a short delay
-            setTimeout(() => {
-              if (parsedData.userType === "match_maker") {
-                navigation.navigate("addFriends", { ...route.params, userType: parsedData.userType });
-              } else {
-                navigation.navigate("gender", { ...route.params, userType: parsedData.userType });
-              }
-            }, 500);
+            // Convert userType format for compatibility with the app
+            let userTypeValue;
+            switch(parsedData.userType) {
+              case "match_maker":
+                userTypeValue = "Match Maker";
+                break;
+              case "dater":
+                userTypeValue = "Dater";
+                break;
+              case "both":
+                userTypeValue = "Dater & Match Maker";
+                break;
+              default:
+                userTypeValue = parsedData.userType;
+            }
+            
+            // Only update the stored userType if needed, but DON'T navigate away
+            if (userTypeValue !== parsedData.userType) {
+              await updateProfile({ userType: userTypeValue });
+            }
+            
+            // REMOVED: Automatic navigation - let the user manually press Continue
           }
         }
       } catch (error) {
@@ -81,26 +96,79 @@ export default function Step3PurposeScreen({ navigation, route }) {
     };
     
     getUserInfo();
-  }, [navigation, route.params]);
+  }, [updateProfile, navigation]);
 
   const handleContinue = async () => {
     if (!selected) return;
     
     try {
-      // Update the user profile using AuthContext
-      const { updateProfile } = useAuth();
+      console.log("UserType: User selected type, navigating to Profile...");
+      
+      // Convert userType format for compatibility with the app
+      let userTypeValue;
+      switch(selected) {
+        case "match_maker":
+          userTypeValue = "Match Maker";
+          break;
+        case "dater":
+          userTypeValue = "Dater";
+          break;
+        case "both":
+          userTypeValue = "Dater & Match Maker";
+          break;
+        default:
+          userTypeValue = selected;
+      }
       
       // Save the userType in the standard format
-      await updateProfile({ userType: selected });
+      // First, save to Firestore through updateProfile
+      await updateProfile({ userType: userTypeValue });
+      console.log(`UserType: Saved user type as "${userTypeValue}" to Firestore`);
       
-      // Navigate based on selection
-      if (selected === "match_maker") {
-        // Match makers might need different onboarding steps
-        navigation.navigate("addFriends", { ...route.params, userType: selected });
-      } else {
-        // Daters need to set up their dating profile
-        navigation.navigate("gender", { ...route.params, userType: selected });
+      // Also save to AsyncStorage as a backup
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const parsedData = JSON.parse(userData);
+          const updatedData = { ...parsedData, userType: userTypeValue };
+          await AsyncStorage.setItem('user', JSON.stringify(updatedData));
+          console.log("UserType: Also saved to AsyncStorage as backup");
+        }
+      } catch (storageError) {
+        console.log("UserType: Failed to update AsyncStorage, but Firestore update succeeded");
       }
+      
+      // FORCE navigation to Profile immediately - high priority
+      console.log("UserType: FORCING navigation to Profile...");
+      
+      // Additional safety: Mark this navigation as done
+      await AsyncStorage.setItem('onboardingComplete', 'true');
+      
+      // Create animation parameters - explicitly set all flags to true
+      const animationParams = {
+        showWelcome: true,
+        isNewUser: true,
+        fromOnboarding: true
+      };
+      
+      console.log("UserType: Passing animation parameters:", JSON.stringify(animationParams));
+      
+      // Include a delay to ensure Firestore update completes
+      setTimeout(() => {
+        // Immediate navigation with no delay
+        navigation.reset({
+          index: 0,
+          routes: [
+            { 
+              name: 'Main',
+              params: { 
+                screen: 'ProfileTab', // Directly specify the ProfileTab
+                params: animationParams
+              }
+            }
+          ]
+        });
+      }, 300); // Short delay to ensure data is saved
     } catch (error) {
       console.error("Error saving user type:", error);
       Alert.alert("Error", "There was a problem saving your selection.");
@@ -142,7 +210,7 @@ export default function Step3PurposeScreen({ navigation, route }) {
                 <Ionicons 
                   name={option.icon} 
                   size={34} 
-                  color={selected === option.value ? "#fff" : COLORS.primaryNavy} 
+                  color={COLORS.primaryNavy} 
                 />
               </View>
               <View style={styles.optionContent}>

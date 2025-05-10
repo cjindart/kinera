@@ -127,33 +127,15 @@ export default function PhotosScreen({ navigation, route }) {
         },
       });
 
-      // Navigate to next screen
-      // navigation.navigate("userType", {
-      //   ...route.params,
-      //   photos: validPhotos,
-      // });
+      // Navigate directly to userType in our simplified flow
+      console.log("Photos: Navigating to userType screen in simplified flow");
+      navigation.navigate("userType", {
+        ...route.params,
+        photos: validPhotos,
+      });
     } catch (error) {
       console.error("Error saving photos to AsyncStorage:", error);
-    }
-
-    // Here you would upload the photos to Firebase
-    // For now, just pass them to the next step
-    //On the final onboarding step, you can upload the images to Firebase Storage
-    // and save their URLs to Firestore.
-    // You'll need to convert the local URI to a blob and use the Firebase Storage SDK.
-
-    if (user.userType === "Match Maker") {
-      // Match makers might need different onboarding steps
-      navigation.navigate("addFriends", {
-        ...route.params, // pass previous onboarding data
-        photos,
-      });
-    } else {
-      // Daters need to set up their dating profile
-      navigation.navigate("gender", {
-        ...route.params, // pass previous onboarding data
-        photos,
-      });
+      Alert.alert("Error", "There was a problem saving your photos. Please try again.");
     }
   };
 

@@ -33,7 +33,7 @@ function HomeStackScreen() {
 }
 
 // Stack navigator for Profile tab
-function ProfileStackScreen() {
+function ProfileStackScreen(props) {
   const { user } = useAuth();
   
   // Create a unique key based on user data to force remounting when it changes
@@ -42,12 +42,19 @@ function ProfileStackScreen() {
                     user?.profileData?.updatedAt?.toString() || 
                     Date.now().toString();
   
+  // Debug the route params passed to ProfileStackScreen
+  console.log("ProfileStackScreen: Received props:", JSON.stringify(props.route?.params));
+  
   return (
     <ProfileStack.Navigator 
       screenOptions={{ headerShown: false }}
       key={`profile-${profileKey}`} // Force remount when key changes
     >
-      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen 
+        name="ProfileMain" 
+        component={ProfileScreen} 
+        initialParams={props.route?.params} // Just pass through the params, don't force welcome
+      />
     </ProfileStack.Navigator>
   );
 }
@@ -72,11 +79,17 @@ function AvailabilityStackScreen() {
   );
 }
 
-function TabNavigator() {
+function TabNavigator({ route }) {
   const { user } = useAuth();
+  // Check if we're coming from onboarding and should show Profile first
+  const initialTabName = route?.params?.screen || 'ProfileTab';
+  const showWelcomeAnimation = route?.params?.params?.showWelcome || false;
+  
+  console.log(`TabNavigator: Initial tab set to ${initialTabName}, showWelcome: ${showWelcomeAnimation}`);
   
   return (
     <Tab.Navigator
+      initialRouteName={initialTabName}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
@@ -96,11 +109,12 @@ function TabNavigator() {
         tabBarInactiveTintColor: "#A9B7C5", // Using muted blue from our color scheme
       })}
     >
-      {/* Show Match Portal tab for all users */}
+      {/* Profile tab first for better initial experience */}
       <Tab.Screen
-        name="AvailabilityTab"
-        component={AvailabilityStackScreen}
-        options={{ tabBarLabel: "Match Portal" }}
+        name="ProfileTab"
+        component={ProfileStackScreen}
+        options={{ tabBarLabel: "Profile" }}
+        initialParams={route?.params?.params} // Just pass through the params, don't add flags
       />
       
       <Tab.Screen
@@ -109,10 +123,11 @@ function TabNavigator() {
         options={{ tabBarLabel: "Home" }}
       />
       
+      {/* Show Match Portal tab for all users */}
       <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackScreen}
-        options={{ tabBarLabel: "Profile" }}
+        name="AvailabilityTab"
+        component={AvailabilityStackScreen}
+        options={{ tabBarLabel: "Match Portal" }}
       />
     </Tab.Navigator>
   );

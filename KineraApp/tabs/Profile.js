@@ -148,7 +148,16 @@ const LogoutButton = ({ onLogout }) => {
   );
 };
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ route }) {
+  // Debug logging of route params
+  console.log("Profile: Received route params:", JSON.stringify(route?.params));
+  
+  // Welcome animation states - initialize to true by default to ensure it shows
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
+  const welcomeOpacity = useRef(new Animated.Value(0)).current;
+  const welcomeTranslateY = useRef(new Animated.Value(50)).current;
+  
   // State to track whether profile is in edit mode
   const [isEditing, setIsEditing] = useState(false);
   const navigation = useNavigation();
@@ -332,6 +341,84 @@ export default function ProfileScreen() {
     })();
   }, []);
 
+  // Check if welcome has been shown before
+  useEffect(() => {
+    const checkWelcomeShown = async () => {
+      try {
+        const hasSeenWelcome = await AsyncStorage.getItem('hasSeenWelcome');
+        console.log("Profile: Has seen welcome before:", hasSeenWelcome);
+        
+        // Check if this is a new user from route params
+        const isNewUser = route?.params?.isNewUser;
+        console.log("Profile: Is new user from route params:", isNewUser);
+        
+        if (hasSeenWelcome === 'true' && !isNewUser) {
+          // User has seen welcome before and is not a new user
+          setShowWelcome(false);
+        } else {
+          // First time user or new account, show welcome
+          setShowWelcome(true);
+          // Start animation immediately
+          startWelcomeAnimation();
+        }
+        
+        setHasCheckedStorage(true);
+      } catch (error) {
+        console.error("Error checking welcome status:", error);
+        // Default to showing welcome on error
+        setShowWelcome(true);
+        setHasCheckedStorage(true);
+      }
+    };
+    
+    checkWelcomeShown();
+  }, [route?.params?.isNewUser]);
+  
+  // Function to start welcome animation
+  const startWelcomeAnimation = () => {
+    console.log("Profile: Starting welcome animation...");
+    Animated.parallel([
+      Animated.timing(welcomeOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(welcomeTranslateY, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      })
+    ]).start();
+  };
+  
+  // Function to dismiss welcome animation
+  const dismissWelcomeAnimation = (onComplete = () => {}) => {
+    console.log("Profile: Dismissing welcome animation");
+    Animated.parallel([
+      Animated.timing(welcomeOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(welcomeTranslateY, {
+        toValue: -50,
+        duration: 500,
+        useNativeDriver: true,
+      })
+    ]).start(async () => {
+      setShowWelcome(false);
+      
+      // Mark that welcome has been shown
+      try {
+        await AsyncStorage.setItem('hasSeenWelcome', 'true');
+      } catch (error) {
+        console.error("Error saving welcome status:", error);
+      }
+      
+      onComplete();
+    });
+  };
+
   // Toggle edit mode and save changes if exiting edit mode
   const toggleEditMode = async () => {
     if (isEditing) {
@@ -387,10 +474,25 @@ export default function ProfileScreen() {
         }
 
         // Update the user context
-
         await updateProfile(updatedUserData);
 
         console.log("Profile data saved successfully");
+        
+        // Update route params
+        if (navigation && navigation.setParams) {
+          navigation.setParams({
+            showWelcome: false,
+            isNewUser: false,
+            fromOnboarding: false
+          });
+        }
+        
+        // Clear isNewUser flag in AsyncStorage
+        try {
+          await AsyncStorage.setItem('isNewUser', 'false');
+        } catch (error) {
+          console.error("Error clearing isNewUser flag:", error);
+        }
       } catch (error) {
         console.error("Error saving profile data:", error);
         Alert.alert(
@@ -775,6 +877,36 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Welcome Message Overlay - only shown if showWelcome is true and we've checked storage */}
+      {showWelcome && hasCheckedStorage && (
+        <Animated.View style={[
+          styles.welcomeOverlay,
+          { opacity: welcomeOpacity }
+        ]}>
+          <Animated.View style={[
+            styles.welcomeContent,
+            { transform: [{ translateY: welcomeTranslateY }] }
+          ]}>
+            <Text style={styles.welcomeTitle}>Welcome to Vouch!</Text>
+            <Text style={styles.welcomeMessage}>
+              Complete your profile to get started.
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.welcomeButton}
+              onPress={() => {
+                // Hide welcome overlay and enter edit mode
+                dismissWelcomeAnimation(() => {
+                  setIsEditing(true);
+                });
+              }}
+            >
+              <Text style={styles.welcomeButtonText}>Complete Profile</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      )}
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* 1. Header Section */}
         <View style={styles.headerSection}>
@@ -1964,5 +2096,61 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: COLORS.primaryNavy,
+  },
+
+  // Welcome Animation Styles
+  welcomeOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(50, 84, 117, 0.9)',
+    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  welcomeContent: {
+    backgroundColor: 'white',
+    padding: 24,
+    borderRadius: 16,
+    width: '85%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  welcomeTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.accentOrange,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  welcomeMessage: {
+    fontSize: 18,
+    lineHeight: 26,
+    textAlign: 'center',
+    color: COLORS.primaryNavy,
+    marginBottom: 20,
+  },
+  welcomeButton: {
+    backgroundColor: COLORS.accentOrange,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    marginTop: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  welcomeButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });

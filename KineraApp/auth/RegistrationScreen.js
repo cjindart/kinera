@@ -60,7 +60,7 @@ export default function RegistrationScreen({ navigation, route }) {
         // Store isNewUser in AsyncStorage to persist across app restarts
         await AsyncStorage.setItem('isNewUser', 'true');
         
-        console.log("Registration successful, navigating to onboarding flow");
+        console.log("Registration successful, navigating directly to userType screen");
         
         // Use reset instead of navigate to clear the stack and force onboarding
         navigation.reset({
@@ -69,9 +69,10 @@ export default function RegistrationScreen({ navigation, route }) {
             {
               name: "Onboarding",
               params: { 
-                screen: "basicInfo",
+                screen: "userType",  // Go directly to userType screen
                 forceOnboarding: true,  // Always force onboarding
-                comingFrom: 'Registration'  // Add this to help identify the source
+                comingFrom: 'Registration',  // Add this to help identify the source
+                skipBasicInfo: true  // Add flag to indicate we're skipping basicInfo
               }
             }
           ]
@@ -108,8 +109,8 @@ export default function RegistrationScreen({ navigation, route }) {
               <Ionicons name="arrow-back" size={24} color={COLORS.primaryNavy} />
             </TouchableOpacity>
 
-            <Text style={styles.title}>Create Profile</Text>
-            <Text style={styles.subtitle}>Tell us a bit about yourself</Text>
+            <Text style={styles.title}>What's your name?</Text>
+            <Text style={styles.subtitle}>Tell us who you are</Text>
             
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Your Name</Text>
@@ -125,7 +126,7 @@ export default function RegistrationScreen({ navigation, route }) {
               />
             </View>
             
-            <View style={styles.inputContainer}>
+            {/* <View style={styles.inputContainer}>
               <Text style={styles.label}>Your Role</Text>
               <Text style={styles.infoText}>Choose how you want to use Vouch.</Text>
               
@@ -140,7 +141,7 @@ export default function RegistrationScreen({ navigation, route }) {
                   <Ionicons
                     name="people"
                     size={24}
-                    color={userType === USER_TYPES.DATER_SWIPER ? "white" : COLORS.primaryNavy}
+                    color={COLORS.primaryNavy}
                   />
                   <Text
                     style={[
@@ -162,7 +163,7 @@ export default function RegistrationScreen({ navigation, route }) {
                   <Ionicons
                     name="heart"
                     size={24}
-                    color={userType === USER_TYPES.DATER ? "white" : COLORS.primaryNavy}
+                    color={COLORS.primaryNavy}
                   />
                   <Text
                     style={[
@@ -184,7 +185,7 @@ export default function RegistrationScreen({ navigation, route }) {
                   <Ionicons
                     name="hand-left"
                     size={24}
-                    color={userType === USER_TYPES.SWIPER ? "white" : COLORS.primaryNavy}
+                    color={COLORS.primaryNavy}
                   />
                   <Text
                     style={[
@@ -196,7 +197,7 @@ export default function RegistrationScreen({ navigation, route }) {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </View> */}
             
             <TouchableOpacity 
               style={[styles.button, !name.trim() && styles.buttonDisabled]} 
