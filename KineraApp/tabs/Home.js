@@ -30,7 +30,7 @@ import { useAuth } from "../context/AuthContext";
 import { hasAccessToScreen } from "../utils/accessControl";
 import LockedScreen from "../components/LockedScreen";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "../firebase/firebaseConfig";
+import { db } from "../utils/firebase";
 
 const { width, height } = Dimensions.get("window");
 
