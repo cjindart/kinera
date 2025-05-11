@@ -13,6 +13,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import theme from "../assets/theme";
+import User from "../models/User";
 import {
   fetchAllUsers,
   getMatchmakerFriends,
@@ -20,12 +21,16 @@ import {
   getPotentialMatches,
   seedFirestoreWithMockData,
   fetchUserById,
+  approveCandidateForFriend,
+  rejectCandidateForFriend,
 } from "../services/userService";
 import { isDevelopmentMode } from "../utils/firebase";
 import mockData from "../assets/mockUserData.json";
 import { useAuth } from "../context/AuthContext";
 import { hasAccessToScreen } from "../utils/accessControl";
 import LockedScreen from "../components/LockedScreen";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase/firebaseConfig";
 
 const { width, height } = Dimensions.get("window");
 
@@ -224,13 +229,25 @@ export default function AvailabilityScreen() {
 
   // When current friend changes, load candidates for that friend
   useEffect(() => {
+    console.log("=== Friend Change Effect ===");
+    console.log("Current friend index:", currentFriendIndex);
+    console.log("Matchmaker friends length:", matchmakerFriends.length);
+
     if (
       currentUser &&
       matchmakerFriends.length > 0 &&
       currentFriendIndex < matchmakerFriends.length
     ) {
       const currentFriend = matchmakerFriends[currentFriendIndex];
+      console.log("Loading candidates for friend:", currentFriend?.name);
       loadCandidatesForFriend(currentUser, currentFriend);
+    } else {
+      console.log("Skipping candidate load because:", {
+        hasCurrentUser: !!currentUser,
+        matchmakerFriendsLength: matchmakerFriends.length,
+        currentFriendIndex,
+        isValidIndex: currentFriendIndex < matchmakerFriends.length,
+      });
     }
   }, [currentFriendIndex, matchmakerFriends]);
 
@@ -762,39 +779,174 @@ export default function AvailabilityScreen() {
 
   const handleNextFriend = () => {
     if (matchmakerFriends.length > 0) {
-      setCurrentFriendIndex((prev) =>
-        prev === matchmakerFriends.length - 1 ? 0 : prev + 1
+      console.log("=== Next Friend Debug ===");
+      console.log("Current friend index:", currentFriendIndex);
+      console.log("Total friends:", matchmakerFriends.length);
+      console.log(
+        "Current friend:",
+        matchmakerFriends[currentFriendIndex]?.name
       );
-      // Note: candidates will be loaded in the useEffect when currentFriendIndex changes
+
+      setCurrentFriendIndex((prev) => {
+        const nextIndex = prev === matchmakerFriends.length - 1 ? 0 : prev + 1;
+        console.log("Setting new friend index to:", nextIndex);
+        console.log("Next friend will be:", matchmakerFriends[nextIndex]?.name);
+        return nextIndex;
+      });
     }
   };
 
-  const handleSwipe = (direction) => {
+  const handleSwipe = async (direction) => {
     if (candidates.length > 0) {
-      // Mark current candidate as swiped
-      const candidateId = currentCandidate.id;
-      setSwipedCandidates((prev) => ({
-        ...prev,
-        [candidateId]: direction,
-      }));
+      try {
+        // Get current friend and candidate
+        const currentFriend = matchmakerFriends[currentFriendIndex];
+        const candidateId = currentCandidate.id;
 
-      // Move to next candidate if available
-      if (currentCandidateIndex < candidates.length - 1) {
-        setCurrentCandidateIndex(currentCandidateIndex + 1);
-      } else {
-        // We've reached the end of candidates, cycle back to the first one
-        // Or could show a message that all candidates have been viewed
-        setCurrentCandidateIndex(0);
+        console.log("=== Match Debug Info ===");
+        console.log("Current Friend:", {
+          id: currentFriend.id,
+          name: currentFriend.name,
+          matches: currentFriend.matches || {},
+        });
+        console.log("Current Candidate:", {
+          id: currentCandidate.id,
+          name: currentCandidate.name,
+          matches: currentCandidate.matches || {},
+        });
+
+        // Get all users for the backend operations
+        const allUsers = await fetchAllUsers();
+
+        if (direction === "right") {
+          // Handle approval
+          console.log("Approving candidate...");
+          const matchCreated = await approveCandidateForFriend(
+            currentUser,
+            currentFriend.id,
+            candidateId,
+            allUsers
+          );
+
+          if (matchCreated) {
+            console.log("✅ Match created successfully!");
+            Alert.alert(
+              "Match Created!",
+              `A match was created between ${currentFriend.name} and ${currentCandidate.name}!`
+            );
+          } else {
+            console.log(
+              "ℹ️ No match created yet - waiting for matchback or higher approval rate"
+            );
+          }
+
+          // Update local state with new match data
+          const updatedFriend = allUsers.find(
+            (user) => user.id === currentFriend.id
+          );
+          const updatedCandidate = allUsers.find(
+            (user) => user.id === candidateId
+          );
+
+          if (updatedFriend && updatedCandidate) {
+            // Update the friend in matchmakerFriends array
+            const updatedMatchmakerFriends = [...matchmakerFriends];
+            updatedMatchmakerFriends[currentFriendIndex] = updatedFriend;
+            setMatchmakerFriends(updatedMatchmakerFriends);
+
+            // Update the candidate in candidates array
+            const updatedCandidates = [...candidates];
+            const candidateIndex = updatedCandidates.findIndex(
+              (c) => c.id === candidateId
+            );
+            if (candidateIndex !== -1) {
+              updatedCandidates[candidateIndex] = updatedCandidate;
+              setCandidates(updatedCandidates);
+            }
+          }
+        } else {
+          // Handle rejection
+          console.log("Rejecting candidate...");
+          await rejectCandidateForFriend(
+            currentUser,
+            currentFriend.id,
+            candidateId,
+            allUsers
+          );
+          console.log("❌ Candidate rejected");
+
+          // Update local state with new match data after rejection
+          const updatedFriend = allUsers.find(
+            (user) => user.id === currentFriend.id
+          );
+          if (updatedFriend) {
+            const updatedMatchmakerFriends = [...matchmakerFriends];
+            updatedMatchmakerFriends[currentFriendIndex] = updatedFriend;
+            setMatchmakerFriends(updatedMatchmakerFriends);
+          }
+        }
+
+        // Update swipedPool in Firestore
+        try {
+          const friendRef = doc(db, "users", currentFriend.id);
+          const friendDoc = await getDoc(friendRef);
+          const currentSwipedPool = friendDoc.data()?.swipedPool || [];
+
+          // Add candidate to swipedPool if not already there
+          if (!currentSwipedPool.includes(candidateId)) {
+            await updateDoc(friendRef, {
+              swipedPool: [...currentSwipedPool, candidateId],
+            });
+            console.log(
+              `Added ${candidateId} to ${currentFriend.name}'s swipedPool`
+            );
+          }
+
+          // Remove from swipingPool if present
+          const currentSwipingPool = friendDoc.data()?.swipingPool || {};
+          if (currentSwipingPool[candidateId]) {
+            const updatedSwipingPool = { ...currentSwipingPool };
+            delete updatedSwipingPool[candidateId];
+            await updateDoc(friendRef, {
+              swipingPool: updatedSwipingPool,
+            });
+            console.log(
+              `Removed ${candidateId} from ${currentFriend.name}'s swipingPool`
+            );
+          }
+        } catch (error) {
+          console.error("Error updating swipedPool:", error);
+        }
+
+        // Mark current candidate as swiped in local state
+        setSwipedCandidates((prev) => ({
+          ...prev,
+          [candidateId]: direction,
+        }));
+
+        // Move to next candidate if available
+        if (currentCandidateIndex < candidates.length - 1) {
+          setCurrentCandidateIndex(currentCandidateIndex + 1);
+        } else {
+          // We've reached the end of candidates, cycle back to the first one
+          setCurrentCandidateIndex(0);
+        }
+      } catch (error) {
+        console.error("Error handling swipe:", error);
+        Alert.alert(
+          "Error",
+          "Failed to process swipe. Check console for details."
+        );
       }
     }
   };
 
   const handlePreviousCandidate = async () => {
-    handleSwipe("left"); // Handle rejection
+    await handleSwipe("left"); // Handle rejection
   };
 
   const handleNextCandidate = async () => {
-    handleSwipe("right"); // Handle approval
+    await handleSwipe("right"); // Handle approval
   };
 
   const handleReverseSwipe = () => {
@@ -928,39 +1080,66 @@ export default function AvailabilityScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Set Up</Text>
         <Text>You're Swiping for:</Text>
-        {/* Debug button */}
-        <TouchableOpacity
-          style={styles.debugButton}
-          onPress={async () => {
-            try {
-              // Show current user details
-              Alert.alert(
-                "Current User",
-                `User: ${currentUser?.name} (${currentUser?.id})\n` +
-                  `Friends: ${currentUser?.friends?.length || 0}\n` +
-                  `userType: ${currentUser?.userType}`
-              );
+        {/* Debug buttons */}
+        <View style={styles.debugButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.debugButton, { backgroundColor: "#4B5C6B" }]}
+            onPress={async () => {
+              try {
+                // Show current user details
+                Alert.alert(
+                  "Current User",
+                  `User: ${currentUser?.name} (${currentUser?.id})\n` +
+                    `Friends: ${currentUser?.friends?.length || 0}\n` +
+                    `userType: ${currentUser?.userType}`
+                );
 
-              // Try to load friends directly using the current user
-              if (currentUser) {
-                const userFromFirestore = await fetchUserById(currentUser.id);
-                console.log("User from Firestore:", userFromFirestore);
+                // Try to load friends directly using the current user
+                if (currentUser) {
+                  const userFromFirestore = await fetchUserById(currentUser.id);
+                  console.log("User from Firestore:", userFromFirestore);
 
-                if (userFromFirestore) {
-                  // Update the user in memory to sync with Firestore
-                  setCurrentUser(userFromFirestore);
+                  if (userFromFirestore) {
+                    // Update the user in memory to sync with Firestore
+                    setCurrentUser(userFromFirestore);
 
-                  // Reload friends with the updated user data
-                  await updateMatchmakerFriends(userFromFirestore);
+                    // Reload friends with the updated user data
+                    await updateMatchmakerFriends(userFromFirestore);
+                  }
                 }
+              } catch (error) {
+                console.error("Debug error:", error);
               }
-            } catch (error) {
-              console.error("Debug error:", error);
-            }
-          }}
-        >
-          <Text style={styles.debugButtonText}>Debug</Text>
-        </TouchableOpacity>
+            }}
+          >
+            <Text style={styles.debugButtonText}>Debug User</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.debugButton, { backgroundColor: "#325475" }]}
+            onPress={() => {
+              if (currentFriend && currentCandidate) {
+                Alert.alert(
+                  "Current Match State",
+                  `Friend: ${currentFriend.name}\n` +
+                    `Friend Matches: ${JSON.stringify(
+                      currentFriend.matches || {},
+                      null,
+                      2
+                    )}\n\n` +
+                    `Candidate: ${currentCandidate.name}\n` +
+                    `Candidate Matches: ${JSON.stringify(
+                      currentCandidate.matches || {},
+                      null,
+                      2
+                    )}`
+                );
+              }
+            }}
+          >
+            <Text style={styles.debugButtonText}>Debug Match</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Friend Selector */}
@@ -1202,11 +1381,15 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
   },
-  debugButton: {
+  debugButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
     marginTop: 10,
-    backgroundColor: "#ED7E31",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+  },
+  debugButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
     borderRadius: 5,
   },
   debugButtonText: {
