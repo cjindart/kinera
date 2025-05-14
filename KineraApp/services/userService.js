@@ -351,9 +351,7 @@ export const getMatchmakerFriends = async (user) => {
 
     // Accept any of these variations for matchmaker type
     const matchmakerTypes = [
-      "Match Maker",
       "Dater & Match Maker",
-      "match_maker",
       "both",
       "Swiper",
       "Dater & Swiper",
