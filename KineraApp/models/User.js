@@ -165,7 +165,7 @@ class User {
     // Dating data
     this.swipingPool = userData.swipingPool || {};
     this.swipedPool = userData.swipedPool || [];
-    this.matches = userData.matches || [];
+    this.matches = userData.matches || {};
 
     // Log final constructed user
     console.log(

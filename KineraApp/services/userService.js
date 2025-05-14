@@ -426,43 +426,54 @@ export const approveCandidateForFriend = async (
   allUsers
 ) => {
   try {
-    // Get friend and candidate from allUsers array
-    const friend = allUsers.find((user) => user.id === friendId);
-    const candidate = allUsers.find((user) => user.id === candidateId);
+    // Get latest data from Firestore
+    const friendRef = doc(db, "users", friendId);
+    const candidateRef = doc(db, "users", candidateId);
 
-    if (!friend || !candidate) {
-      console.error("Friend or candidate not found");
+    const [friendDoc, candidateDoc] = await Promise.all([
+      getDoc(friendRef),
+      getDoc(candidateRef),
+    ]);
+
+    if (!friendDoc.exists() || !candidateDoc.exists()) {
+      console.error("Friend or candidate document not found in Firestore");
       return false;
     }
+
+    // Get current data from Firestore
+    const friend = friendDoc.data();
+    const candidate = candidateDoc.data();
 
     // Initialize matches if they don't exist
     if (!friend.matches) friend.matches = {};
     if (!candidate.matches) candidate.matches = {};
 
-    // Calculate approval rate
+    // Calculate approval rate for friend's matches
     const totalSwipes = Object.keys(friend.matches).length + 1; // +1 for current swipe
     const approvedSwipes =
       Object.values(friend.matches).filter((match) => match.approvalRate > 0)
         .length + 1;
     const approvalRate = (approvedSwipes / totalSwipes) * 100;
 
-    // Check for matchback
-    const matchBack = candidate.matches[friendId]?.approvalRate > 0;
+    // Check if candidate already has friend in their matches
+    const candidateHasFriend = candidate.matches[friendId] !== undefined;
+    const matchBack =
+      candidateHasFriend && candidate.matches[friendId].matchBack;
 
-    // Create match ID if conditions are met
+    // Create match ID if conditions are met (50%+ approval AND matchBack == true for both users)
     let matchId = null;
-    if (matchBack || approvalRate >= 50) {
+    if (matchBack && approvalRate >= 50) {
       matchId = `${friendId}_${candidateId}_${Date.now()}`;
     }
 
-    // Update friend's matches
+    // Update friend's matches with candidate
     friend.matches[candidateId] = {
       approvalRate,
-      matchBack,
+      matchBack: false,
       matchId,
     };
 
-    // Update candidate's matches
+    // Update candidate's matches with friend
     candidate.matches[friendId] = {
       approvalRate: candidate.matches[friendId]?.approvalRate || 0,
       matchBack: true,
@@ -470,18 +481,22 @@ export const approveCandidateForFriend = async (
     };
 
     // Update Firestore
-    const friendRef = doc(db, "users", friendId);
-    const candidateRef = doc(db, "users", candidateId);
+    try {
+      await Promise.all([
+        updateDoc(friendRef, {
+          matches: friend.matches,
+        }),
+        updateDoc(candidateRef, {
+          matches: candidate.matches,
+        }),
+      ]);
 
-    await updateDoc(friendRef, {
-      matches: friend.matches,
-    });
-
-    await updateDoc(candidateRef, {
-      matches: candidate.matches,
-    });
-
-    return !!matchId; // Return true if a match was created
+      console.log("Successfully updated matches in Firestore");
+      return !!matchId;
+    } catch (error) {
+      console.error("Error updating Firestore:", error);
+      return false;
+    }
   } catch (error) {
     console.error("Error approving candidate:", error);
     return false;
@@ -503,18 +518,20 @@ export const rejectCandidateForFriend = async (
   allUsers
 ) => {
   try {
-    // Get friend and candidate from allUsers array
-    const friend = allUsers.find((user) => user.id === friendId);
-    const candidate = allUsers.find((user) => user.id === candidateId);
+    // Get latest data from Firestore
+    const friendRef = doc(db, "users", friendId);
+    const friendDoc = await getDoc(friendRef);
 
-    if (!friend || !candidate) {
-      console.error("Friend or candidate not found");
+    if (!friendDoc.exists()) {
+      console.error("Friend document not found in Firestore");
       return false;
     }
 
+    // Get current data from Firestore
+    const friend = friendDoc.data();
+
     // Initialize matches if they don't exist
     if (!friend.matches) friend.matches = {};
-    if (!candidate.matches) candidate.matches = {};
 
     // Calculate approval rate (rejection doesn't affect approval rate)
     const totalSwipes = Object.keys(friend.matches).length + 1; // +1 for current swipe
@@ -523,18 +540,27 @@ export const rejectCandidateForFriend = async (
     ).length;
     const approvalRate = (approvedSwipes / totalSwipes) * 100;
 
-    // Update friend's matches
-    friend.matches[candidateId] = {
-      approvalRate,
-      matchBack: false,
-      matchId: null,
-    };
+    // Update friend's matches with candidate if not already present
+    if (!friend.matches[candidateId]) {
+      friend.matches[candidateId] = {
+        approvalRate,
+        matchBack: false,
+        matchId: null,
+      };
 
-    // Update Firestore
-    const friendRef = doc(db, "users", friendId);
-    await updateDoc(friendRef, {
-      matches: friend.matches,
-    });
+      // Update Firestore
+      try {
+        await updateDoc(friendRef, {
+          matches: friend.matches,
+        });
+
+        console.log("Successfully updated matches in Firestore for rejection");
+        return true;
+      } catch (error) {
+        console.error("Error updating Firestore for rejection:", error);
+        return false;
+      }
+    }
 
     return true;
   } catch (error) {

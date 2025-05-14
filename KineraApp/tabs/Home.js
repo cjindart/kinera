@@ -797,147 +797,129 @@ export default function AvailabilityScreen() {
   };
 
   const handleSwipe = async (direction) => {
-    if (candidates.length > 0) {
+    if (!candidates.length) return;
+
+    try {
+      // Get current friend and candidate
+      const currentFriend = matchmakerFriends[currentFriendIndex];
+      const candidateId = currentCandidate.id;
+
+      console.log("=== Swipe Debug ===");
+      console.log("Direction:", direction);
+      console.log("Current Friend:", currentFriend.id);
+      console.log("Current Candidate:", candidateId);
+
+      // Get all users for the backend operations
+      const allUsers = await fetchAllUsers();
+      console.log("Fetched all users:", allUsers.length);
+
+      if (direction === "right") {
+        // Handle approval
+        console.log("Attempting to approve candidate...");
+        const matchCreated = await approveCandidateForFriend(
+          currentUser,
+          currentFriend.id,
+          candidateId,
+          allUsers
+        );
+        console.log("Approval result:", matchCreated);
+
+        // Update local state with new match data
+        const updatedFriend = allUsers.find(
+          (user) => user.id === currentFriend.id
+        );
+        const updatedCandidate = allUsers.find(
+          (user) => user.id === candidateId
+        );
+
+        if (updatedFriend && updatedCandidate) {
+          console.log("Updating local state with new match data");
+          // Update the friend in matchmakerFriends array
+          const updatedMatchmakerFriends = [...matchmakerFriends];
+          updatedMatchmakerFriends[currentFriendIndex] = updatedFriend;
+          setMatchmakerFriends(updatedMatchmakerFriends);
+
+          // Update the candidate in candidates array
+          const updatedCandidates = [...candidates];
+          const candidateIndex = updatedCandidates.findIndex(
+            (c) => c.id === candidateId
+          );
+          if (candidateIndex !== -1) {
+            updatedCandidates[candidateIndex] = updatedCandidate;
+            setCandidates(updatedCandidates);
+          }
+        }
+      } else {
+        // Handle rejection
+        console.log("Attempting to reject candidate...");
+        const rejected = await rejectCandidateForFriend(
+          currentUser,
+          currentFriend.id,
+          candidateId,
+          allUsers
+        );
+        console.log("Rejection result:", rejected);
+
+        // Update local state with new match data after rejection
+        const updatedFriend = allUsers.find(
+          (user) => user.id === currentFriend.id
+        );
+        if (updatedFriend) {
+          console.log("Updating local state after rejection");
+          const updatedMatchmakerFriends = [...matchmakerFriends];
+          updatedMatchmakerFriends[currentFriendIndex] = updatedFriend;
+          setMatchmakerFriends(updatedMatchmakerFriends);
+        }
+      }
+
+      // Update swipedPool in Firestore
       try {
-        // Get current friend and candidate
-        const currentFriend = matchmakerFriends[currentFriendIndex];
-        const candidateId = currentCandidate.id;
+        console.log("Updating swipedPool in Firestore...");
+        const friendRef = doc(db, "users", currentFriend.id);
+        const friendDoc = await getDoc(friendRef);
+        const currentSwipedPool = friendDoc.data()?.swipedPool || [];
 
-        console.log("=== Match Debug Info ===");
-        console.log("Current Friend:", {
-          id: currentFriend.id,
-          name: currentFriend.name,
-          matches: currentFriend.matches || {},
-        });
-        console.log("Current Candidate:", {
-          id: currentCandidate.id,
-          name: currentCandidate.name,
-          matches: currentCandidate.matches || {},
-        });
-
-        // Get all users for the backend operations
-        const allUsers = await fetchAllUsers();
-
-        if (direction === "right") {
-          // Handle approval
-          console.log("Approving candidate...");
-          const matchCreated = await approveCandidateForFriend(
-            currentUser,
-            currentFriend.id,
-            candidateId,
-            allUsers
-          );
-
-          if (matchCreated) {
-            console.log("✅ Match created successfully!");
-            Alert.alert(
-              "Match Created!",
-              `A match was created between ${currentFriend.name} and ${currentCandidate.name}!`
-            );
-          } else {
-            console.log(
-              "ℹ️ No match created yet - waiting for matchback or higher approval rate"
-            );
-          }
-
-          // Update local state with new match data
-          const updatedFriend = allUsers.find(
-            (user) => user.id === currentFriend.id
-          );
-          const updatedCandidate = allUsers.find(
-            (user) => user.id === candidateId
-          );
-
-          if (updatedFriend && updatedCandidate) {
-            // Update the friend in matchmakerFriends array
-            const updatedMatchmakerFriends = [...matchmakerFriends];
-            updatedMatchmakerFriends[currentFriendIndex] = updatedFriend;
-            setMatchmakerFriends(updatedMatchmakerFriends);
-
-            // Update the candidate in candidates array
-            const updatedCandidates = [...candidates];
-            const candidateIndex = updatedCandidates.findIndex(
-              (c) => c.id === candidateId
-            );
-            if (candidateIndex !== -1) {
-              updatedCandidates[candidateIndex] = updatedCandidate;
-              setCandidates(updatedCandidates);
-            }
-          }
-        } else {
-          // Handle rejection
-          console.log("Rejecting candidate...");
-          await rejectCandidateForFriend(
-            currentUser,
-            currentFriend.id,
-            candidateId,
-            allUsers
-          );
-          console.log("❌ Candidate rejected");
-
-          // Update local state with new match data after rejection
-          const updatedFriend = allUsers.find(
-            (user) => user.id === currentFriend.id
-          );
-          if (updatedFriend) {
-            const updatedMatchmakerFriends = [...matchmakerFriends];
-            updatedMatchmakerFriends[currentFriendIndex] = updatedFriend;
-            setMatchmakerFriends(updatedMatchmakerFriends);
-          }
+        // Add candidate to swipedPool if not already there
+        if (!currentSwipedPool.includes(candidateId)) {
+          console.log("Adding candidate to swipedPool");
+          await updateDoc(friendRef, {
+            swipedPool: [...currentSwipedPool, candidateId],
+          });
         }
 
-        // Update swipedPool in Firestore
-        try {
-          const friendRef = doc(db, "users", currentFriend.id);
-          const friendDoc = await getDoc(friendRef);
-          const currentSwipedPool = friendDoc.data()?.swipedPool || [];
-
-          // Add candidate to swipedPool if not already there
-          if (!currentSwipedPool.includes(candidateId)) {
-            await updateDoc(friendRef, {
-              swipedPool: [...currentSwipedPool, candidateId],
-            });
-            console.log(
-              `Added ${candidateId} to ${currentFriend.name}'s swipedPool`
-            );
-          }
-
-          // Remove from swipingPool if present
-          const currentSwipingPool = friendDoc.data()?.swipingPool || {};
-          if (currentSwipingPool[candidateId]) {
-            const updatedSwipingPool = { ...currentSwipingPool };
-            delete updatedSwipingPool[candidateId];
-            await updateDoc(friendRef, {
-              swipingPool: updatedSwipingPool,
-            });
-            console.log(
-              `Removed ${candidateId} from ${currentFriend.name}'s swipingPool`
-            );
-          }
-        } catch (error) {
-          console.error("Error updating swipedPool:", error);
-        }
-
-        // Mark current candidate as swiped in local state
-        setSwipedCandidates((prev) => ({
-          ...prev,
-          [candidateId]: direction,
-        }));
-
-        // Move to next candidate if available
-        if (currentCandidateIndex < candidates.length - 1) {
-          setCurrentCandidateIndex(currentCandidateIndex + 1);
-        } else {
-          // We've reached the end of candidates, cycle back to the first one
-          setCurrentCandidateIndex(0);
+        // Remove from swipingPool if present
+        const currentSwipingPool = friendDoc.data()?.swipingPool || {};
+        if (currentSwipingPool[candidateId]) {
+          console.log("Removing candidate from swipingPool");
+          const updatedSwipingPool = { ...currentSwipingPool };
+          delete updatedSwipingPool[candidateId];
+          await updateDoc(friendRef, {
+            swipingPool: updatedSwipingPool,
+          });
         }
       } catch (error) {
-        console.error("Error handling swipe:", error);
-        Alert.alert(
-          "Error",
-          "Failed to process swipe. Check console for details."
-        );
+        console.error("Error updating swipedPool:", error);
       }
+
+      // Mark current candidate as swiped in local state
+      setSwipedCandidates((prev) => ({
+        ...prev,
+        [candidateId]: direction,
+      }));
+
+      // Calculate next candidate index
+      const nextIndex = currentCandidateIndex + 1;
+      const newIndex = nextIndex >= candidates.length ? 0 : nextIndex;
+      console.log("Moving to next candidate:", newIndex);
+
+      // Update candidate index in a single state update
+      setCurrentCandidateIndex(newIndex);
+    } catch (error) {
+      console.error("Error handling swipe:", error);
+      Alert.alert(
+        "Error",
+        "Failed to process swipe. Check console for details."
+      );
     }
   };
 
