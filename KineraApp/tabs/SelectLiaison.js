@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
 
 const COLORS = {
@@ -34,14 +34,51 @@ const CARD_SIZE = (Dimensions.get("window").width - 64) / 2;
 export default function SelectLiaison({ navigation }) {
   const { user, updateProfile } = useAuth();
   const [selectedId, setSelectedId] = useState(null);
+  const [liaisons, setLiaisons] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Convert friends array to liaison format
-  const liaisons =
-    user?.profileData?.friends?.map((friend) => ({
-      id: friend.id,
-      name: friend.name,
-      image: friend.avatar,
-    })) || [];
+  // Fetch latest friends from Firestore
+  useEffect(() => {
+    const fetchFriends = async () => {
+      setLoading(true);
+      try {
+        if (!user?.id) {
+          setLiaisons([]);
+          setLoading(false);
+          return;
+        }
+        const userRef = doc(db, "users", user.id);
+        const userDoc = await getDoc(userRef);
+        if (!userDoc.exists()) {
+          setLiaisons([]);
+          setLoading(false);
+          return;
+        }
+        const userData = userDoc.data();
+        const friends = userData.friends || [];
+        // Fetch each friend's full data to get their Stanford email
+        const liaisonList = await Promise.all(
+          friends.map(async (friend) => {
+            const friendId = typeof friend === "object" ? friend.id : friend;
+            const friendDoc = await getDoc(doc(db, "users", friendId));
+            if (!friendDoc.exists()) return null;
+            const friendData = friendDoc.data();
+            return {
+              id: friendId,
+              name: friendData.name,
+              image: friendData.profileData?.photos?.[0] || null,
+              stanfordEmail: friendData.stanfordEmail || "",
+            };
+          })
+        );
+        setLiaisons(liaisonList.filter(Boolean));
+      } catch (e) {
+        setLiaisons([]);
+      }
+      setLoading(false);
+    };
+    fetchFriends();
+  }, [user]);
 
   const handleSetLiaison = async () => {
     try {
@@ -57,6 +94,7 @@ export default function SelectLiaison({ navigation }) {
         profileData: {
           ...user.profileData,
           liaison: selectedLiaison.name,
+          liaisonEmail: selectedLiaison.stanfordEmail,
         },
       };
 
@@ -92,6 +130,14 @@ export default function SelectLiaison({ navigation }) {
         )}
       </View>
       <Text style={styles.liaisonName}>{item.name}</Text>
+      {item.stanfordEmail ? (
+        <Text style={styles.liaisonEmail}>{item.stanfordEmail}</Text>
+      ) : (
+        <Text style={styles.liaisonEmail}>
+          {" "}
+          no stanford email, this is required for liaison
+        </Text>
+      )}
     </TouchableOpacity>
   );
 
@@ -104,7 +150,11 @@ export default function SelectLiaison({ navigation }) {
       </View>
 
       {/* Grid of liaisons */}
-      {liaisons.length > 0 ? (
+      {loading ? (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateText}>Loading friends...</Text>
+        </View>
+      ) : liaisons.length > 0 ? (
         <FlatList
           data={liaisons}
           renderItem={renderLiaison}
@@ -260,5 +310,11 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 16,
+  },
+  liaisonEmail: {
+    fontSize: 14,
+    color: COLORS.mutedBlue,
+    textAlign: "center",
+    marginTop: 2,
   },
 });

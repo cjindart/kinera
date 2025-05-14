@@ -97,8 +97,15 @@ export const getPotentialMatches = async (user) => {
     // Get all users
     const allUsers = await fetchAllUsers();
 
+    // Only include users with userType 'Dater' or 'Dater & Match Maker'
+    const eligibleUsers = allUsers.filter(
+      (potentialMatch) =>
+        potentialMatch.userType === "Dater" ||
+        potentialMatch.userType === "Dater & Match Maker"
+    );
+
     // Filter users based on gender and sexuality preferences
-    const potentialMatches = allUsers.filter((potentialMatch) => {
+    const potentialMatches = eligibleUsers.filter((potentialMatch) => {
       // Don't match with self
       if (potentialMatch.id === user.id) return false;
 
@@ -106,7 +113,7 @@ export const getPotentialMatches = async (user) => {
       const matchSexuality =
         potentialMatch.profileData?.sexuality || potentialMatch.sexuality;
 
-      // Basic filtering logic based on gender and sexuality
+      // Basic filtering logic based on gender and sexuality preferences
       // This is a simplified version - you can expand this based on your app's needs
 
       // If user is straight male, match with straight/bi females
@@ -509,14 +516,14 @@ export const approveCandidateForFriend = async (
     friend.matches[candidateId] = {
       approvalRate: newApprovalRate,
       matchBack: matchBack,
-      matchId,
+      matchId: matchId,
     };
 
     // Update candidate's matches with friend
     candidate.matches[friendId] = {
       approvalRate: candidate.matches[friendId]?.approvalRate || 0,
       matchBack: true,
-      matchId,
+      matchId: matchId,
     };
 
     // Update Firestore

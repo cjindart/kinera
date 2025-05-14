@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -40,12 +40,14 @@ export default function AvailabilityScreen() {
   const [currentFriendIndex, setCurrentFriendIndex] = useState(0);
   const [currentCandidateIndex, setCurrentCandidateIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [swipeLoading, setSwipeLoading] = useState(false);
   const [matchmakerFriends, setMatchmakerFriends] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [swipedCandidates, setSwipedCandidates] = useState({});
   const { user } = useAuth();
   const userType = user?.userType || "";
   const hasAccess = hasAccessToScreen(userType, "Home");
+  const prevFriendsRef = useRef([]);
 
   // Function to update matchmaker friends list
   const updateMatchmakerFriends = async (user) => {
@@ -60,11 +62,19 @@ export default function AvailabilityScreen() {
       console.log(`Found ${friends.length} matchmaker friends`);
       setMatchmakerFriends(friends);
 
-      // Reset current indices
-      setCurrentFriendIndex(0);
-      setCurrentCandidateIndex(0);
+      // Only reset currentFriendIndex if the friends list has changed
+      const prevFriends = prevFriendsRef.current;
+      const prevIds = prevFriends.map((f) => f.id || f);
+      const newIds = friends.map((f) => f.id || f);
+      const listsAreEqual =
+        prevIds.length === newIds.length &&
+        prevIds.every((id, i) => id === newIds[i]);
+      if (!listsAreEqual) {
+        setCurrentFriendIndex(0);
+      }
+      prevFriendsRef.current = friends;
 
-      // Load candidates for the first friend
+      // Load candidates for the first friend if needed
       if (friends.length > 0) {
         loadCandidatesForFriend(user, friends[0]);
       }
@@ -568,198 +578,6 @@ export default function AvailabilityScreen() {
     );
   }
 
-  if (!currentCandidate) {
-    return (
-      <View style={[styles.container, styles.errorContainer]}>
-        <Text style={styles.errorText}>No candidates available</Text>
-
-        {/* Special button to match friends by name instead of ID */}
-        <TouchableOpacity
-          style={[styles.seedButton, { backgroundColor: "#FF8C00" }]}
-          onPress={async () => {
-            try {
-              setLoading(true);
-
-              // Check if user has friends
-              if (
-                !currentUser ||
-                !currentUser.friends ||
-                currentUser.friends.length === 0
-              ) {
-                Alert.alert(
-                  "Error",
-                  "You don't have any friends to match with"
-                );
-                setLoading(false);
-                return;
-              }
-
-              // Log the user's friends
-              console.log(`User has ${currentUser.friends.length} friends:`);
-              currentUser.friends.forEach((friend, index) => {
-                console.log(
-                  `Friend ${index}: ${friend.name} (ID: ${friend.id})`
-                );
-              });
-
-              // Match friends by name with the mock data
-              const friendNameMap = {
-                "Emily Chen": "user7",
-                "Ryan Patel": "user5",
-                "Sarah Johnson": "user6",
-                "Sophia Martinez": "user8",
-                "Olivia Kim": "user9",
-                "Isabella Wang": "user10",
-              };
-
-              // Extract friend names
-              const friendNames = currentUser.friends.map((f) => f.name);
-              console.log("Friend names:", friendNames);
-
-              // Find matching mock users
-              const matchedFriends = [];
-              for (const friend of currentUser.friends) {
-                const mockUserId = friendNameMap[friend.name];
-                if (mockUserId) {
-                  const mockUser = mockData.users.find(
-                    (u) => u.id === mockUserId
-                  );
-                  if (mockUser) {
-                    console.log(
-                      `Matched friend ${friend.name} to mock user ${mockUserId}`
-                    );
-                    matchedFriends.push(mockUser);
-                  }
-                }
-              }
-
-              console.log(`Found ${matchedFriends.length} matching mock users`);
-
-              if (matchedFriends.length === 0) {
-                Alert.alert(
-                  "Error",
-                  "Couldn't match your friends to the mock data"
-                );
-                setLoading(false);
-                return;
-              }
-
-              // Set the matched friends as matchmaker friends
-              setMatchmakerFriends(matchedFriends);
-              setCurrentFriendIndex(0);
-
-              // Get the first friend's swiping pool
-              const firstFriend = matchedFriends[0];
-              console.log(`Loading swiping pool for ${firstFriend.name}`);
-
-              // Extract pool user IDs from swipingPool
-              const poolUserIds = Object.keys(firstFriend.swipingPool || {});
-              console.log(
-                `Pool has ${poolUserIds.length} user IDs:`,
-                poolUserIds
-              );
-
-              // Get the candidate user objects
-              const poolCandidates = poolUserIds
-                .map((id) => mockData.users.find((u) => u.id === id))
-                .filter((u) => u !== null);
-
-              console.log(`Found ${poolCandidates.length} pool candidates`);
-              setCandidates(poolCandidates);
-              setCurrentCandidateIndex(0);
-
-              Alert.alert(
-                "Success",
-                `Matched your friends by name and loaded ${poolCandidates.length} candidates`
-              );
-            } catch (error) {
-              console.error("Error matching friends by name:", error);
-              Alert.alert("Error", "Failed to match friends by name");
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          <Text style={styles.seedButtonText}>Match Friends By Name</Text>
-        </TouchableOpacity>
-
-        {/* Other buttons... */}
-        <TouchableOpacity
-          style={[styles.seedButton, { marginTop: 10 }]}
-          onPress={async () => {
-            try {
-              setLoading(true);
-              const success = await seedFirestoreWithMockData();
-              if (success) {
-                Alert.alert(
-                  "Success",
-                  "Mock data has been seeded to Firestore"
-                );
-                // Reload user data after seeding
-                const userData = await AsyncStorage.getItem("userData");
-                if (userData) {
-                  const parsedUser = JSON.parse(userData);
-                  setCurrentUser(parsedUser);
-                  await updateMatchmakerFriends(parsedUser);
-                }
-              } else {
-                Alert.alert("Error", "Failed to seed mock data");
-              }
-            } catch (error) {
-              console.error("Error seeding data:", error);
-              Alert.alert("Error", "An error occurred while seeding data");
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          <Text style={styles.seedButtonText}>Seed Test Data</Text>
-        </TouchableOpacity>
-
-        {/* Direct Mock Data Load buttons */}
-        <TouchableOpacity
-          style={[
-            styles.seedButton,
-            { marginTop: 10, backgroundColor: "#4B5C6B" },
-          ]}
-          onPress={() =>
-            loadMockUser(
-              "user7",
-              setLoading,
-              setCurrentUser,
-              setMatchmakerFriends,
-              setCurrentFriendIndex,
-              setCandidates,
-              setCurrentCandidateIndex
-            )
-          }
-        >
-          <Text style={styles.seedButtonText}>Load Mock User7</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.seedButton,
-            { marginTop: 10, backgroundColor: "#325475" },
-          ]}
-          onPress={() =>
-            loadMockUser(
-              "user1",
-              setLoading,
-              setCurrentUser,
-              setMatchmakerFriends,
-              setCurrentFriendIndex,
-              setCandidates,
-              setCurrentCandidateIndex
-            )
-          }
-        >
-          <Text style={styles.seedButtonText}>Load Mock User1</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   const handleCardPress = () => {
     if (navigation && navigation.navigate) {
       navigation.navigate("CandidateProfile", {
@@ -797,8 +615,8 @@ export default function AvailabilityScreen() {
   };
 
   const handleSwipe = async (direction) => {
-    if (!candidates.length) return;
-
+    if (!candidates.length || swipeLoading) return;
+    setSwipeLoading(true);
     try {
       // Get current friend and candidate
       const currentFriend = matchmakerFriends[currentFriendIndex];
@@ -907,19 +725,19 @@ export default function AvailabilityScreen() {
         [candidateId]: direction,
       }));
 
-      // Calculate next candidate index
-      const nextIndex = currentCandidateIndex + 1;
-      const newIndex = nextIndex >= candidates.length ? 0 : nextIndex;
-      console.log("Moving to next candidate:", newIndex);
+      // After Firestore updates:
+      await loadCandidatesForFriend(currentUser, currentFriend);
 
-      // Update candidate index in a single state update
-      setCurrentCandidateIndex(newIndex);
+      // Reset index to 0 (first candidate in new list)
+      setCurrentCandidateIndex(0);
     } catch (error) {
       console.error("Error handling swipe:", error);
       Alert.alert(
         "Error",
         "Failed to process swipe. Check console for details."
       );
+    } finally {
+      setSwipeLoading(false);
     }
   };
 
@@ -1158,24 +976,49 @@ export default function AvailabilityScreen() {
         style={styles.cardContainer}
         onPress={handleCardPress}
         activeOpacity={0.7}
+        disabled={swipeLoading || !currentCandidate}
       >
         <View style={styles.card}>
-          <Image
-            source={
-              currentCandidate.profileData?.photos?.[0]
-                ? { uri: currentCandidate.profileData.photos[0] }
-                : require("../assets/photos/image.png")
-            }
-            style={styles.cardImage}
-          />
+          {swipeLoading ? (
+            <ActivityIndicator
+              size="large"
+              color="#325475"
+              style={{ flex: 1 }}
+            />
+          ) : currentCandidate ? (
+            <Image
+              source={
+                currentCandidate.profileData?.photos?.[0]
+                  ? { uri: currentCandidate.profileData.photos[0] }
+                  : require("../assets/photos/image.png")
+              }
+              style={styles.cardImage}
+            />
+          ) : (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{ color: "#325475", fontSize: 18, textAlign: "center" }}
+              >
+                No more candidates left to swipe, check back later
+              </Text>
+            </View>
+          )}
         </View>
-        <Text style={styles.cardText}>
-          {currentCandidate.name} {"\n"}
-          {currentCandidate.profileData?.age} •{" "}
-          {currentCandidate.profileData?.year}
-          {"\n"}
-          {currentCandidate.profileData?.city}
-        </Text>
+        {!swipeLoading && currentCandidate && (
+          <Text style={styles.cardText}>
+            {currentCandidate.name} {"\n"}
+            {currentCandidate.profileData?.age} •{" "}
+            {currentCandidate.profileData?.year}
+            {"\n"}
+            {currentCandidate.profileData?.city}
+          </Text>
+        )}
       </TouchableOpacity>
 
       {/* Approve/Reject/Reverse Buttons */}
@@ -1183,6 +1026,7 @@ export default function AvailabilityScreen() {
         <TouchableOpacity
           style={styles.rejectButton}
           onPress={handlePreviousCandidate}
+          disabled={swipeLoading || !currentCandidate}
         >
           <Text style={styles.buttonText}>✕</Text>
         </TouchableOpacity>
@@ -1190,6 +1034,7 @@ export default function AvailabilityScreen() {
         <TouchableOpacity
           style={styles.reverseButton}
           onPress={handleReverseSwipe}
+          disabled={swipeLoading || !currentCandidate}
         >
           <Text style={styles.buttonText}>↺</Text>
         </TouchableOpacity>
@@ -1197,6 +1042,7 @@ export default function AvailabilityScreen() {
         <TouchableOpacity
           style={styles.acceptButton}
           onPress={handleNextCandidate}
+          disabled={swipeLoading || !currentCandidate}
         >
           <Text style={styles.buttonText}>✓</Text>
         </TouchableOpacity>

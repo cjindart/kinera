@@ -184,6 +184,9 @@ export default function ProfileScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
 
+  // Add new state for friend data
+  const [friendData, setFriendData] = useState({});
+
   // Load user data when component mounts
   useEffect(() => {
     if (user) {
@@ -938,6 +941,29 @@ export default function ProfileScreen() {
     }
   };
 
+  // Add useEffect to fetch friend data
+  useEffect(() => {
+    const fetchFriendData = async () => {
+      if (!user?.friends) return;
+
+      const newFriendData = {};
+      for (const friend of user.friends) {
+        const friendId = typeof friend === "object" ? friend.id : friend;
+        try {
+          const friendDoc = await getDoc(doc(db, "users", friendId));
+          if (friendDoc.exists()) {
+            newFriendData[friendId] = friendDoc.data();
+          }
+        } catch (error) {
+          console.error(`Error fetching friend ${friendId}:`, error);
+        }
+      }
+      setFriendData(newFriendData);
+    };
+
+    fetchFriendData();
+  }, [user?.friends]);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -1510,6 +1536,10 @@ export default function ProfileScreen() {
                   ? friend.dateActivities
                   : [];
 
+              // Get friend data from Firestore
+              const firestoreFriendData = friendData[friendId];
+              const friendUserType = firestoreFriendData?.userType;
+
               // For legacy ID-based friends, look up in mock data
               let mockFriend = null;
               if (!friendName) {
@@ -1522,15 +1552,24 @@ export default function ProfileScreen() {
                 return null;
               }
 
+              // Determine user type to display
+              const displayUserType =
+                friendUserType || mockFriend?.userType || "Unknown";
+
               return (
                 <View
                   key={`friend-${index}-${friendId}`}
                   style={styles.friendItem}
                 >
                   <View style={styles.friendAvatar}>
-                    {mockFriend?.photos?.[0] ? (
+                    {firestoreFriendData?.profileData?.photos?.[0] ||
+                    mockFriend?.photos?.[0] ? (
                       <Image
-                        source={{ uri: mockFriend.photos[0] }}
+                        source={{
+                          uri:
+                            firestoreFriendData?.profileData?.photos?.[0] ||
+                            mockFriend?.photos?.[0],
+                        }}
                         style={styles.friendAvatarImage}
                       />
                     ) : (
@@ -1543,7 +1582,9 @@ export default function ProfileScreen() {
                   </View>
                   <View style={styles.friendDetails}>
                     <Text style={styles.friendName}>
-                      {friendName || mockFriend?.name || "Unknown"}
+                      {(friendName || mockFriend?.name || "Unknown") +
+                        " -- " +
+                        displayUserType}
                     </Text>
                     {(friendInterests.length > 0 ||
                       (mockFriend?.interests &&
