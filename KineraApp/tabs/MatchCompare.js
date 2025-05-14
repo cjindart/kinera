@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { fetchUserById } from "../services/userService";
 
 const COLORS = {
   primaryNavy: "#325475",
@@ -26,17 +28,24 @@ const COLORS = {
 
 export default function MatchCompare({ route, navigation }) {
   const { user } = useAuth();
+  const candidateId = route.params?.candidateId;
+  const [candidateInfo, setCandidateInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Get candidate info from route params or use default values
-  const candidateInfo = route.params?.candidateInfo || {
-    name: "Madison",
-    age: "22",
-    gender: "Woman",
-    height: "5'7\"",
-    year: "Sophomore",
-    interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"],
-  };
+  useEffect(() => {
+    const fetchCandidate = async () => {
+      setLoading(true);
+      if (!candidateId) {
+        setCandidateInfo(null);
+        setLoading(false);
+        return;
+      }
+      const candidate = await fetchUserById(candidateId);
+      setCandidateInfo(candidate);
+      setLoading(false);
+    };
+    fetchCandidate();
+  }, [candidateId]);
 
   // Use real user data from AuthContext
   const yourInfo = {
@@ -44,18 +53,51 @@ export default function MatchCompare({ route, navigation }) {
     image: user?.profileData?.photos?.[0] || null,
     interests: user?.profileData?.interests || [],
     dateActivities: user?.profileData?.dateActivities || [],
+    matchId: user?.profileData?.matchId || null,
   };
 
-  // Get liaison from user's profile
-  const liaison = { name: user?.profileData?.liaison || "Not set" };
+  // Get liaison from user's or candidate's profile
+  const liaisonName =
+    user?.profileData?.liaison ||
+    candidateInfo?.profileData?.liaison ||
+    "Not set";
+  const liaisonEmail =
+    user?.profileData?.liaisonEmail ||
+    candidateInfo?.profileData?.liaisonEmail ||
+    "email not set";
 
-  // Calculate shared interests and activities
-  const sharedInterests = candidateInfo.interests.filter((interest) =>
-    yourInfo.interests.includes(interest)
-  );
-  const sharedActivities = candidateInfo.dateActivities.filter((act) =>
-    yourInfo.dateActivities.includes(act)
-  );
+  // Get the matchId for this pair
+  const pairMatchId =
+    (user?.matches && user.matches[candidateId]?.matchId) ||
+    (candidateInfo?.matches && candidateInfo.matches[user?.id]?.matchId) ||
+    null;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color={COLORS.primaryNavy} />
+      </SafeAreaView>
+    );
+  }
+  if (!candidateInfo) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text
+          style={{
+            color: COLORS.primaryNavy,
+            textAlign: "center",
+            marginTop: 40,
+          }}
+        >
+          Candidate not found.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Extract all interests and activities
+  const candidateInterests = candidateInfo.profileData?.interests || [];
+  const candidateActivities = candidateInfo.profileData?.dateActivities || [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,18 +112,21 @@ export default function MatchCompare({ route, navigation }) {
           </TouchableOpacity>
         </View>
         <View style={{ flex: 2, alignItems: "center" }}>
-          <Text style={styles.matchNameHeader}>Match: {candidateInfo.name[0]}</Text>
+          <Text style={styles.matchNameHeader}>
+            Match: {candidateInfo.name ? candidateInfo.name[0] : "?"}
+          </Text>
         </View>
         <View style={{ flex: 1 }} />
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Top Row: Back Button and Match Name */}
-
         {/* Top: Liaison row */}
         <View style={styles.liaisonRow}>
           <Text style={styles.liaisonText}>
             Your date liaison:{" "}
-            <Text style={styles.liaisonName}>{liaison.name}</Text>
+            <Text style={styles.liaisonName}>{liaisonName}</Text>
+            {liaisonEmail ? (
+              <Text style={styles.liaisonEmail}> ({liaisonEmail})</Text>
+            ) : null}
           </Text>
         </View>
 
@@ -92,7 +137,8 @@ export default function MatchCompare({ route, navigation }) {
               <Ionicons name="person" size={70} color={COLORS.mutedBlue} />
             </View>
             <Text style={styles.profileLabel}>
-              {candidateInfo.name[0]} ({candidateInfo.age})
+              {candidateInfo.name ? candidateInfo.name[0] : "?"} (
+              {candidateInfo.profileData?.age || "?"})
             </Text>
           </View>
           <View style={styles.profileImageBlock}>
@@ -103,7 +149,20 @@ export default function MatchCompare({ route, navigation }) {
             <Text style={styles.profileLabel}>you</Text>
           </View>
         </View>
-
+        <View>
+          <Text
+            style={{
+              color: COLORS.primaryNavy,
+              textAlign: "center",
+              fontSize: 16,
+              fontWeight: "bold",
+            }}
+          >
+            {pairMatchId
+              ? `Your Match ID: ${pairMatchId}`
+              : "we can't find your match ID, please contact the team for support."}
+          </Text>
+        </View>
         {/* Availability button */}
         <View style={styles.availabilityButtonContainer}>
           <TouchableOpacity
@@ -124,60 +183,17 @@ export default function MatchCompare({ route, navigation }) {
           <View style={styles.comparisonCol}>
             <Text style={styles.comparisonTitle}>Interests</Text>
             <View style={styles.pillsContainer}>
-              {candidateInfo.interests.map((interest, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.pill,
-                    sharedInterests.includes(interest) && styles.sharedPill,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.pillText,
-                      sharedInterests.includes(interest) &&
-                        styles.sharedPillText,
-                    ]}
-                  >
-                    {interest}
-                  </Text>
-                  {sharedInterests.includes(interest) && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color={COLORS.offWhite}
-                      style={styles.matchIcon}
-                    />
-                  )}
+              {candidateInterests.map((interest, idx) => (
+                <View key={idx} style={styles.pill}>
+                  <Text style={styles.pillText}>{interest}</Text>
                 </View>
               ))}
             </View>
             <Text style={styles.comparisonTitle}>Activities</Text>
             <View style={styles.pillsContainer}>
-              {candidateInfo.dateActivities.map((act, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.pill,
-                    sharedActivities.includes(act) && styles.sharedPill,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.pillText,
-                      sharedActivities.includes(act) && styles.sharedPillText,
-                    ]}
-                  >
-                    {act}
-                  </Text>
-                  {sharedActivities.includes(act) && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color={COLORS.offWhite}
-                      style={styles.matchIcon}
-                    />
-                  )}
+              {candidateActivities.map((act, idx) => (
+                <View key={idx} style={styles.pill}>
+                  <Text style={styles.pillText}>{act}</Text>
                 </View>
               ))}
             </View>
@@ -187,59 +203,16 @@ export default function MatchCompare({ route, navigation }) {
             <Text style={styles.comparisonTitle}>Interests</Text>
             <View style={styles.pillsContainer}>
               {yourInfo.interests.map((interest, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.pill,
-                    sharedInterests.includes(interest) && styles.sharedPill,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.pillText,
-                      sharedInterests.includes(interest) &&
-                        styles.sharedPillText,
-                    ]}
-                  >
-                    {interest}
-                  </Text>
-                  {sharedInterests.includes(interest) && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color={COLORS.offWhite}
-                      style={styles.matchIcon}
-                    />
-                  )}
+                <View key={idx} style={styles.pill}>
+                  <Text style={styles.pillText}>{interest}</Text>
                 </View>
               ))}
             </View>
             <Text style={styles.comparisonTitle}>Activities</Text>
             <View style={styles.pillsContainer}>
               {yourInfo.dateActivities.map((act, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.pill,
-                    sharedActivities.includes(act) && styles.sharedPill,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.pillText,
-                      sharedActivities.includes(act) && styles.sharedPillText,
-                    ]}
-                  >
-                    {act}
-                  </Text>
-                  {sharedActivities.includes(act) && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color={COLORS.offWhite}
-                      style={styles.matchIcon}
-                    />
-                  )}
+                <View key={idx} style={styles.pill}>
+                  <Text style={styles.pillText}>{act}</Text>
                 </View>
               ))}
             </View>
@@ -286,6 +259,12 @@ const styles = StyleSheet.create({
   liaisonName: {
     fontWeight: "bold",
     color: COLORS.accentOrange,
+  },
+  liaisonEmail: {
+    fontSize: 14,
+    color: COLORS.mutedBlue,
+    textAlign: "center",
+    marginLeft: 4,
   },
   profileImagesRow: {
     flexDirection: "row",

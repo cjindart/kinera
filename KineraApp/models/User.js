@@ -69,14 +69,18 @@ class User {
    */
   constructor(userData = {}) {
     // Log what data we're starting with
-    console.log(`Constructing User instance from data: ${JSON.stringify({
-      hasId: !!userData.id || !!userData.userId,
-      hasName: !!userData.name,
-      hasPhoneNumber: !!userData.phoneNumber || !!userData.phone,
-      hasProfileData: !!userData.profileData,
-      profileDataKeys: userData.profileData ? Object.keys(userData.profileData) : []
-    })}`);
-    
+    console.log(
+      `Constructing User instance from data: ${JSON.stringify({
+        hasId: !!userData.id || !!userData.userId,
+        hasName: !!userData.name,
+        hasPhoneNumber: !!userData.phoneNumber || !!userData.phone,
+        hasProfileData: !!userData.profileData,
+        profileDataKeys: userData.profileData
+          ? Object.keys(userData.profileData)
+          : [],
+      })}`
+    );
+
     // Basic info
     this.id = userData.id || userData.userId || null;
     this.name = userData.name || null;
@@ -124,7 +128,9 @@ class User {
         // If it's a string, convert to basic object
         if (typeof friend === "string") {
           return {
-            id: `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
+            id: `friend_${Date.now()}_${index}_${Math.floor(
+              Math.random() * 10000
+            )}`,
             name: friend,
             avatar: null,
           };
@@ -132,17 +138,25 @@ class User {
         // If it's already an object, ensure it has the right format
         if (typeof friend === "object" && friend !== null) {
           return {
-            id: friend.id || `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
-            name: typeof friend.name === 'string' ? friend.name : 'Unknown',
+            id:
+              friend.id ||
+              `friend_${Date.now()}_${index}_${Math.floor(
+                Math.random() * 10000
+              )}`,
+            name: typeof friend.name === "string" ? friend.name : "Unknown",
             avatar: friend.avatar || null,
             interests: Array.isArray(friend.interests) ? friend.interests : [],
-            dateActivities: Array.isArray(friend.dateActivities) ? friend.dateActivities : [],
+            dateActivities: Array.isArray(friend.dateActivities)
+              ? friend.dateActivities
+              : [],
           };
         }
         // Fallback for any other type
         return {
-          id: `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
-          name: 'Unknown',
+          id: `friend_${Date.now()}_${index}_${Math.floor(
+            Math.random() * 10000
+          )}`,
+          name: "Unknown",
           avatar: null,
         };
       });
@@ -150,16 +164,19 @@ class User {
 
     // Dating data
     this.swipingPool = userData.swipingPool || {};
-    this.matches = userData.matches || [];
-    
+    this.swipedPool = userData.swipedPool || [];
+    this.matches = userData.matches || {};
+
     // Log final constructed user
-    console.log(`User construction complete: ${JSON.stringify({
-      id: this.id,
-      hasName: !!this.name,
-      hasProfileData: !!this.profileData,
-      profileDataFields: Object.keys(this.profileData).length,
-      friendsCount: this.friends.length
-    })}`);
+    console.log(
+      `User construction complete: ${JSON.stringify({
+        id: this.id,
+        hasName: !!this.name,
+        hasProfileData: !!this.profileData,
+        profileDataFields: Object.keys(this.profileData).length,
+        friendsCount: this.friends.length,
+      })}`
+    );
   }
 
   /**
@@ -205,8 +222,12 @@ class User {
 
           // Always use setDoc with merge:true which works for both new and existing documents
           await setDoc(userRef, userData, { merge: true });
-          console.log(this.newUser ? "New user created in Firestore" : "Existing user updated in Firestore");
-          
+          console.log(
+            this.newUser
+              ? "New user created in Firestore"
+              : "Existing user updated in Firestore"
+          );
+
           // Clear the newUser flag after saving
           if (this.newUser) {
             delete this.newUser;
@@ -254,6 +275,7 @@ class User {
       sexuality: this.sexuality,
       friends: this.friends,
       swipingPool: this.swipingPool,
+      swipedPool: this.swipedPool,
       matches: this.matches,
       updatedAt: new Date().toISOString(),
       createdAt: this.createdAt,
@@ -266,14 +288,18 @@ class User {
    * @param {Array} allUsers - Array of all users in the system
    */
   async initialize(allUsers = []) {
-    console.log(`Initializing user ${this.name || this.id} with ${allUsers?.length || 0} users`);
-    
+    console.log(
+      `Initializing user ${this.name || this.id} with ${
+        allUsers?.length || 0
+      } users`
+    );
+
     // Set up initial swiping pool only if allUsers is a valid array
     if (Array.isArray(allUsers)) {
       this.updateSwipingPool(allUsers);
     } else {
-      console.warn('No users provided for swiping pool initialization');
-      this.swipingPool = {}; // Initialize empty pool
+      console.warn("No users provided for swiping pool initialization");
+      this.swipingPool = []; // Initialize empty pool
     }
 
     if (!isDevelopmentMode() && this.id) {
@@ -596,53 +622,67 @@ class User {
    */
   updateSwipingPool(allUsers) {
     // Clear existing swiping pool
-    this.swipingPool = {};
+    this.swipingPool = [];
 
     // Skip if user is not a dater
     if (!this.isDater()) {
-      console.log(`User ${this.name || this.id} is not a dater, skipping swiping pool`);
+      console.log(
+        `User ${this.name || this.id} is not a dater, skipping swiping pool`
+      );
       return;
     }
 
     // Ensure allUsers is a valid array
     if (!allUsers || !Array.isArray(allUsers)) {
-      console.warn(`Cannot update swiping pool: allUsers is ${allUsers ? 'not an array' : 'undefined'}`);
+      console.warn(
+        `Cannot update swiping pool: allUsers is ${
+          allUsers ? "not an array" : "undefined"
+        }`
+      );
       return;
     }
 
     // Get user's gender and sexuality
     const userGender = this.profileData?.gender?.toLowerCase();
     const userSexuality = this.sexuality?.toLowerCase();
-    
-    console.log(`Updating swiping pool for ${this.name || this.id} (${userGender}, ${userSexuality})`);
+
+    console.log(
+      `Updating swiping pool for ${
+        this.name || this.id
+      } (${userGender}, ${userSexuality})`
+    );
 
     // Filter users based on matching rules
     const potentialMatches = allUsers.filter((potentialMatch) => {
       // Skip if potentialMatch is not a valid object
-      if (!potentialMatch || typeof potentialMatch !== 'object') {
+      if (!potentialMatch || typeof potentialMatch !== "object") {
         return false;
       }
-      
+
       // Skip if it's the same user
       if (potentialMatch.id === this.id) {
         return false;
       }
 
       // Skip if potential match is not a dater
-      if (typeof potentialMatch.isDater === 'function' && !potentialMatch.isDater()) {
+      if (
+        typeof potentialMatch.isDater === "function" &&
+        !potentialMatch.isDater()
+      ) {
         return false;
       } else if (
-        !potentialMatch.userType || 
-        (potentialMatch.userType !== 'Dater' && 
-         potentialMatch.userType !== 'Dater & Match Maker')
+        !potentialMatch.userType ||
+        (potentialMatch.userType !== "Dater" &&
+          potentialMatch.userType !== "Dater & Match Maker")
       ) {
         return false;
       }
 
       const matchGender = potentialMatch.profileData?.gender?.toLowerCase();
-      const matchSexuality = potentialMatch.sexuality?.toLowerCase() || 
-                             potentialMatch.profileData?.sexuality?.toLowerCase();
-      
+      const matchSexuality =
+        potentialMatch.sexuality?.toLowerCase() ||
+        potentialMatch.profileData?.sexuality?.toLowerCase();
+
       // If either user is missing gender or sexuality, skip matching
       if (!userGender || !userSexuality || !matchGender || !matchSexuality) {
         return false;
@@ -678,129 +718,16 @@ class User {
       return false;
     });
 
-    console.log(`Found ${potentialMatches.length} potential matches for ${this.name || this.id}`);
+    console.log(
+      `Found ${potentialMatches.length} potential matches for ${
+        this.name || this.id
+      }`
+    );
 
     // Add filtered users to swiping pool with pending status
     potentialMatches.forEach((match) => {
-      this.swipingPool[match.id] = { status: "pending" };
+      this.swipingPool.push(match.id);
     });
-  }
-
-  /**
-   * Handle candidate approval for a friend
-   * @param {string} friendId - ID of the friend being swiped for
-   * @param {string} candidateId - ID of the candidate being approved
-   * @param {Array} allUsers - Array of all users in the system
-   * @returns {Promise<boolean>} - Whether a match was created
-   */
-  async approveCandidateForFriend(friendId, candidateId, allUsers) {
-    try {
-      // Get friend and candidate objects
-      const friend = allUsers.find((user) => user.id === friendId);
-      const candidate = allUsers.find((user) => user.id === candidateId);
-
-      if (!friend || !candidate) {
-        console.error("Friend or candidate not found");
-        return false;
-      }
-
-      // Initialize matches if they don't exist
-      if (!friend.matches) friend.matches = {};
-      if (!candidate.matches) candidate.matches = {};
-
-      // Add candidate to friend's matches if not already there
-      if (!friend.matches[candidateId]) {
-        friend.matches[candidateId] = {
-          matchBack: 0,
-          approvalRate: 0,
-          matchId: null,
-        };
-      }
-
-      // Calculate new approval rate
-      const totalFriends = this.friends.length;
-      const currentApprovalRate = friend.matches[candidateId].approvalRate || 0;
-      const newApprovalRate = currentApprovalRate + 1 / totalFriends;
-
-      // Update friend's match data
-      friend.matches[candidateId].approvalRate = newApprovalRate;
-
-      // Check if candidate has friend in their matches
-      const hasMatchBack = candidate.matches[friendId] !== undefined;
-
-      if (hasMatchBack) {
-        // Update matchBack values
-        friend.matches[candidateId].matchBack = 1;
-        candidate.matches[friendId].matchBack = 1;
-
-        // Check if we should create a match
-        if (newApprovalRate > 0.5) {
-          const matchId = this._createMatchId(friendId, candidateId);
-          friend.matches[candidateId].matchId = matchId;
-          candidate.matches[friendId].matchId = matchId;
-
-          // Save both users
-          await friend.save();
-          await candidate.save();
-          return true;
-        }
-      }
-
-      // Save friend's updated data
-      await friend.save();
-      return false;
-    } catch (error) {
-      console.error("Error approving candidate:", error);
-      return false;
-    }
-  }
-
-  /**
-   * Create a unique match ID for two users
-   * @private
-   * @param {string} userId1 - First user's ID
-   * @param {string} userId2 - Second user's ID
-   * @returns {string} Unique match ID
-   */
-  _createMatchId(userId1, userId2) {
-    // Sort IDs to ensure consistent match ID regardless of order
-    const sortedIds = [userId1, userId2].sort();
-    return `match_${sortedIds[0]}_${sortedIds[1]}_${Date.now()}`;
-  }
-
-  /**
-   * Handle candidate rejection for a friend
-   * @param {string} friendId - ID of the friend being swiped for
-   * @param {string} candidateId - ID of the candidate being rejected
-   * @param {Array} allUsers - Array of all users in the system
-   */
-  async rejectCandidateForFriend(friendId, candidateId, allUsers) {
-    try {
-      // Get friend object
-      const friend = allUsers.find((user) => user.id === friendId);
-
-      if (!friend) {
-        console.error("Friend not found");
-        return;
-      }
-
-      // Initialize matches if they don't exist
-      if (!friend.matches) friend.matches = {};
-
-      // Add candidate to friend's matches if not already there
-      if (!friend.matches[candidateId]) {
-        friend.matches[candidateId] = {
-          matchBack: 0,
-          approvalRate: 0,
-          matchId: null,
-        };
-      }
-
-      // Save friend's updated data
-      await friend.save();
-    } catch (error) {
-      console.error("Error rejecting candidate:", error);
-    }
   }
 }
 

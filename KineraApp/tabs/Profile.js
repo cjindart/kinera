@@ -20,7 +20,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
-import { doc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  collection,
+  getDocs,
+  getDoc,
+} from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import mockData from "../assets/mockUserData.json";
@@ -187,6 +193,9 @@ export default function ProfileScreen({ route }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
 
+  // Add new state for friend data
+  const [friendData, setFriendData] = useState({});
+
   // Load user data when component mounts
   useEffect(() => {
     if (user) {
@@ -222,36 +231,69 @@ export default function ProfileScreen({ route }) {
       );
 
       // Basic info
-      setName(typeof user.name === 'string' ? user.name : '');
-      setUserType(typeof user.userType === 'string' ? user.userType : '');
+      setName(typeof user.name === "string" ? user.name : "");
+      setUserType(typeof user.userType === "string" ? user.userType : "");
 
       // Profile data from profileData object
       if (user.profileData) {
         // Convert age to string for TextInput
-        setAge(typeof user.profileData.age === 'number' ? user.profileData.age.toString() : 
-               typeof user.profileData.age === 'string' ? user.profileData.age : '');
-        setGender(typeof user.profileData.gender === 'string' ? user.profileData.gender : '');
-        setHeight(typeof user.profileData.height === 'string' ? user.profileData.height : '');
+        setAge(
+          typeof user.profileData.age === "number"
+            ? user.profileData.age.toString()
+            : typeof user.profileData.age === "string"
+            ? user.profileData.age
+            : ""
+        );
+        setGender(
+          typeof user.profileData.gender === "string"
+            ? user.profileData.gender
+            : ""
+        );
+        setHeight(
+          typeof user.profileData.height === "string"
+            ? user.profileData.height
+            : ""
+        );
         setYear(
-          typeof user.profileData.year === 'string' ? user.profileData.year : 
-          typeof user.profileData.classYear === 'string' ? user.profileData.classYear : ''
+          typeof user.profileData.year === "string"
+            ? user.profileData.year
+            : typeof user.profileData.classYear === "string"
+            ? user.profileData.classYear
+            : ""
         );
 
-        setCity(typeof user.profileData.city === 'string' ? user.profileData.city : '');
+        setCity(
+          typeof user.profileData.city === "string" ? user.profileData.city : ""
+        );
 
         // Interests and activities
-        const userInterests = Array.isArray(user.profileData.interests) ? user.profileData.interests : [];
+        const userInterests = Array.isArray(user.profileData.interests)
+          ? user.profileData.interests
+          : [];
         setInterests(userInterests);
 
-        const userActivities = Array.isArray(user.profileData.dateActivities) ? user.profileData.dateActivities :
-                              Array.isArray(user.profileData.activities) ? user.profileData.activities : [];
+        const userActivities = Array.isArray(user.profileData.dateActivities)
+          ? user.profileData.dateActivities
+          : Array.isArray(user.profileData.activities)
+          ? user.profileData.activities
+          : [];
         setDateActivities(userActivities);
 
         // Load photos
-        if (user.profileData.photos && Array.isArray(user.profileData.photos) && user.profileData.photos.length > 0) {
-          setMainPhoto(typeof user.profileData.photos[0] === 'string' ? user.profileData.photos[0] : null);
+        if (
+          user.profileData.photos &&
+          Array.isArray(user.profileData.photos) &&
+          user.profileData.photos.length > 0
+        ) {
+          setMainPhoto(
+            typeof user.profileData.photos[0] === "string"
+              ? user.profileData.photos[0]
+              : null
+          );
           setAdditionalPhotos(
-            user.profileData.photos.slice(1).filter(photo => typeof photo === 'string')
+            user.profileData.photos
+              .slice(1)
+              .filter((photo) => typeof photo === "string")
           );
         }
 
@@ -263,16 +305,21 @@ export default function ProfileScreen({ route }) {
 
       // Direct properties (in case they're not in profileData)
       if (!user.profileData?.age && user.age) {
-        setAge(typeof user.age === 'number' ? user.age.toString() : 
-               typeof user.age === 'string' ? user.age : '');
+        setAge(
+          typeof user.age === "number"
+            ? user.age.toString()
+            : typeof user.age === "string"
+            ? user.age
+            : ""
+        );
       }
 
       if (!user.profileData?.gender && user.gender) {
-        setGender(typeof user.gender === 'string' ? user.gender : '');
+        setGender(typeof user.gender === "string" ? user.gender : "");
       }
 
       if (!user.profileData?.height && user.height) {
-        setHeight(typeof user.height === 'string' ? user.height : '');
+        setHeight(typeof user.height === "string" ? user.height : "");
       }
 
       if (
@@ -280,11 +327,13 @@ export default function ProfileScreen({ route }) {
         !user.profileData?.classYear &&
         user.classYear
       ) {
-        setYear(typeof user.classYear === 'string' ? user.classYear : '');
+        setYear(typeof user.classYear === "string" ? user.classYear : "");
       }
 
       if (!user.profileData?.interests && user.interests) {
-        const validInterests = Array.isArray(user.interests) ? user.interests : [];
+        const validInterests = Array.isArray(user.interests)
+          ? user.interests
+          : [];
         setInterests(validInterests);
         if (validInterests.length > 0) {
           setSelectedInterests([validInterests[0]]);
@@ -296,13 +345,22 @@ export default function ProfileScreen({ route }) {
         !user.profileData?.activities &&
         user.activities
       ) {
-        setDateActivities(Array.isArray(user.activities) ? user.activities : []);
+        setDateActivities(
+          Array.isArray(user.activities) ? user.activities : []
+        );
       }
 
-      if (!user.profileData?.photos && user.photos && Array.isArray(user.photos) && user.photos.length > 0) {
-        setMainPhoto(typeof user.photos[0] === 'string' ? user.photos[0] : null);
+      if (
+        !user.profileData?.photos &&
+        user.photos &&
+        Array.isArray(user.photos) &&
+        user.photos.length > 0
+      ) {
+        setMainPhoto(
+          typeof user.photos[0] === "string" ? user.photos[0] : null
+        );
         setAdditionalPhotos(
-          user.photos.slice(1).filter(photo => typeof photo === 'string')
+          user.photos.slice(1).filter((photo) => typeof photo === "string")
         );
       }
     }
@@ -763,41 +821,132 @@ export default function ProfileScreen({ route }) {
     setCurrentPhotoIndex(pageNum);
   };
 
-  // Function to handle friend search
-  const handleFriendSearch = (text) => {
+  // // Function to handle friend search
+  // const handleFriendSearch = (text) => {
+  //   setSearchQuery(text);
+  //   if (text.trim() === "") {
+  //     setSearchResults([]);
+  //     return;
+  //   }
+
+  //   // Filter mock users based on search query and exclude existing friends
+  //   const results = mockData.users.filter(
+  //     (user) =>
+  //       user.name.toLowerCase().includes(text.trim().toLowerCase()) &&
+  //       !user.friends?.includes(user.id)
+  //   );
+  //   setSearchResults(results);
+  // };
+
+  const handleFriendSearch = async (text) => {
     setSearchQuery(text);
     if (text.trim() === "") {
       setSearchResults([]);
       return;
     }
 
-    // Filter mock users based on search query and exclude existing friends
-    const results = mockData.users.filter(
-      (user) =>
-        user.name.toLowerCase().includes(text.trim().toLowerCase()) &&
-        !user.friends?.includes(user.id)
-    );
-    setSearchResults(results);
+    try {
+      // Query Firestore for users matching the search
+      const usersRef = collection(db, "users");
+      const searchTerm = text.trim().toLowerCase();
+
+      // Get all users and filter client-side for more flexible searching
+      const querySnapshot = await getDocs(usersRef);
+      const results = [];
+
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        const userName = (userData.name || "").toLowerCase();
+
+        // Skip if this is the current user
+        if (doc.id === user.id) return;
+
+        // Check if name contains the search term
+        if (userName.includes(searchTerm)) {
+          // Only include users who aren't already friends
+          const isAlreadyFriend = user.friends?.some(
+            (friend) =>
+              (typeof friend === "object" ? friend.id : friend) === doc.id
+          );
+
+          if (!isAlreadyFriend) {
+            results.push({
+              id: doc.id,
+              name: userData.name,
+              photos: userData.profileData?.photos || [],
+              interests: userData.profileData?.interests || [],
+              dateActivities: userData.profileData?.dateActivities || [],
+            });
+          }
+        }
+      });
+
+      // Sort results alphabetically by name
+      results.sort((a, b) => a.name.localeCompare(b.name));
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Error searching for friends:", error);
+      Alert.alert("Error", "Failed to search for friends. Please try again.");
+    }
   };
 
-  // Function to add a friend
+  // Add this function to update the swiping pool
+  const updateSwipingPool = async (updatedFriends) => {
+    try {
+      if (!user.id) return;
+
+      // Get all users from Firestore
+      const usersRef = collection(db, "users");
+      const querySnapshot = await getDocs(usersRef);
+
+      // Create a set of friend IDs for quick lookup
+      const friendIds = new Set(
+        updatedFriends.map((friend) =>
+          typeof friend === "object" ? friend.id : friend
+        )
+      );
+
+      // Create array of user IDs who are not friends and not the current user
+      const swipingPool = [];
+      querySnapshot.forEach((doc) => {
+        if (doc.id !== user.id && !friendIds.has(doc.id)) {
+          swipingPool.push(doc.id);
+        }
+      });
+
+      // Update Firestore with new swiping pool
+      const userRef = doc(db, "users", user.id);
+      await updateDoc(userRef, {
+        swipingPool: swipingPool,
+      });
+
+      console.log("Swiping pool updated successfully");
+    } catch (error) {
+      console.error("Error updating swiping pool:", error);
+      throw error;
+    }
+  };
+
+  // Update handleAddFriend function
   const handleAddFriend = async (friendId) => {
     try {
-      const friend = mockData.users.find((user) => user.id === friendId);
-      if (!friend) return;
+      // Get friend data from Firestore
+      const friendDoc = await getDoc(doc(db, "users", friendId));
+      if (!friendDoc.exists()) {
+        Alert.alert("Error", "Friend not found");
+        return;
+      }
 
-      // Generate a unique ID for the friend using timestamp and a random number
-      const uniqueId = `friend_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      const friendData = friendDoc.data();
 
-      // Get the complete friend object with all data
+      // Create friend object with necessary data
       const friendObject = {
-        id: uniqueId,
-        name: friend.name || "Unknown",
-        avatar: null,
-        interests: Array.isArray(friend.profileData?.interests) ? friend.profileData.interests : 
-                  Array.isArray(friend.interests) ? friend.interests : [],
-        dateActivities: Array.isArray(friend.profileData?.dateActivities) ? friend.profileData.dateActivities :
-                        Array.isArray(friend.dateActivities) ? friend.dateActivities : [],
+        id: friendId,
+        name: friendData.name || "Unknown",
+        avatar: friendData.profileData?.photos?.[0] || null,
+        interests: friendData.profileData?.interests || [],
+        dateActivities: friendData.profileData?.dateActivities || [],
       };
 
       const updatedFriends = [...(user.friends || []), friendObject];
@@ -808,23 +957,32 @@ export default function ProfileScreen({ route }) {
         friends: updatedFriends,
       };
 
-      // Update the user context directly 
+      // Update the user context directly
       setUser(updatedUserData);
 
       // Save to AsyncStorage
       await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
 
-      // Update Firestore if user has an ID
+      // Update Firestore
       if (user.id) {
         try {
           const userRef = doc(db, "users", user.id);
           await updateDoc(userRef, {
-            friends: updatedFriends
+            friends: updatedFriends,
           });
-          console.log("Friends updated in Firestore successfully");
+
+          // Update swiping pool after adding friend
+          await updateSwipingPool(updatedFriends);
+
+          console.log(
+            "Friends and swiping pool updated in Firestore successfully"
+          );
         } catch (firestoreError) {
-          console.error("Error updating friends in Firestore:", firestoreError);
-          Alert.alert("Error", "Failed to update friends in Firestore, but local changes were saved.");
+          console.error("Error updating Firestore:", firestoreError);
+          Alert.alert(
+            "Error",
+            "Failed to update Firestore, but local changes were saved."
+          );
         }
       }
 
@@ -837,11 +995,12 @@ export default function ProfileScreen({ route }) {
     }
   };
 
-  // Function to remove a friend
+  // Update handleRemoveFriend function
   const handleRemoveFriend = async (friendId) => {
     try {
-      const updatedFriends = user.friends.filter((friend) => 
-        typeof friend === 'object' ? friend.id !== friendId : friend !== friendId
+      const updatedFriends = user.friends.filter(
+        (friend) =>
+          (typeof friend === "object" ? friend.id : friend) !== friendId
       );
 
       // Update user data
@@ -861,12 +1020,21 @@ export default function ProfileScreen({ route }) {
         try {
           const userRef = doc(db, "users", user.id);
           await updateDoc(userRef, {
-            friends: updatedFriends
+            friends: updatedFriends,
           });
-          console.log("Friend removed in Firestore successfully");
+
+          // Update swiping pool after removing friend
+          await updateSwipingPool(updatedFriends);
+
+          console.log(
+            "Friends and swiping pool updated in Firestore successfully"
+          );
         } catch (firestoreError) {
-          console.error("Error removing friend in Firestore:", firestoreError);
-          Alert.alert("Error", "Failed to update friend removal in Firestore, but local changes were saved.");
+          console.error("Error updating Firestore:", firestoreError);
+          Alert.alert(
+            "Error",
+            "Failed to update Firestore, but local changes were saved."
+          );
         }
       }
     } catch (error) {
@@ -874,6 +1042,29 @@ export default function ProfileScreen({ route }) {
       Alert.alert("Error", "Failed to remove friend. Please try again.");
     }
   };
+
+  // Add useEffect to fetch friend data
+  useEffect(() => {
+    const fetchFriendData = async () => {
+      if (!user?.friends) return;
+
+      const newFriendData = {};
+      for (const friend of user.friends) {
+        const friendId = typeof friend === "object" ? friend.id : friend;
+        try {
+          const friendDoc = await getDoc(doc(db, "users", friendId));
+          if (friendDoc.exists()) {
+            newFriendData[friendId] = friendDoc.data();
+          }
+        } catch (error) {
+          console.error(`Error fetching friend ${friendId}:`, error);
+        }
+      }
+      setFriendData(newFriendData);
+    };
+
+    fetchFriendData();
+  }, [user?.friends]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -912,8 +1103,12 @@ export default function ProfileScreen({ route }) {
         <View style={styles.headerSection}>
           <View style={styles.headerContent}>
             <View style={styles.nameContainer}>
-              <Text style={styles.headerTitle}>{typeof name === 'string' ? name : 'Profile'}</Text>
-              <Text style={styles.roleText}>You are a: {typeof userType === 'string' ? userType : ''}</Text>
+              <Text style={styles.headerTitle}>
+                {typeof name === "string" ? name : "Profile"}
+              </Text>
+              <Text style={styles.roleText}>
+                You are a: {typeof userType === "string" ? userType : ""}
+              </Text>
             </View>
             <EditButton isEditing={isEditing} onToggleEdit={toggleEditMode} />
           </View>
@@ -1118,7 +1313,9 @@ export default function ProfileScreen({ route }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{typeof age === 'string' || typeof age === 'number' ? age : '-'}</Text>
+            <Text style={styles.summaryText}>
+              {typeof age === "string" || typeof age === "number" ? age : "-"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1170,7 +1367,9 @@ export default function ProfileScreen({ route }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{typeof gender === 'string' ? gender : '-'}</Text>
+            <Text style={styles.summaryText}>
+              {typeof gender === "string" ? gender : "-"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1207,7 +1406,9 @@ export default function ProfileScreen({ route }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{typeof height === 'string' ? height : '-'}</Text>
+            <Text style={styles.summaryText}>
+              {typeof height === "string" ? height : "-"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1254,7 +1455,9 @@ export default function ProfileScreen({ route }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{typeof year === 'string' ? year : '-'}</Text>
+            <Text style={styles.summaryText}>
+              {typeof year === "string" ? year : "-"}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -1268,7 +1471,9 @@ export default function ProfileScreen({ route }) {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.cityText}>{typeof city === 'string' ? city : ''}</Text>
+            <Text style={styles.cityText}>
+              {typeof city === "string" ? city : ""}
+            </Text>
           </View>
         )}
 
@@ -1448,31 +1653,55 @@ export default function ProfileScreen({ route }) {
             {user?.friends?.map((friend, index) => {
               // Add debug logging
               console.log(`Rendering friend ${index}:`, JSON.stringify(friend));
-              
+
               // Handle both object-based friends and legacy ID-based friends
-              const friendId = typeof friend === 'object' ? friend.id : friend;
-              const friendName = typeof friend === 'object' ? friend.name : null;
-              const friendInterests = typeof friend === 'object' && Array.isArray(friend.interests) ? friend.interests : [];
-              const friendActivities = typeof friend === 'object' && Array.isArray(friend.dateActivities) ? friend.dateActivities : [];
-              
+              const friendId = typeof friend === "object" ? friend.id : friend;
+              const friendName =
+                typeof friend === "object" ? friend.name : null;
+              const friendInterests =
+                typeof friend === "object" && Array.isArray(friend.interests)
+                  ? friend.interests
+                  : [];
+              const friendActivities =
+                typeof friend === "object" &&
+                Array.isArray(friend.dateActivities)
+                  ? friend.dateActivities
+                  : [];
+
+              // Get friend data from Firestore
+              const firestoreFriendData = friendData[friendId];
+              const friendUserType = firestoreFriendData?.userType;
+
               // For legacy ID-based friends, look up in mock data
               let mockFriend = null;
               if (!friendName) {
                 mockFriend = mockData.users.find((u) => u.id === friendId);
               }
-              
+
               // If friend can't be found in any way, skip rendering
               if (!friendName && !mockFriend) {
                 console.log(`Skipping friend ${index} - no data available`);
                 return null;
               }
 
+              // Determine user type to display
+              const displayUserType =
+                friendUserType || mockFriend?.userType || "Unknown";
+
               return (
-                <View key={`friend-${index}-${friendId}`} style={styles.friendItem}>
+                <View
+                  key={`friend-${index}-${friendId}`}
+                  style={styles.friendItem}
+                >
                   <View style={styles.friendAvatar}>
-                    {mockFriend?.photos?.[0] ? (
+                    {firestoreFriendData?.profileData?.photos?.[0] ||
+                    mockFriend?.photos?.[0] ? (
                       <Image
-                        source={{ uri: mockFriend.photos[0] }}
+                        source={{
+                          uri:
+                            firestoreFriendData?.profileData?.photos?.[0] ||
+                            mockFriend?.photos?.[0],
+                        }}
                         style={styles.friendAvatarImage}
                       />
                     ) : (
@@ -1484,11 +1713,27 @@ export default function ProfileScreen({ route }) {
                     )}
                   </View>
                   <View style={styles.friendDetails}>
-                    <Text style={styles.friendName}>{friendName || mockFriend?.name || 'Unknown'}</Text>
-                    {(friendInterests.length > 0 || (mockFriend?.interests && mockFriend.interests.length > 0)) && (
+                    <Text style={styles.friendName}>
+                      {(friendName || mockFriend?.name || "Unknown") +
+                        " -- " +
+                        displayUserType}
+                    </Text>
+                    {(friendInterests.length > 0 ||
+                      (mockFriend?.interests &&
+                        mockFriend.interests.length > 0)) && (
                       <Text style={styles.friendInterests}>
-                        Interests: {(friendInterests.length > 0 ? friendInterests : (mockFriend?.interests || [])).slice(0, 2).join(", ")}
-                        {(friendInterests.length > 0 ? friendInterests.length : (mockFriend?.interests || []).length) > 2 ? "..." : ""}
+                        Interests:{" "}
+                        {(friendInterests.length > 0
+                          ? friendInterests
+                          : mockFriend?.interests || []
+                        )
+                          .slice(0, 2)
+                          .join(", ")}
+                        {(friendInterests.length > 0
+                          ? friendInterests.length
+                          : (mockFriend?.interests || []).length) > 2
+                          ? "..."
+                          : ""}
                       </Text>
                     )}
                   </View>
@@ -1580,7 +1825,7 @@ export default function ProfileScreen({ route }) {
 
         {/* 6. Divider */}
         <View style={styles.divider} />
-        
+
         {/* Logout Button */}
         <View style={styles.logoutButtonWrapper}>
           <LogoutButton onLogout={handleLogout} />
@@ -1644,7 +1889,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000",
   },
-  
+
   // Logout Button Styles
   logoutButtonWrapper: {
     alignItems: "center",

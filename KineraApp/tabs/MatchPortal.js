@@ -1,16 +1,18 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { hasAccessToScreen } from "../utils/accessControl";
 import LockedScreen from "../components/LockedScreen";
+import { fetchUserById } from "../services/userService";
 
 // Color constants based on the spec
 const COLORS = {
@@ -30,25 +32,48 @@ export default function MatchPortal() {
   const { user } = useAuth();
   const userType = user?.userType || "";
   const hasAccess = hasAccessToScreen(userType, "MatchPortal");
+  const [loading, setLoading] = useState(true);
+  const [matchProfiles, setMatchProfiles] = useState([]);
 
-  // Profile data array
-  const profiles = [
-    {
-      name: "Madison",
-      age: 22,
-      interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-      dateActivities: ["Voyager", "Jazz night", "Study date", "KA basement"],
-    },
-    {
-      name: "Alex",
-      age: 23,
-      interests: ["Tech", "Outdoors", "Cooking", "Travel", "Movies"],
-      dateActivities: ["Hiking", "Cooking class", "Movie night", "Coffee chat"],
-    },
-  ];
+  useEffect(() => {
+    const fetchMatches = async () => {
+      setLoading(true);
+      try {
+        if (!user || !user.matches) {
+          setMatchProfiles([]);
+          setLoading(false);
+          return;
+        }
+        // Get all matches with a matchId
+        const matchEntries = Object.entries(user.matches).filter(
+          ([, match]) => match.matchId
+        );
+        // Fetch candidate user data for each match
+        const profiles = await Promise.all(
+          matchEntries.map(async ([candidateId, match]) => {
+            const candidate = await fetchUserById(candidateId);
+            if (!candidate) return null;
+            return {
+              id: candidateId,
+              name: candidate.name,
+              age: candidate.profileData?.age,
+              interests: candidate.profileData?.interests || [],
+              dateActivities: candidate.profileData?.dateActivities || [],
+              matchId: match.matchId,
+            };
+          })
+        );
+        setMatchProfiles(profiles.filter(Boolean));
+      } catch (e) {
+        setMatchProfiles([]);
+      }
+      setLoading(false);
+    };
+    fetchMatches();
+  }, [user]);
 
   const handleViewMatch = (profile) => {
-    navigation.navigate("MatchCompare", { candidateInfo: profile });
+    navigation.navigate("MatchCompare", { candidateId: profile.id });
   };
 
   const handleLiaisonPress = () => {
@@ -89,37 +114,44 @@ export default function MatchPortal() {
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <Text style={styles.sectionTitle}>Manage Your Matches</Text>
-
-        {profiles.map((profile, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.profileCard}
-            onPress={() => handleViewMatch(profile)}
-          >
-            <View style={styles.cardContent}>
-              <View style={styles.cardHeader}>
-                <View style={styles.profileImageContainer}>
-                  <Text style={styles.initialsText}>{profile.name[0]}</Text>
-                </View>
-                <View style={styles.profileDetails}>
-                  <Text style={styles.profileName}>
-                    Match: {profile.name[0]} ({profile.age})
-                  </Text>
-                  <View style={styles.viewProfileButton}>
-                    <Text style={styles.viewProfileText}>
-                      View Full Profile
+        {loading ? (
+          <ActivityIndicator size="large" color={COLORS.primaryNavy} />
+        ) : matchProfiles.length === 0 ? (
+          <Text style={{ color: COLORS.primaryNavy, textAlign: "center" }}>
+            No matches yet.
+          </Text>
+        ) : (
+          matchProfiles.map((profile, index) => (
+            <TouchableOpacity
+              key={profile.matchId || profile.id || index}
+              style={styles.profileCard}
+              onPress={() => handleViewMatch(profile)}
+            >
+              <View style={styles.cardContent}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.profileImageContainer}>
+                    <Text style={styles.initialsText}>{profile.name[0]}</Text>
+                  </View>
+                  <View style={styles.profileDetails}>
+                    <Text style={styles.profileName}>
+                      Match: {profile.name[0]} ({profile.age})
                     </Text>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={16}
-                      color={COLORS.accentOrange}
-                    />
+                    <View style={styles.viewProfileButton}>
+                      <Text style={styles.viewProfileText}>
+                        View Full Profile
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color={COLORS.accentOrange}
+                      />
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
 
       {!hasAccess && <LockedScreen userType={userType} />}
