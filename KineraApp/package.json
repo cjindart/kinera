@@ -19,6 +19,7 @@
     "@react-navigation/native-stack": "^6.9.17",
     "dotenv": "^16.5.0",
     "expo": "~53.0.0",
+    "expo-blur": "~14.1.4",
     "expo-firebase-core": "^6.0.0",
     "expo-firebase-recaptcha": "^2.3.1",
     "expo-image-picker": "~16.1.4",
@@ -26,6 +27,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-web-browser": "^14.1.6",
     "firebase": "^11.6.1",
+    "firebase-admin": "^13.4.0",
     "react": "19.0.0",
     "react-native": "0.79.2",
     "react-native-gesture-handler": "~2.24.0",
@@ -33,8 +35,7 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.10.0",
     "react-native-svg": "15.11.2",
-    "react-native-webview": "^13.13.5",
-    "expo-blur": "~14.1.4"
+    "react-native-webview": "^13.13.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

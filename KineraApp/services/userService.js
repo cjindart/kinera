@@ -449,27 +449,66 @@ export const approveCandidateForFriend = async (
     if (!candidate.matches) candidate.matches = {};
 
     // Calculate approval rate for friend's matches
-    const totalSwipes = Object.keys(friend.matches).length + 1; // +1 for current swipe
-    const approvedSwipes =
-      Object.values(friend.matches).filter((match) => match.approvalRate > 0)
-        .length + 1;
-    const approvalRate = (approvedSwipes / totalSwipes) * 100;
+    const totalFriends = Array.isArray(friend.friends)
+      ? friend.friends.length
+      : 0;
+    // const approvedSwipes = Object.values(friend.matches).filter(
+    //   (match) => match.approvalRate > 0
+    // ).length;
+
+    let newApprovalRate = 0;
+    if (friend.matches[candidateId]) {
+      // If already exists, increment by 1/totalFriends
+      newApprovalRate =
+        friend.matches[candidateId].approvalRate +
+        (totalFriends > 0 ? 1 / totalFriends : 0);
+    } else {
+      // If first time, initialize to 0
+      newApprovalRate = 0;
+      newApprovalRate =
+        newApprovalRate + (totalFriends > 0 ? 1 / totalFriends : 0);
+    }
 
     // Check if candidate already has friend in their matches
     const candidateHasFriend = candidate.matches[friendId] !== undefined;
     const matchBack =
       candidateHasFriend && candidate.matches[friendId].matchBack;
 
+    const candidateApprovalRate =
+      candidate.matches[friendId]?.approvalRate || 0;
+
     // Create match ID if conditions are met (50%+ approval AND matchBack == true for both users)
     let matchId = null;
-    if (matchBack && approvalRate >= 50) {
+    if (matchBack && newApprovalRate >= 0.5 && candidateApprovalRate >= 0.5) {
       matchId = `${friendId}_${candidateId}_${Date.now()}`;
+      if (
+        typeof global !== "undefined" &&
+        global.Alert &&
+        typeof global.Alert.alert === "function"
+      ) {
+        global.Alert.alert(
+          "Match Created!",
+          "A match has been created! You can view the details in the match portal."
+        );
+      } else if (
+        typeof Alert !== "undefined" &&
+        typeof Alert.alert === "function"
+      ) {
+        Alert.alert(
+          "Match Created!",
+          "A match has been created! You can view the details in the match portal."
+        );
+      } else {
+        console.log(
+          "A match has been created! You can view the details in the match portal."
+        );
+      }
     }
 
     // Update friend's matches with candidate
     friend.matches[candidateId] = {
-      approvalRate,
-      matchBack: false,
+      approvalRate: newApprovalRate,
+      matchBack: matchBack,
       matchId,
     };
 
@@ -534,16 +573,16 @@ export const rejectCandidateForFriend = async (
     if (!friend.matches) friend.matches = {};
 
     // Calculate approval rate (rejection doesn't affect approval rate)
-    const totalSwipes = Object.keys(friend.matches).length + 1; // +1 for current swipe
-    const approvedSwipes = Object.values(friend.matches).filter(
-      (match) => match.approvalRate > 0
-    ).length;
-    const approvalRate = (approvedSwipes / totalSwipes) * 100;
+    // const totalSwipes = Object.keys(friend.matches).length + 1; // +1 for current swipe
+    // const approvedSwipes = Object.values(friend.matches).filter(
+    //   (match) => match.approvalRate > 0
+    // ).length;
+    // const approvalRate = (approvedSwipes / totalSwipes) * 100;
 
     // Update friend's matches with candidate if not already present
     if (!friend.matches[candidateId]) {
       friend.matches[candidateId] = {
-        approvalRate,
+        approvalRate: 0,
         matchBack: false,
         matchId: null,
       };
