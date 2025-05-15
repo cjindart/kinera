@@ -1,8 +1,17 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ScrollView,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Dimensions } from "react-native";
 
 const OPTIONS = [
   { label: "Straight", value: "straight" },
@@ -14,6 +23,7 @@ const OPTIONS = [
 export default function SexualityScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
   const { updateProfile } = useAuth();
+  const { width, height } = Dimensions.get("window");
 
   const handleContinue = async () => {
     if (!selected) return;
@@ -28,10 +38,28 @@ export default function SexualityScreen({ navigation, route }) {
         },
       });
 
-      // Navigate to next screen
-      navigation.navigate("ageAndHeight", {
-        ...route?.params,
-        lookingFor: selected,
+      // Mark onboarding as complete
+      await AsyncStorage.setItem("onboardingComplete", "true");
+
+      // Create animation parameters
+      const animationParams = {
+        showWelcome: true,
+        isNewUser: true,
+        fromOnboarding: true,
+      };
+
+      // Navigate to Profile with animation parameters
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: "Main",
+            params: {
+              screen: "ProfileTab",
+              params: animationParams,
+            },
+          },
+        ],
       });
     } catch (error) {
       console.error("Error saving sexuality:", error);
@@ -41,28 +69,34 @@ export default function SexualityScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Back Arrow */}
-      <TouchableOpacity
-        style={styles.backArrow}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.arrowText}>←</Text>
-      </TouchableOpacity>
-      <Text style={styles.title}>Who are you{"\n"}looking for?</Text>
-      <View style={styles.optionsContainer}>
-        {OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option.value}
-            style={[
-              styles.optionButton,
-              selected === option.value && styles.selectedButton,
-            ]}
-            onPress={() => setSelected(option.value)}
-          >
-            <Text style={styles.optionText}>{option.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView>
+        {/* Back Arrow */}
+        <TouchableOpacity
+          style={styles.backArrow}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.arrowText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>What is your{"\n"}sexuality?</Text>
+        <Text style={{ color: "#3A5A6A", fontSize: width * 0.04 }}>
+          We'll need this info to match you with others if you ever want to date
+          on our platform
+        </Text>
+        <View style={styles.optionsContainer}>
+          {OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.value}
+              style={[
+                styles.optionButton,
+                selected === option.value && styles.selectedButton,
+              ]}
+              onPress={() => setSelected(option.value)}
+            >
+              <Text style={styles.optionText}>{option.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
       <TouchableOpacity
         style={[styles.continueButton, !selected && { opacity: 0.5 }]}
         onPress={handleContinue}

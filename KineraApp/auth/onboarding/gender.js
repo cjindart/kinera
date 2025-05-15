@@ -7,7 +7,7 @@ import {
   TextInput,
   Dimensions,
   ScrollView,
-  Alert
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
@@ -51,18 +51,18 @@ export default function GenderScreen({ navigation, route }) {
 
   const handleNext = async () => {
     if (!selected) return;
-    
+
     try {
       const gender = selected === "other" ? otherText : selected;
       console.log("Submitting gender:", { gender });
-      
+
       // Save gender to the profileData structure
-      await updateProfile({ 
-        profileData: { 
-          gender 
-        } 
+      await updateProfile({
+        profileData: {
+          gender,
+        },
       });
-      
+
       // Navigate to next screen
       navigation.navigate("sexuality", { ...route.params, gender });
     } catch (error) {
@@ -90,6 +90,10 @@ export default function GenderScreen({ navigation, route }) {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>What's your{"\n"}gender?</Text>
+        <Text style={{ color: "#3A5A6A", fontSize: width * 0.04 }}>
+          We'll need this info to match you with others if you ever want to date
+          on our platform
+        </Text>
         <View style={styles.optionsContainer}>
           {OPTIONS.map((option) => (
             <TouchableOpacity

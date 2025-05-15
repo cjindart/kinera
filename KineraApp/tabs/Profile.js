@@ -157,13 +157,13 @@ const LogoutButton = ({ onLogout }) => {
 export default function ProfileScreen({ route }) {
   // Debug logging of route params
   console.log("Profile: Received route params:", JSON.stringify(route?.params));
-  
+
   // Welcome animation states - initialize to true by default to ensure it shows
   const [showWelcome, setShowWelcome] = useState(true);
   const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
   const welcomeOpacity = useRef(new Animated.Value(0)).current;
   const welcomeTranslateY = useRef(new Animated.Value(50)).current;
-  
+
   // State to track whether profile is in edit mode
   const [isEditing, setIsEditing] = useState(false);
   const navigation = useNavigation();
@@ -403,14 +403,14 @@ export default function ProfileScreen({ route }) {
   useEffect(() => {
     const checkWelcomeShown = async () => {
       try {
-        const hasSeenWelcome = await AsyncStorage.getItem('hasSeenWelcome');
+        const hasSeenWelcome = await AsyncStorage.getItem("hasSeenWelcome");
         console.log("Profile: Has seen welcome before:", hasSeenWelcome);
-        
+
         // Check if this is a new user from route params
         const isNewUser = route?.params?.isNewUser;
         console.log("Profile: Is new user from route params:", isNewUser);
-        
-        if (hasSeenWelcome === 'true' && !isNewUser) {
+
+        if (hasSeenWelcome === "true" && !isNewUser) {
           // User has seen welcome before and is not a new user
           setShowWelcome(false);
         } else {
@@ -419,7 +419,7 @@ export default function ProfileScreen({ route }) {
           // Start animation immediately
           startWelcomeAnimation();
         }
-        
+
         setHasCheckedStorage(true);
       } catch (error) {
         console.error("Error checking welcome status:", error);
@@ -428,10 +428,10 @@ export default function ProfileScreen({ route }) {
         setHasCheckedStorage(true);
       }
     };
-    
+
     checkWelcomeShown();
   }, [route?.params?.isNewUser]);
-  
+
   // Function to start welcome animation
   const startWelcomeAnimation = () => {
     console.log("Profile: Starting welcome animation...");
@@ -445,10 +445,10 @@ export default function ProfileScreen({ route }) {
         toValue: 0,
         duration: 800,
         useNativeDriver: true,
-      })
+      }),
     ]).start();
   };
-  
+
   // Function to dismiss welcome animation
   const dismissWelcomeAnimation = (onComplete = () => {}) => {
     console.log("Profile: Dismissing welcome animation");
@@ -462,17 +462,17 @@ export default function ProfileScreen({ route }) {
         toValue: -50,
         duration: 500,
         useNativeDriver: true,
-      })
+      }),
     ]).start(async () => {
       setShowWelcome(false);
-      
+
       // Mark that welcome has been shown
       try {
-        await AsyncStorage.setItem('hasSeenWelcome', 'true');
+        await AsyncStorage.setItem("hasSeenWelcome", "true");
       } catch (error) {
         console.error("Error saving welcome status:", error);
       }
-      
+
       onComplete();
     });
   };
@@ -535,19 +535,19 @@ export default function ProfileScreen({ route }) {
         await updateProfile(updatedUserData);
 
         console.log("Profile data saved successfully");
-        
+
         // Update route params
         if (navigation && navigation.setParams) {
           navigation.setParams({
             showWelcome: false,
             isNewUser: false,
-            fromOnboarding: false
+            fromOnboarding: false,
           });
         }
-        
+
         // Clear isNewUser flag in AsyncStorage
         try {
-          await AsyncStorage.setItem('isNewUser', 'false');
+          await AsyncStorage.setItem("isNewUser", "false");
         } catch (error) {
           console.error("Error clearing isNewUser flag:", error);
         }
@@ -674,10 +674,9 @@ export default function ProfileScreen({ route }) {
         const imageUri = result.assets[0].uri;
         // For demo purposes, we'll just use the local URI
         // In production, we would upload to Firebase Storage
-        /*
         try {
           const firebaseUrl = await uploadImageToFirebase(imageUri);
-          
+
           if (index === 0) {
             setMainPhoto(firebaseUrl);
           } else {
@@ -695,22 +694,21 @@ export default function ProfileScreen({ route }) {
           console.error("Error uploading to Firebase:", error);
           Alert.alert("Error", "Failed to upload image. Please try again.");
         }
-        */
 
-        // Use local URI for now
-        if (index === 0) {
-          setMainPhoto(imageUri);
-        } else {
-          const newPhotos = [...additionalPhotos];
-          // If adding a new photo at the end
-          if (index - 1 === additionalPhotos.length) {
-            newPhotos.push(imageUri);
-          } else {
-            // Replacing an existing photo
-            newPhotos[index - 1] = imageUri;
-          }
-          setAdditionalPhotos(newPhotos);
-        }
+        //     // Use local URI for now
+        //     if (index === 0) {
+        //       setMainPhoto(imageUri);
+        //     } else {
+        //       const newPhotos = [...additionalPhotos];
+        //       // If adding a new photo at the end
+        //       if (index - 1 === additionalPhotos.length) {
+        //         newPhotos.push(imageUri);
+        //       } else {
+        //         // Replacing an existing photo
+        //         newPhotos[index - 1] = imageUri;
+        //       }
+        //       setAdditionalPhotos(newPhotos);
+        //     }
       }
     } catch (error) {
       console.error("Error picking image:", error);
@@ -741,10 +739,9 @@ export default function ProfileScreen({ route }) {
 
         // For demo purposes, we'll just use the local URI
         // In production, we would upload to Firebase Storage
-        /*
         try {
           const firebaseUrl = await uploadImageToFirebase(imageUri);
-          
+
           if (index === 0) {
             setMainPhoto(firebaseUrl);
           } else {
@@ -762,22 +759,21 @@ export default function ProfileScreen({ route }) {
           console.error("Error uploading to Firebase:", error);
           Alert.alert("Error", "Failed to upload image. Please try again.");
         }
-        */
 
-        // Use local URI for now
-        if (index === 0) {
-          setMainPhoto(imageUri);
-        } else {
-          const newPhotos = [...additionalPhotos];
-          // If adding a new photo at the end
-          if (index - 1 === additionalPhotos.length) {
-            newPhotos.push(imageUri);
-          } else {
-            // Replacing an existing photo
-            newPhotos[index - 1] = imageUri;
-          }
-          setAdditionalPhotos(newPhotos);
-        }
+        //     // Use local URI for now
+        //     if (index === 0) {
+        //       setMainPhoto(imageUri);
+        //     } else {
+        //       const newPhotos = [...additionalPhotos];
+        //       // If adding a new photo at the end
+        //       if (index - 1 === additionalPhotos.length) {
+        //         newPhotos.push(imageUri);
+        //       } else {
+        //         // Replacing an existing photo
+        //         newPhotos[index - 1] = imageUri;
+        //       }
+        //       setAdditionalPhotos(newPhotos);
+        //     }
       }
     } catch (error) {
       console.error("Error taking photo:", error);
@@ -993,6 +989,7 @@ export default function ProfileScreen({ route }) {
       console.error("Error adding friend:", error);
       Alert.alert("Error", "Failed to add friend. Please try again.");
     }
+    navigation.setParams({ friendsChanged: true });
   };
 
   // Update handleRemoveFriend function
@@ -1041,6 +1038,7 @@ export default function ProfileScreen({ route }) {
       console.error("Error removing friend:", error);
       Alert.alert("Error", "Failed to remove friend. Please try again.");
     }
+    navigation.setParams({ friendsChanged: true });
   };
 
   // Add useEffect to fetch friend data
@@ -1070,20 +1068,21 @@ export default function ProfileScreen({ route }) {
     <SafeAreaView style={styles.container}>
       {/* Welcome Message Overlay - only shown if showWelcome is true and we've checked storage */}
       {showWelcome && hasCheckedStorage && (
-        <Animated.View style={[
-          styles.welcomeOverlay,
-          { opacity: welcomeOpacity }
-        ]}>
-          <Animated.View style={[
-            styles.welcomeContent,
-            { transform: [{ translateY: welcomeTranslateY }] }
-          ]}>
+        <Animated.View
+          style={[styles.welcomeOverlay, { opacity: welcomeOpacity }]}
+        >
+          <Animated.View
+            style={[
+              styles.welcomeContent,
+              { transform: [{ translateY: welcomeTranslateY }] },
+            ]}
+          >
             <Text style={styles.welcomeTitle}>Welcome to Vouch!</Text>
             <Text style={styles.welcomeMessage}>
               Complete your profile to get started.
             </Text>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.welcomeButton}
               onPress={() => {
                 // Hide welcome overlay and enter edit mode
@@ -2345,23 +2344,23 @@ const styles = StyleSheet.create({
 
   // Welcome Animation Styles
   welcomeOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(50, 84, 117, 0.9)',
+    backgroundColor: "rgba(50, 84, 117, 0.9)",
     zIndex: 1000,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   welcomeContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 24,
     borderRadius: 16,
-    width: '85%',
-    alignItems: 'center',
-    shadowColor: '#000',
+    width: "85%",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -2369,15 +2368,15 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.accentOrange,
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   welcomeMessage: {
     fontSize: 18,
     lineHeight: 26,
-    textAlign: 'center',
+    textAlign: "center",
     color: COLORS.primaryNavy,
     marginBottom: 20,
   },
@@ -2394,8 +2393,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   welcomeButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

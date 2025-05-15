@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
   ScrollView,
   Image,
-  Alert
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -27,23 +27,26 @@ const COLORS = {
 };
 
 const USER_TYPE_OPTIONS = [
-  { 
-    label: "Match Maker", 
+  {
+    label: "Match Maker",
     value: "match_maker",
     icon: "people-outline",
-    description: "Set up your friends with potential matches. Choose friends to add to your network and suggest pairings."
+    description:
+      "Set up your friends with potential matches. Choose friends to add to your network and suggest pairings.",
   },
-  { 
-    label: "Dater", 
+  {
+    label: "Dater",
     value: "dater",
     icon: "heart-outline",
-    description: "Get matched by your friends and discover new people through trusted connections."
+    description:
+      "Get matched by your friends and discover new people through trusted connections.",
   },
-  { 
-    label: "Both Roles", 
+  {
+    label: "Both Roles",
     value: "both",
     icon: "star-outline",
-    description: "Enjoy the full Kinera experience - find matches for your friends and get matched yourself."
+    description:
+      "Enjoy the full Kinera experience - find matches for your friends and get matched yourself.",
   },
 ];
 
@@ -51,24 +54,27 @@ export default function Step3PurposeScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
   const [userName, setUserName] = useState("");
   const { updateProfile } = useAuth();
-  
+
   // Get username when component mounts
   useEffect(() => {
     const getUserInfo = async () => {
       try {
-        const userData = await AsyncStorage.getItem('user');
+        const userData = await AsyncStorage.getItem("user");
         if (userData) {
           const parsedData = JSON.parse(userData);
           setUserName(parsedData.name || "");
-          
+
           // Check if user type is already set during login
           if (parsedData.userType) {
-            console.log("User type already set during login:", parsedData.userType);
+            console.log(
+              "User type already set during login:",
+              parsedData.userType
+            );
             setSelected(parsedData.userType);
-            
+
             // Convert userType format for compatibility with the app
             let userTypeValue;
-            switch(parsedData.userType) {
+            switch (parsedData.userType) {
               case "match_maker":
                 userTypeValue = "Match Maker";
                 break;
@@ -81,12 +87,12 @@ export default function Step3PurposeScreen({ navigation, route }) {
               default:
                 userTypeValue = parsedData.userType;
             }
-            
+
             // Only update the stored userType if needed, but DON'T navigate away
             if (userTypeValue !== parsedData.userType) {
               await updateProfile({ userType: userTypeValue });
             }
-            
+
             // REMOVED: Automatic navigation - let the user manually press Continue
           }
         }
@@ -94,19 +100,19 @@ export default function Step3PurposeScreen({ navigation, route }) {
         console.error("Error retrieving user data:", error);
       }
     };
-    
+
     getUserInfo();
   }, [updateProfile, navigation]);
 
   const handleContinue = async () => {
     if (!selected) return;
-    
+
     try {
-      console.log("UserType: User selected type, navigating to Profile...");
-      
+      console.log("UserType: User selected type, navigating to next screen...");
+
       // Convert userType format for compatibility with the app
       let userTypeValue;
-      switch(selected) {
+      switch (selected) {
         case "match_maker":
           userTypeValue = "Match Maker";
           break;
@@ -119,55 +125,48 @@ export default function Step3PurposeScreen({ navigation, route }) {
         default:
           userTypeValue = selected;
       }
-      
+
       // Save the userType in the standard format
       // First, save to Firestore through updateProfile
       await updateProfile({ userType: userTypeValue });
-      console.log(`UserType: Saved user type as "${userTypeValue}" to Firestore`);
-      
+      console.log(
+        `UserType: Saved user type as "${userTypeValue}" to Firestore`
+      );
+
       // Also save to AsyncStorage as a backup
       try {
-        const userData = await AsyncStorage.getItem('user');
+        const userData = await AsyncStorage.getItem("user");
         if (userData) {
           const parsedData = JSON.parse(userData);
           const updatedData = { ...parsedData, userType: userTypeValue };
-          await AsyncStorage.setItem('user', JSON.stringify(updatedData));
+          await AsyncStorage.setItem("user", JSON.stringify(updatedData));
           console.log("UserType: Also saved to AsyncStorage as backup");
         }
       } catch (storageError) {
-        console.log("UserType: Failed to update AsyncStorage, but Firestore update succeeded");
+        console.log(
+          "UserType: Failed to update AsyncStorage, but Firestore update succeeded"
+        );
       }
-      
-      // FORCE navigation to Profile immediately - high priority
-      console.log("UserType: FORCING navigation to Profile...");
-      
+
       // Additional safety: Mark this navigation as done
-      await AsyncStorage.setItem('onboardingComplete', 'true');
-      
-      // Create animation parameters - explicitly set all flags to true
+      await AsyncStorage.setItem("onboardingComplete", "true");
+
+      // Create animation parameters
       const animationParams = {
         showWelcome: true,
         isNewUser: true,
-        fromOnboarding: true
+        fromOnboarding: true,
       };
-      
-      console.log("UserType: Passing animation parameters:", JSON.stringify(animationParams));
-      
+
+      console.log(
+        "UserType: Passing animation parameters:",
+        JSON.stringify(animationParams)
+      );
+
       // Include a delay to ensure Firestore update completes
       setTimeout(() => {
-        // Immediate navigation with no delay
-        navigation.reset({
-          index: 0,
-          routes: [
-            { 
-              name: 'Main',
-              params: { 
-                screen: 'ProfileTab', // Directly specify the ProfileTab
-                params: animationParams
-              }
-            }
-          ]
-        });
+        // All users go to gender screen now
+        navigation.navigate("gender");
       }, 300); // Short delay to ensure data is saved
     } catch (error) {
       console.error("Error saving user type:", error);
@@ -179,12 +178,12 @@ export default function Step3PurposeScreen({ navigation, route }) {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Back button */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={COLORS.primaryNavy} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <View style={styles.headerContainer}>
           <Text style={styles.welcomeText}>
@@ -195,7 +194,6 @@ export default function Step3PurposeScreen({ navigation, route }) {
             Select your role in our matchmaking community
           </Text>
         </View>
-
         <View style={styles.optionsContainer}>
           {USER_TYPE_OPTIONS.map((option) => (
             <TouchableOpacity
@@ -207,10 +205,10 @@ export default function Step3PurposeScreen({ navigation, route }) {
               onPress={() => setSelected(option.value)}
             >
               <View style={styles.optionIconContainer}>
-                <Ionicons 
-                  name={option.icon} 
-                  size={34} 
-                  color={COLORS.primaryNavy} 
+                <Ionicons
+                  name={option.icon}
+                  size={34}
+                  color={COLORS.primaryNavy}
                 />
               </View>
               <View style={styles.optionContent}>
@@ -232,10 +230,10 @@ export default function Step3PurposeScreen({ navigation, route }) {
                 </Text>
               </View>
               <View style={styles.checkboxContainer}>
-                <View 
+                <View
                   style={[
                     styles.checkbox,
-                    selected === option.value && styles.checkedBox
+                    selected === option.value && styles.checkedBox,
                   ]}
                 >
                   {selected === option.value && (
@@ -246,7 +244,6 @@ export default function Step3PurposeScreen({ navigation, route }) {
             </TouchableOpacity>
           ))}
         </View>
-
         <TouchableOpacity
           style={[styles.continueButton, !selected && styles.buttonDisabled]}
           onPress={handleContinue}

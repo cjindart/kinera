@@ -18,6 +18,7 @@ export default function Step1Screen({ navigation }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const [stanfordEmail, setStanfordEmail] = useState("");
   const { user, updateProfile } = useAuth();
 
   // Load existing user data when component mounts
@@ -46,11 +47,25 @@ export default function Step1Screen({ navigation }) {
   // }, [user]);
 
   const handleContinue = async () => {
-    const userData = { phone, email, city };
+    if (!name.trim()) {
+      Alert.alert("Invalid Name", "Please enter your name.");
+      return;
+    }
+    if (!stanfordEmail.trim() || !stanfordEmail.endsWith("@stanford.edu")) {
+      Alert.alert(
+        "Invalid Email",
+        "Please enter a valid Stanford email address ending with @stanford.edu."
+      );
+      return;
+    }
+    const userData = { phone, email, city, name, stanfordEmail };
     try {
       await AsyncStorage.mergeItem("user", JSON.stringify(userData));
+      await updateProfile({ stanfordEmail });
       //send to backend
-      console.log("BasicInfo: Saving user data and navigating to photos screen");
+      console.log(
+        "BasicInfo: Saving user data and navigating to photos screen"
+      );
       console.log(userData);
       navigation.navigate("photos", userData);
     } catch (error) {
@@ -62,25 +77,43 @@ export default function Step1Screen({ navigation }) {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <SafeAreaView style={styles.container}>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.backArrow}
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.arrowText}>←</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <Text style={styles.title}>Tell us about yourself</Text>
         <Text style={styles.subtitle}>
           We already have your name and phone number from login.
         </Text>
-        {/* <Text style={styles.title}>What is your Stanford Email?</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="sunet@stanford.edu"
-          placeholderTextColor="#B0B0B0"
-          value={email}
-          onChangeText={setEmail}
-        /> */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Your Name</Text>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Enter your name"
+            placeholderTextColor="#A9B7C5"
+            autoCapitalize="words"
+            keyboardType="default"
+            autoFocus
+          />
+        </View>
+        {/* Stanford Email Input */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Stanford Email</Text>
+          <TextInput
+            style={styles.input}
+            value={stanfordEmail}
+            onChangeText={setStanfordEmail}
+            placeholder="Enter your Stanford email"
+            placeholderTextColor="#A9B7C5"
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </View>
         <Text style={styles.title}>Where are you from?</Text>
         <TextInput
           style={styles.input}
@@ -91,9 +124,19 @@ export default function Step1Screen({ navigation }) {
         />
 
         <TouchableOpacity
-          style={[styles.button, !city.trim() && styles.buttonDisabled]}
+          style={[
+            styles.button,
+            (!name.trim() ||
+              !stanfordEmail.trim() ||
+              !stanfordEmail.endsWith("@stanford.edu")) &&
+              styles.buttonDisabled,
+          ]}
           onPress={handleContinue}
-          disabled={!city.trim()}
+          disabled={
+            !name.trim() ||
+            !stanfordEmail.trim() ||
+            !stanfordEmail.endsWith("@stanford.edu")
+          }
         >
           <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
@@ -162,5 +205,13 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 18,
+    color: "#3A5A6A",
+    marginBottom: 8,
   },
 });

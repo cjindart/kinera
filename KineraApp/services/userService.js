@@ -455,7 +455,9 @@ export const approveCandidateForFriend = async (
 
     // Calculate approval rate for friend's matches
     const totalFriends = Array.isArray(friend.friends)
-      ? friend.friends.length
+      ? friend.friends.filter((f) =>
+          typeof f === "object" ? f.userType !== "Dater" : true
+        ).length
       : 0;
     // const approvedSwipes = Object.values(friend.matches).filter(
     //   (match) => match.approvalRate > 0

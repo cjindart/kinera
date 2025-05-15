@@ -103,9 +103,6 @@ export default function AvailabilityScreen() {
         const candidates = await getCandidatesForFriend(user, friend.id);
         setCandidates(candidates);
       }
-
-      // Reset candidate index when loading new candidates
-      setCurrentCandidateIndex(0);
     } catch (error) {
       console.error("Error loading candidates:", error);
       setCandidates([]);
@@ -228,36 +225,42 @@ export default function AvailabilityScreen() {
     };
 
     loadUserData();
-
-    // This listener will trigger whenever you return to the Home screen
-    const unsubscribe = navigation.addListener("focus", () => {
-      loadUserData();
-    });
-
-    return unsubscribe;
   }, [navigation]);
+
+  // useEffect(() => {
+  //   const unsubscribe = navigation.addListener("focus", () => {
+  //     if (user) {
+  //       updateMatchmakerFriends(user);
+  //     }
+  //   });
+  //   return unsubscribe;
+  // }, [navigation, user]);
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      if (navigation.getState) {
+        // Get the current route
+        const routes = navigation.getState().routes;
+        const currentRoute = routes[routes.length - 1];
+        if (currentRoute.params?.friendsChanged) {
+          updateMatchmakerFriends(user);
+          // Reset the flag so it doesn't reload every time
+          navigation.setParams({ friendsChanged: false });
+        }
+      }
+    });
+    return unsubscribe;
+  }, [navigation, user]);
 
   // When current friend changes, load candidates for that friend
   useEffect(() => {
-    console.log("=== Friend Change Effect ===");
-    console.log("Current friend index:", currentFriendIndex);
-    console.log("Matchmaker friends length:", matchmakerFriends.length);
-
     if (
       currentUser &&
       matchmakerFriends.length > 0 &&
       currentFriendIndex < matchmakerFriends.length
     ) {
       const currentFriend = matchmakerFriends[currentFriendIndex];
-      console.log("Loading candidates for friend:", currentFriend?.name);
       loadCandidatesForFriend(currentUser, currentFriend);
-    } else {
-      console.log("Skipping candidate load because:", {
-        hasCurrentUser: !!currentUser,
-        matchmakerFriendsLength: matchmakerFriends.length,
-        currentFriendIndex,
-        isValidIndex: currentFriendIndex < matchmakerFriends.length,
-      });
+      setCurrentCandidateIndex(0);
     }
   }, [currentFriendIndex, matchmakerFriends]);
 
@@ -727,8 +730,6 @@ export default function AvailabilityScreen() {
 
       // After Firestore updates:
       await loadCandidatesForFriend(currentUser, currentFriend);
-
-      // Reset index to 0 (first candidate in new list)
       setCurrentCandidateIndex(0);
     } catch (error) {
       console.error("Error handling swipe:", error);
@@ -749,15 +750,15 @@ export default function AvailabilityScreen() {
     await handleSwipe("right"); // Handle approval
   };
 
-  const handleReverseSwipe = () => {
-    if (candidates.length > 0 && currentCandidateIndex > 0) {
-      // Go back to the previous candidate
-      setCurrentCandidateIndex(currentCandidateIndex - 1);
-    } else if (candidates.length > 0) {
-      // Go to the last candidate if at the first one
-      setCurrentCandidateIndex(candidates.length - 1);
-    }
-  };
+  // const handleReverseSwipe = () => {
+  //   if (candidates.length > 0 && currentCandidateIndex > 0) {
+  //     // Go back to the previous candidate
+  //     setCurrentCandidateIndex(currentCandidateIndex - 1);
+  //   } else if (candidates.length > 0) {
+  //     // Go to the last candidate if at the first one
+  //     setCurrentCandidateIndex(candidates.length - 1);
+  //   }
+  // };
 
   // Create a centralized function to load the mock data directly
   const loadMockUser = async (
@@ -861,7 +862,7 @@ export default function AvailabilityScreen() {
             );
             setCandidates(allUsers);
             setCurrentCandidateIndex(0);
-      }
+          }
         }
       }
 
@@ -1031,13 +1032,14 @@ export default function AvailabilityScreen() {
           <Text style={styles.buttonText}>✕</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.reverseButton}
-          onPress={handleReverseSwipe}
+          onPress={handle
+          Swipe}
           disabled={swipeLoading || !currentCandidate}
         >
           <Text style={styles.buttonText}>↺</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={styles.acceptButton}

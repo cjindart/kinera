@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,12 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ScrollView
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
-import { USER_TYPES } from '../models/User';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+  ScrollView,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../context/AuthContext";
+import { USER_TYPES } from "../models/User";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Color scheme
 const COLORS = {
@@ -35,6 +35,7 @@ export default function RegistrationScreen({ navigation, route }) {
   const [name, setName] = useState("");
   const [userType, setUserType] = useState(USER_TYPES.DATER_SWIPER);
   const [loading, setLoading] = useState(false);
+  const [stanfordEmail, setStanfordEmail] = useState("");
 
   // Handle registration with entered data
   const handleRegister = async () => {
@@ -42,43 +43,56 @@ export default function RegistrationScreen({ navigation, route }) {
       Alert.alert("Invalid Name", "Please enter your name.");
       return;
     }
-
+    if (!stanfordEmail.trim() || !stanfordEmail.endsWith("@stanford.edu")) {
+      Alert.alert(
+        "Invalid Email",
+        "Please enter a valid Stanford email address ending with @stanford.edu."
+      );
+      return;
+    }
     setLoading(true);
     try {
+      // Save to AsyncStorage
+      await AsyncStorage.setItem("stanfordEmail", stanfordEmail);
       // Check if we received forceOnboarding from parameters
       const forceOnboarding = route?.params?.forceOnboarding || false;
       console.log("Registration with forceOnboarding:", forceOnboarding);
-      
       // Register the new user
       const success = await register({
         name,
         userType,
-        isNewUser: true  // Explicitly set isNewUser flag to true
+        stanfordEmail,
+        isNewUser: true, // Explicitly set isNewUser flag to true
       });
-      
+
       if (success) {
         // Store isNewUser in AsyncStorage to persist across app restarts
-        await AsyncStorage.setItem('isNewUser', 'true');
-        
-        console.log("Registration successful, navigating directly to userType screen");
-        
+        await AsyncStorage.setItem("isNewUser", "true");
+
+        console.log(
+          "Registration successful, navigating directly to userType screen"
+        );
+
         // Use reset instead of navigate to clear the stack and force onboarding
         navigation.reset({
           index: 0,
           routes: [
             {
               name: "Onboarding",
-              params: { 
-                screen: "userType",  // Go directly to userType screen
-                forceOnboarding: true,  // Always force onboarding
-                comingFrom: 'Registration',  // Add this to help identify the source
-                skipBasicInfo: true  // Add flag to indicate we're skipping basicInfo
-              }
-            }
-          ]
+              params: {
+                screen: "userType", // Go directly to userType screen
+                forceOnboarding: true, // Always force onboarding
+                comingFrom: "Registration", // Add this to help identify the source
+                skipBasicInfo: true, // Add flag to indicate we're skipping basicInfo
+              },
+            },
+          ],
         });
       } else {
-        Alert.alert("Registration Failed", "There was a problem creating your account. Please try again.");
+        Alert.alert(
+          "Registration Failed",
+          "There was a problem creating your account. Please try again."
+        );
       }
     } catch (error) {
       console.error("Error registering user:", error);
@@ -102,16 +116,23 @@ export default function RegistrationScreen({ navigation, route }) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.formContainer}>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color={COLORS.primaryNavy} />
-            </TouchableOpacity>
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
+            </TouchableOpacity> */}
 
             <Text style={styles.title}>What's your name?</Text>
-            <Text style={styles.subtitle}>Tell us who you are</Text>
-            
+            <Text style={styles.subtitle}>
+              Tell us who you are and your stanford email to facilitate our
+              matching process
+            </Text>
+
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Your Name</Text>
               <TextInput
@@ -125,7 +146,20 @@ export default function RegistrationScreen({ navigation, route }) {
                 autoFocus
               />
             </View>
-            
+            {/* Stanford Email Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Stanford Email</Text>
+              <TextInput
+                style={styles.input}
+                value={stanfordEmail}
+                onChangeText={setStanfordEmail}
+                placeholder="Enter your Stanford email"
+                placeholderTextColor={COLORS.mutedBlue}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+
             {/* <View style={styles.inputContainer}>
               <Text style={styles.label}>Your Role</Text>
               <Text style={styles.infoText}>Choose how you want to use Vouch.</Text>
@@ -198,11 +232,22 @@ export default function RegistrationScreen({ navigation, route }) {
                 </TouchableOpacity>
               </View>
             </View> */}
-            
-            <TouchableOpacity 
-              style={[styles.button, !name.trim() && styles.buttonDisabled]} 
+
+            <TouchableOpacity
+              style={[
+                styles.button,
+                !name.trim() ||
+                  !stanfordEmail.trim() ||
+                  (!stanfordEmail.endsWith("@stanford.edu") &&
+                    styles.buttonDisabled),
+              ]}
               onPress={handleRegister}
-              disabled={!name.trim() || loading}
+              disabled={
+                !name.trim() ||
+                !stanfordEmail.trim() ||
+                !stanfordEmail.endsWith("@stanford.edu") ||
+                loading
+              }
             >
               {loading ? (
                 <ActivityIndicator color="white" />
@@ -319,4 +364,4 @@ const styles = StyleSheet.create({
     left: 20,
     zIndex: 10,
   },
-}); 
+});
