@@ -1064,6 +1064,24 @@ export default function ProfileScreen({ route }) {
     fetchFriendData();
   }, [user?.friends]);
 
+  // On app start or after login
+  useEffect(() => {
+    const syncUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.id));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser(userData); // update context/state
+          await AsyncStorage.setItem("userData", JSON.stringify(userData)); // update local storage
+        }
+      } catch (error) {
+        console.error("Error syncing user data:", error);
+      }
+    };
+
+    syncUserData();
+  }, [user.id, setUser]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Welcome Message Overlay - only shown if showWelcome is true and we've checked storage */}

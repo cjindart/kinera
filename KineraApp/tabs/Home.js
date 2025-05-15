@@ -84,6 +84,24 @@ export default function AvailabilityScreen() {
     }
   };
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      if (navigation.getState) {
+        // Get the current route
+        const routes = navigation.getState().routes;
+        const currentRoute = routes[routes.length - 1];
+        if (currentRoute.params?.friendsChanged) {
+          updateMatchmakerFriends(user);
+          // Reset the flag so it doesn't reload every time
+          navigation.setParams({ friendsChanged: false });
+        }
+      }
+    });
+    return unsubscribe;
+  }, [navigation, user]);
+  useEffect(() => {
+    updateMatchmakerFriends(user);
+  }, [user?.friends]);
   // Load candidates for a specific friend
   const loadCandidatesForFriend = async (user, friend) => {
     if (!user || !friend) {
@@ -235,21 +253,6 @@ export default function AvailabilityScreen() {
   //   });
   //   return unsubscribe;
   // }, [navigation, user]);
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      if (navigation.getState) {
-        // Get the current route
-        const routes = navigation.getState().routes;
-        const currentRoute = routes[routes.length - 1];
-        if (currentRoute.params?.friendsChanged) {
-          updateMatchmakerFriends(user);
-          // Reset the flag so it doesn't reload every time
-          navigation.setParams({ friendsChanged: false });
-        }
-      }
-    });
-    return unsubscribe;
-  }, [navigation, user]);
 
   // When current friend changes, load candidates for that friend
   useEffect(() => {
@@ -365,218 +368,10 @@ export default function AvailabilityScreen() {
   if (!currentFriend) {
     return (
       <View style={[styles.container, styles.errorContainer]}>
-        <Text style={styles.errorText}>No friends available to match</Text>
-
-        {/* Make "Match Friends By Name" the most prominent button */}
-        <Text style={styles.explanationText}>
-          The "Match Friends By Name" feature connects friends in your profile
-          with mock data in our system.
+        <Text style={styles.errorText}>
+          No friends available to match, go back to your profile and add friends
+          to swipe
         </Text>
-
-        <TouchableOpacity
-          style={[
-            styles.seedButton,
-            {
-              backgroundColor: "#325475",
-              marginBottom: 20,
-              paddingVertical: 15,
-            },
-          ]}
-          onPress={async () => {
-            try {
-              setLoading(true);
-
-              // Check if user has friends
-              if (
-                !currentUser ||
-                !currentUser.friends ||
-                currentUser.friends.length === 0
-              ) {
-                Alert.alert(
-                  "Error",
-                  "You don't have any friends to match with. Add friends in your profile first."
-                );
-                setLoading(false);
-                return;
-              }
-
-              // Log the user's friends
-              console.log(`User has ${currentUser.friends.length} friends:`);
-              currentUser.friends.forEach((friend, index) => {
-                console.log(
-                  `Friend ${index}: ${friend.name} (ID: ${friend.id})`
-                );
-              });
-
-              // Match friends by name with the mock data
-              const friendNameMap = {
-                "Emily Chen": "user7",
-                "Ryan Patel": "user5",
-                "Sarah Johnson": "user6",
-                "Sophia Martinez": "user8",
-                "Olivia Kim": "user9",
-                "Isabella Wang": "user10",
-              };
-
-              // Extract friend names
-              const friendNames = currentUser.friends.map((f) => f.name);
-              console.log("Friend names:", friendNames);
-
-              // Find matching mock users
-              const matchedFriends = [];
-              for (const friend of currentUser.friends) {
-                const mockUserId = friendNameMap[friend.name];
-                if (mockUserId) {
-                  const mockUser = mockData.users.find(
-                    (u) => u.id === mockUserId
-                  );
-                  if (mockUser) {
-                    console.log(
-                      `Matched friend ${friend.name} to mock user ${mockUserId}`
-                    );
-                    matchedFriends.push(mockUser);
-                  }
-                }
-              }
-
-              console.log(`Found ${matchedFriends.length} matching mock users`);
-
-              if (matchedFriends.length === 0) {
-                Alert.alert(
-                  "Error",
-                  "Couldn't match your friends to the mock data. Try adding Emily Chen, Ryan Patel, Sarah Johnson, Sophia Martinez, Olivia Kim, or Isabella Wang as friends."
-                );
-                setLoading(false);
-                return;
-              }
-
-              // Set the matched friends as matchmaker friends
-              setMatchmakerFriends(matchedFriends);
-              setCurrentFriendIndex(0);
-
-              // Get the first friend's swiping pool
-              const firstFriend = matchedFriends[0];
-              console.log(`Loading swiping pool for ${firstFriend.name}`);
-
-              // Extract pool user IDs from swipingPool
-              const poolUserIds = Object.keys(firstFriend.swipingPool || {});
-              console.log(
-                `Pool has ${poolUserIds.length} user IDs:`,
-                poolUserIds
-              );
-
-              // Get the candidate user objects
-              const poolCandidates = poolUserIds
-                .map((id) => mockData.users.find((u) => u.id === id))
-                .filter((u) => u !== null);
-
-              console.log(`Found ${poolCandidates.length} pool candidates`);
-              setCandidates(poolCandidates);
-              setCurrentCandidateIndex(0);
-
-              Alert.alert(
-                "Success",
-                `Matched your friends by name and loaded ${poolCandidates.length} candidates`
-              );
-            } catch (error) {
-              console.error("Error matching friends by name:", error);
-              Alert.alert("Error", "Failed to match friends by name");
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          <Text style={[styles.seedButtonText, { fontSize: 18 }]}>
-            Match Friends By Name
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={styles.orDivider}>or</Text>
-
-        <Text style={styles.explanationText}>
-          Add "Emily Chen", "Ryan Patel", or other names from our sample data as
-          friends in your profile.
-        </Text>
-
-        {/* Move the other buttons below with less prominence */}
-        <View style={styles.secondaryButtonsContainer}>
-          <TouchableOpacity
-            style={[
-              styles.seedButton,
-              { marginTop: 10, backgroundColor: "#A9B7C5" },
-            ]}
-            onPress={async () => {
-              try {
-                setLoading(true);
-                const success = await seedFirestoreWithMockData();
-                if (success) {
-                  Alert.alert(
-                    "Success",
-                    "Mock data has been seeded to Firestore"
-                  );
-                  // Reload user data after seeding
-                  const userData = await AsyncStorage.getItem("userData");
-                  if (userData) {
-                    const parsedUser = JSON.parse(userData);
-                    setCurrentUser(parsedUser);
-                    await updateMatchmakerFriends(parsedUser);
-                  }
-                } else {
-                  Alert.alert("Error", "Failed to seed mock data");
-                }
-              } catch (error) {
-                console.error("Error seeding data:", error);
-                Alert.alert("Error", "An error occurred while seeding data");
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            <Text style={styles.seedButtonText}>Seed Test Data</Text>
-          </TouchableOpacity>
-
-          {/* Direct Mock Data Load Button */}
-          <TouchableOpacity
-            style={[
-              styles.seedButton,
-              { marginTop: 10, backgroundColor: "#4B5C6B" },
-            ]}
-            onPress={() =>
-              loadMockUser(
-                "user7",
-                setLoading,
-                setCurrentUser,
-                setMatchmakerFriends,
-                setCurrentFriendIndex,
-                setCandidates,
-                setCurrentCandidateIndex
-              )
-            }
-          >
-            <Text style={styles.seedButtonText}>Load Mock User7</Text>
-          </TouchableOpacity>
-
-          {/* Add a button to load user1 as well */}
-          <TouchableOpacity
-            style={[
-              styles.seedButton,
-              { marginTop: 10, backgroundColor: "#4B5C6B" },
-            ]}
-            onPress={() =>
-              loadMockUser(
-                "user1",
-                setLoading,
-                setCurrentUser,
-                setMatchmakerFriends,
-                setCurrentFriendIndex,
-                setCandidates,
-                setCurrentCandidateIndex
-              )
-            }
-          >
-            <Text style={styles.seedButtonText}>Load Mock User1</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     );
   }
@@ -1115,9 +910,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardImage: {
-    width: width * 0.6,
-    height: width * 0.7,
+    width: width * 0.7,
+    height: width * 0.6,
     borderRadius: 10,
+    resizeMode: "cover",
   },
   cardText: {
     fontSize: width * 0.045,

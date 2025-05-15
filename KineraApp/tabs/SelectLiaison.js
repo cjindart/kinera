@@ -145,6 +145,12 @@ export default function SelectLiaison({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.headerRow}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={28} color={COLORS.primaryNavy} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Set Your Date Liaison</Text>
         <View style={{ width: 32 }} />
       </View>
@@ -316,5 +322,12 @@ const styles = StyleSheet.create({
     color: COLORS.mutedBlue,
     textAlign: "center",
     marginTop: 2,
+  },
+  backButton: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    padding: 8,
+    zIndex: 10,
   },
 });
