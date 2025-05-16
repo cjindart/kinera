@@ -206,9 +206,7 @@ export const getCandidatesForFriend = async (matchmakerUser, friendId) => {
 
     // Get potential matches based on preferences
     const potentialMatches = await getPotentialMatches(friend);
-    console.log(
-      `Found ${potentialMatches.length} potential matches based on preferences`
-    );
+    const candidateIds = potentialMatches.map((u) => u.id);
 
     // Create a set of swiped user IDs for quick lookup
     const swipedUserIds = new Set(friend.swipedPool || []);
@@ -252,7 +250,7 @@ export const getCandidatesForFriend = async (matchmakerUser, friendId) => {
     }
 
     // Map swipingPool user IDs to actual user objects
-    const poolCandidates = Object.keys(swipingPool)
+    const poolCandidates2 = Object.keys(swipingPool)
       .map((userId) => {
         const user = allUsers.find((u) => u.id === userId);
         if (user) {
@@ -267,8 +265,45 @@ export const getCandidatesForFriend = async (matchmakerUser, friendId) => {
       .filter((user) => user !== null); // Remove any null entries (users not found)
 
     console.log(
-      `Returning ${poolCandidates.length} candidates from swipingPool`
+      `Returning ${poolCandidates2.length} candidates from swipingPool`
     );
+
+    // Update swipingPools in Firestore for this friend
+    try {
+      const userRef = doc(db, "users", friendId);
+      // Get the current swipingPools map (or initialize)
+      const friendDoc = await getDoc(userRef);
+      let swipingPools = {};
+      if (friendDoc.exists()) {
+        swipingPools = friendDoc.data().swipingPools || {};
+      }
+      if (!swipingPools[matchmakerUser.id]) {
+        swipingPools[matchmakerUser.id] = { pool: [], swipedPool: [] };
+      }
+      swipingPools[matchmakerUser.id].pool = candidateIds;
+      // Only initialize swipedPool if not present
+      if (!Array.isArray(swipingPools[matchmakerUser.id].swipedPool)) {
+        swipingPools[matchmakerUser.id].swipedPool = [];
+      }
+      await updateDoc(userRef, { swipingPools });
+      console.log(
+        `Updated swipingPools for friend ${friend.name} with key ${matchmakerUser.id}`
+      );
+    } catch (error) {
+      console.error("Error updating swipingPools in Firestore:", error);
+    }
+
+    let poolCandidates = [];
+    if (
+      friend.swipingPools &&
+      friend.swipingPools[matchmakerUser.id] &&
+      Array.isArray(friend.swipingPools[matchmakerUser.id].pool)
+    ) {
+      const poolIds = friend.swipingPools[matchmakerUser.id].pool;
+      poolCandidates = poolIds
+        .map((id) => allUsers.find((u) => u.id === id))
+        .filter(Boolean);
+    }
     return poolCandidates;
   } catch (error) {
     console.error(`Error getting candidates for friend ${friendId}:`, error);
@@ -353,10 +388,9 @@ export const getMatchmakerFriends = async (user) => {
     const matchmakerTypes = [
       "Dater & Match Maker",
       "both",
-      "Swiper",
       "Dater & Swiper",
-      "swiper",
       "dater-swiper",
+      "Dater",
     ];
 
     // Filter to only include matchmaker friends

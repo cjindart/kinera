@@ -488,33 +488,31 @@ export default function AvailabilityScreen() {
         }
       }
 
-      // Update swipedPool in Firestore
+      // After a swipe (approve or reject)
       try {
-        console.log("Updating swipedPool in Firestore...");
         const friendRef = doc(db, "users", currentFriend.id);
         const friendDoc = await getDoc(friendRef);
-        const currentSwipedPool = friendDoc.data()?.swipedPool || [];
+        const friendData = friendDoc.data();
 
-        // Add candidate to swipedPool if not already there
+        // Update swipedPool
+        const currentSwipedPool = friendData.swipedPool || [];
+        let newSwipedPool = currentSwipedPool;
         if (!currentSwipedPool.includes(candidateId)) {
-          console.log("Adding candidate to swipedPool");
-          await updateDoc(friendRef, {
-            swipedPool: [...currentSwipedPool, candidateId],
-          });
+          newSwipedPool = [...currentSwipedPool, candidateId];
         }
 
-        // Remove from swipingPool if present
-        const currentSwipingPool = friendDoc.data()?.swipingPool || {};
-        if (currentSwipingPool[candidateId]) {
-          console.log("Removing candidate from swipingPool");
-          const updatedSwipingPool = { ...currentSwipingPool };
-          delete updatedSwipingPool[candidateId];
-          await updateDoc(friendRef, {
-            swipingPool: updatedSwipingPool,
-          });
-        }
+        // Update swipingPools for this matchmaker
+        let swipingPools = friendData.swipingPools || {};
+        let pool = swipingPools[currentUser.id] || [];
+        pool = pool.filter((id) => id !== candidateId);
+        swipingPools[currentUser.id] = pool;
+
+        await updateDoc(friendRef, {
+          swipedPool: newSwipedPool,
+          swipingPools: swipingPools,
+        });
       } catch (error) {
-        console.error("Error updating swipedPool:", error);
+        console.error("Error updating swipedPool and swipingPools:", error);
       }
 
       // Mark current candidate as swiped in local state
@@ -679,39 +677,6 @@ export default function AvailabilityScreen() {
         {/* Debug buttons */}
         <View style={styles.debugButtonsContainer}>
           <TouchableOpacity
-            style={[styles.debugButton, { backgroundColor: "#4B5C6B" }]}
-            onPress={async () => {
-              try {
-                // Show current user details
-                Alert.alert(
-                  "Current User",
-                  `User: ${currentUser?.name} (${currentUser?.id})\n` +
-                    `Friends: ${currentUser?.friends?.length || 0}\n` +
-                    `userType: ${currentUser?.userType}`
-                );
-
-                // Try to load friends directly using the current user
-                if (currentUser) {
-                  const userFromFirestore = await fetchUserById(currentUser.id);
-                  console.log("User from Firestore:", userFromFirestore);
-
-                  if (userFromFirestore) {
-                    // Update the user in memory to sync with Firestore
-                    setCurrentUser(userFromFirestore);
-
-                    // Reload friends with the updated user data
-                    await updateMatchmakerFriends(userFromFirestore);
-                  }
-                }
-              } catch (error) {
-                console.error("Debug error:", error);
-              }
-            }}
-          >
-            <Text style={styles.debugButtonText}>Debug User</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.debugButton, { backgroundColor: "#325475" }]}
             onPress={() => {
               if (currentFriend && currentCandidate) {
@@ -799,7 +764,12 @@ export default function AvailabilityScreen() {
               }}
             >
               <Text
-                style={{ color: "#325475", fontSize: 18, textAlign: "center" }}
+                style={{
+                  color: "#325475",
+                  fontSize: 18,
+                  textAlign: "center",
+                  marginHorizontal: 20,
+                }}
               >
                 No more candidates left to swipe, check back later
               </Text>

@@ -196,6 +196,10 @@ export default function ProfileScreen({ route }) {
   // Add new state for friend data
   const [friendData, setFriendData] = useState({});
 
+  // Add new state for switch user modal
+  const [showSwitchUserModal, setShowSwitchUserModal] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+
   // Load user data when component mounts
   useEffect(() => {
     if (user) {
@@ -1082,6 +1086,35 @@ export default function ProfileScreen({ route }) {
     syncUserData();
   }, [user.id, setUser]);
 
+  // Fetch all users for switch user modal
+  const fetchAllUsers = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const querySnapshot = await getDocs(usersRef);
+      const users = [];
+      querySnapshot.forEach((doc) => {
+        users.push({ id: doc.id, ...doc.data() });
+      });
+      setAllUsers(users);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+    }
+  };
+
+  // Handler to switch user
+  const handleSwitchUser = async (userId) => {
+    try {
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUser({ ...userData, id: userId });
+        setShowSwitchUserModal(false);
+      }
+    } catch (error) {
+      console.error("Error switching user:", error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Welcome Message Overlay - only shown if showWelcome is true and we've checked storage */}
@@ -1856,6 +1889,89 @@ export default function ProfileScreen({ route }) {
           <Text style={styles.sectionTitle}>Firebase Services Test</Text>
           <FirebaseTest />
         </View>
+
+        {/* Add Switch User Button at the bottom */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: COLORS.accentOrange,
+            padding: 16,
+            borderRadius: 12,
+            alignItems: "center",
+            margin: 24,
+          }}
+          onPress={() => {
+            fetchAllUsers();
+            setShowSwitchUserModal(true);
+          }}
+        >
+          <Text style={{ color: "white", fontSize: 18, fontWeight: "bold" }}>
+            Switch User
+          </Text>
+        </TouchableOpacity>
+
+        {/* Switch User Modal */}
+        <Modal
+          visible={showSwitchUserModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowSwitchUserModal(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "white",
+                borderRadius: 16,
+                padding: 24,
+                width: "85%",
+                maxHeight: "70%",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: "bold",
+                  marginBottom: 16,
+                  color: COLORS.primaryNavy,
+                }}
+              >
+                Select a User
+              </Text>
+              <FlatList
+                data={allUsers}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{
+                      paddingVertical: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: COLORS.paleBlue,
+                    }}
+                    onPress={() => handleSwitchUser(item.id)}
+                  >
+                    <Text style={{ fontSize: 18, color: COLORS.primaryNavy }}>
+                      {item.name || item.id}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <TouchableOpacity
+                style={{ marginTop: 18, alignItems: "center" }}
+                onPress={() => setShowSwitchUserModal(false)}
+              >
+                <Text style={{ color: COLORS.accentOrange, fontSize: 16 }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
