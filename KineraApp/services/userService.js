@@ -206,13 +206,18 @@ export const getCandidatesForFriend = async (matchmakerUser, friendId) => {
 
     // Get potential matches based on preferences
     const potentialMatches = await getPotentialMatches(friend);
-    const candidateIds = potentialMatches.map((u) => u.id);
+
+    // Filter out the current user (matchmaker) from potential matches
+    const filteredPotentialMatches = potentialMatches.filter(
+      (match) => match.id !== matchmakerUser.id
+    );
+    const candidateIds = filteredPotentialMatches.map((u) => u.id);
 
     // Create a set of swiped user IDs for quick lookup
     const swipedUserIds = new Set(friend.swipedPool || []);
 
     // Filter out swiped users from potential matches
-    const filteredMatches = potentialMatches.filter(
+    const filteredMatches = filteredPotentialMatches.filter(
       (match) => !swipedUserIds.has(match.id)
     );
 
@@ -300,7 +305,9 @@ export const getCandidatesForFriend = async (matchmakerUser, friendId) => {
       Array.isArray(friend.swipingPools[matchmakerUser.id].pool)
     ) {
       const poolIds = friend.swipingPools[matchmakerUser.id].pool;
-      poolCandidates = poolIds
+      // Filter out the current user (matchmaker) from the pool
+      const filteredPoolIds = poolIds.filter((id) => id !== matchmakerUser.id);
+      poolCandidates = filteredPoolIds
         .map((id) => allUsers.find((u) => u.id === id))
         .filter(Boolean);
     }
