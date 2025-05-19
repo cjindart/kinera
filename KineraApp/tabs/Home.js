@@ -8,6 +8,8 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Animated,
+  BlurView,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
@@ -31,6 +33,13 @@ import { hasAccessToScreen } from "../utils/accessControl";
 import LockedScreen from "../components/LockedScreen";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
+import { 
+  ensureSwipingPoolsStructure, 
+  ensureSwipedPoolArray,
+  addToSwipedPool,
+  recordSwipeAction,
+  logSwipeStructures 
+} from "../utils/swipeUtils";
 
 const { width, height } = Dimensions.get("window");
 
@@ -48,6 +57,8 @@ export default function AvailabilityScreen() {
   const userType = user?.userType || "";
   const hasAccess = hasAccessToScreen(userType, "Home");
   const prevFriendsRef = useRef([]);
+  const [friendSelectorLocked, setFriendSelectorLocked] = useState(true);
+  const [preloadedImages, setPreloadedImages] = useState({});
 
   // Function to update matchmaker friends list
   const updateMatchmakerFriends = async (user) => {
@@ -276,6 +287,73 @@ export default function AvailabilityScreen() {
   // Get current candidate
   const currentCandidate = candidates[currentCandidateIndex];
 
+  // Get the previous, current, and next friends in the list
+  const getPrevFriend = () => {
+    if (!matchmakerFriends.length) return null;
+    const prevIndex = currentFriendIndex === 0 ? matchmakerFriends.length - 1 : currentFriendIndex - 1;
+    return matchmakerFriends[prevIndex];
+  };
+
+  const getNextFriend = () => {
+    if (!matchmakerFriends.length) return null;
+    const nextIndex = (currentFriendIndex + 1) % matchmakerFriends.length;
+    return matchmakerFriends[nextIndex];
+  };
+
+  // Get additional friends for pre-rendering (2 in each direction)
+  const getFriendAt = (offset) => {
+    if (!matchmakerFriends.length) return null;
+    const index = (currentFriendIndex + offset + matchmakerFriends.length) % matchmakerFriends.length;
+    return matchmakerFriends[index];
+  };
+
+  // Functions to navigate between friends
+  const goToPrevFriend = () => {
+    if (friendSelectorLocked || !matchmakerFriends.length) return;
+    
+    setCurrentFriendIndex(prev => 
+      prev === 0 ? matchmakerFriends.length - 1 : prev - 1
+    );
+  };
+
+  const goToNextFriend = () => {
+    if (friendSelectorLocked || !matchmakerFriends.length) return;
+    
+    setCurrentFriendIndex(prev => 
+      (prev + 1) % matchmakerFriends.length
+    );
+  };
+
+  // Helper to get image source with fallback
+  const getImageSource = (friend) => {
+    if (!friend) return require("../assets/photos/daniel.png");
+    
+    // Use preloaded image if available
+    if (preloadedImages[friend.id]) {
+      return { uri: preloadedImages[friend.id] };
+    }
+    
+    // Fallback to direct rendering
+    return friend.profileData?.photos?.[0]
+      ? { uri: friend.profileData.photos[0] }
+      : require("../assets/photos/daniel.png");
+  };
+
+  // Preload all friend images when matchmakerFriends changes
+  useEffect(() => {
+    if (matchmakerFriends.length > 0) {
+      const imagesToPreload = {};
+      matchmakerFriends.forEach(friend => {
+        const imageUri = friend.profileData?.photos?.[0] || null;
+        if (imageUri) {
+          imagesToPreload[friend.id] = imageUri;
+        }
+      });
+      setPreloadedImages(imagesToPreload);
+      console.log(`Preloaded ${Object.keys(imagesToPreload).length} friend images`);
+    }
+  }, [matchmakerFriends]);
+
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -425,6 +503,15 @@ export default function AvailabilityScreen() {
       console.log("Current Friend:", currentFriend.id);
       console.log("Current Candidate:", candidateId);
 
+      // Immediately remove the candidate from the local candidates list
+      const updatedCandidates = candidates.filter(c => c.id !== candidateId);
+      setCandidates(updatedCandidates);
+      
+      // Reset candidate index if we removed the current candidate
+      if (currentCandidateIndex >= updatedCandidates.length) {
+        setCurrentCandidateIndex(Math.max(0, updatedCandidates.length - 1));
+      }
+
       // Get all users for the backend operations
       const allUsers = await fetchAllUsers();
       console.log("Fetched all users:", allUsers.length);
@@ -454,16 +541,6 @@ export default function AvailabilityScreen() {
           const updatedMatchmakerFriends = [...matchmakerFriends];
           updatedMatchmakerFriends[currentFriendIndex] = updatedFriend;
           setMatchmakerFriends(updatedMatchmakerFriends);
-
-          // Update the candidate in candidates array
-          const updatedCandidates = [...candidates];
-          const candidateIndex = updatedCandidates.findIndex(
-            (c) => c.id === candidateId
-          );
-          if (candidateIndex !== -1) {
-            updatedCandidates[candidateIndex] = updatedCandidate;
-            setCandidates(updatedCandidates);
-          }
         }
       } else {
         // Handle rejection
@@ -492,27 +569,46 @@ export default function AvailabilityScreen() {
       try {
         const friendRef = doc(db, "users", currentFriend.id);
         const friendDoc = await getDoc(friendRef);
-        const friendData = friendDoc.data();
-
-        // Update swipedPool
-        const currentSwipedPool = friendData.swipedPool || [];
-        let newSwipedPool = currentSwipedPool;
-        if (!currentSwipedPool.includes(candidateId)) {
-          newSwipedPool = [...currentSwipedPool, candidateId];
+        
+        if (!friendDoc.exists()) {
+          console.error("Friend document not found in Firestore");
+          throw new Error("Friend document not found");
         }
-
-        // Update swipingPools for this matchmaker
-        let swipingPools = friendData.swipingPools || {};
-        let pool = swipingPools[currentUser.id] || [];
-        pool = pool.filter((id) => id !== candidateId);
-        swipingPools[currentUser.id] = pool;
-
+        
+        const friendData = friendDoc.data();
+        
+        // Log current data structure state
+        logSwipeStructures(friendData, currentFriend.id, currentUser.id);
+        
+        // Update swipedPool
+        const newSwipedPool = addToSwipedPool(friendData, candidateId);
+        
+        // Record the swipe action and update swipingPools
+        const swipingPools = recordSwipeAction(
+          friendData,
+          currentUser.id,
+          candidateId,
+          direction === "right" ? "approved" : "rejected"
+        );
+        
+        console.log("Updating Firestore with new swipe data structures");
         await updateDoc(friendRef, {
           swipedPool: newSwipedPool,
-          swipingPools: swipingPools,
+          swipingPools: swipingPools
         });
+        
+        console.log("Successfully updated swipe data in Firestore");
+        
+        // Log updated data structure state
+        const updatedFriendDoc = await getDoc(friendRef);
+        if (updatedFriendDoc.exists()) {
+          logSwipeStructures(updatedFriendDoc.data(), currentFriend.id, currentUser.id);
+        }
       } catch (error) {
-        console.error("Error updating swipedPool and swipingPools:", error);
+        console.error("Error updating swipe data structures:", error);
+        
+        // Continue with the rest of the function despite this error
+        console.warn("Continuing with local state updates despite Firestore error");
       }
 
       // Mark current candidate as swiped in local state
@@ -521,9 +617,11 @@ export default function AvailabilityScreen() {
         [candidateId]: direction,
       }));
 
-      // After Firestore updates:
-      await loadCandidatesForFriend(currentUser, currentFriend);
-      setCurrentCandidateIndex(0);
+      // Optionally refresh candidates if they're now empty
+      if (updatedCandidates.length === 0) {
+        console.log("No candidates left, reloading from database");
+        await loadCandidatesForFriend(currentUser, currentFriend);
+      }
     } catch (error) {
       console.error("Error handling swipe:", error);
       Alert.alert(
@@ -671,11 +769,21 @@ export default function AvailabilityScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
+      <View style={styles.headerTextContainer}>
+        <Text style={styles.title}>You are vouching for</Text>
+      </View>
       <View style={styles.header}>
-        <Text style={styles.title}>Set Up</Text>
-        <Text>You're Swiping for:</Text>
-        {/* Debug buttons */}
-        <View style={styles.debugButtonsContainer}>
+        {/* <Text style={styles.swipingForText}>You are vouching for:</Text> */}
+        
+        {/* Friend name display - separate from the carousel */}
+        {currentFriend && (
+          <Text style={styles.currentFriendName}>
+            {currentFriend.name}
+          </Text>
+        )}
+        
+        {/* Debug buttons - keep for development */}
+        {/* <View style={styles.debugButtonsContainer}>
           <TouchableOpacity
             style={[styles.debugButton, { backgroundColor: "#325475" }]}
             onPress={() => {
@@ -700,36 +808,85 @@ export default function AvailabilityScreen() {
           >
             <Text style={styles.debugButtonText}>Debug Match</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
 
-      {/* Friend Selector */}
-      <View style={styles.friendSelector}>
-        <TouchableOpacity onPress={handlePreviousFriend}>
-          <Ionicons name="chevron-back" size={40} color="#325475" />
-          <Text style={styles.friendText}>Previous{"\n"}friend</Text>
+      {/* Friend Selector with Fixed Layout */}
+      <View style={styles.newFriendSelector}>
+        {/* Left (previous) friend */}
+        <TouchableOpacity 
+          style={styles.sideFriendContainer} 
+          onPress={goToPrevFriend}
+          disabled={friendSelectorLocked}
+          activeOpacity={0.7}
+        >
+          {getPrevFriend() && (
+            <>
+              <Image
+                source={getImageSource(getPrevFriend())}
+                style={styles.sideFriendImage}
+                blurRadius={5}
+              />
+              <View style={[styles.sideOverlay, styles.leftOverlay]} />
+            </>
+          )}
         </TouchableOpacity>
 
-        <View style={styles.friendInfo}>
-          <Image
-            source={
-              currentFriend.profileData?.photos?.[0]
-                ? { uri: currentFriend.profileData.photos[0] }
-                : require("../assets/photos/daniel.png")
-            }
-            style={styles.temp}
-          />
-          <Text style={styles.friendName}>{currentFriend.name}</Text>
-          <Text style={styles.friendSubtext}>
-            {currentFriend.profileData?.year} •{" "}
-            {currentFriend.profileData?.gender}
-          </Text>
+        {/* Current friend (center) */}
+        <View style={styles.currentFriendContainer}>
+          {currentFriend && (
+            <Image
+              source={getImageSource(currentFriend)}
+              style={styles.currentFriendImage}
+            />
+          )}
         </View>
 
-        <TouchableOpacity onPress={handleNextFriend}>
-          <Ionicons name="chevron-forward" size={40} color="#325475" />
-          <Text style={styles.friendText}>Next{"\n"}friend</Text>
+        {/* Right (next) friend */}
+        <TouchableOpacity 
+          style={styles.sideFriendContainer} 
+          onPress={goToNextFriend}
+          disabled={friendSelectorLocked}
+          activeOpacity={0.7}
+        >
+          {getNextFriend() && (
+            <>
+              <Image
+                source={getImageSource(getNextFriend())}
+                style={styles.sideFriendImage}
+                blurRadius={5}
+              />
+              <View style={[styles.sideOverlay, styles.rightOverlay]} />
+            </>
+          )}
         </TouchableOpacity>
+
+        {/* Lock/Unlock Button */}
+        <TouchableOpacity
+          style={styles.lockButton}
+          onPress={() => setFriendSelectorLocked(!friendSelectorLocked)}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={friendSelectorLocked ? "lock-closed" : "lock-open"}
+            size={24}
+            color="white"
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Hidden preloaded images for all potential friends */}
+      <View style={{position: 'absolute', opacity: 0, width: 1, height: 1, overflow: 'hidden'}}>
+        {/* Preload all friends to avoid duplicate key issues */}
+        {matchmakerFriends.map((friend, index) => 
+          friend ? (
+            <Image 
+              key={`preload-friend-${friend.id}`}
+              source={getImageSource(friend)}
+              style={{width: 1, height: 1}}
+            />
+          ) : null
+        )}
       </View>
 
       {/* Candidate Card */}
@@ -828,15 +985,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: width * 0.05,
     justifyContent: "space-between",
   },
+  headerTextContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    // alignItems: "flex-start",
+    // backgroundColor: "#F7C4A5",
+    // width: width,
+    // marginTop: height * 0.02,
+  },
   header: {
     alignItems: "center",
-    // marginBottom: height * 0.005,
+    marginBottom: height * 0.01,
   },
   title: {
-    fontSize: width * 0.1,
+    fontSize: width * 0.08,
     fontWeight: "bold",
     color: "#4B5C6B",
     paddingTop: height * 0.02,
+    justifyContent: "center",
+  },
+  swipingForText: {
+    fontSize: width * 0.045,
+    color: "#4B5C6B",
+    marginBottom: 8,
   },
   temp: {
     height: height * 0.13,
@@ -848,16 +1019,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  friendText: {
-    textAlign: "center",
-    fontSize: width * 0.035,
-    color: "#325475",
-  },
   friendInfo: {
     width: width * 0.35,
     height: height * 0.22,
     justifyContent: "center",
     alignItems: "center",
+  },
+  friendText: {
+    textAlign: "center",
+    fontSize: width * 0.035,
+    color: "#325475",
   },
   cardContainer: {
     alignItems: "center",
@@ -870,7 +1041,6 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     justifyContent: "center",
     alignItems: "center",
-    // marginBottom: height * 0.01,
     backgroundColor: "white",
     borderRadius: 10,
     shadowColor: "#000",
@@ -1012,5 +1182,124 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "column",
     alignItems: "center",
+  },
+  newFriendSelector: {
+    flexDirection: 'row',
+    height: height * 0.22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: height * 0.03,
+    position: 'relative',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+  friendList: {
+    alignItems: "center",
+    paddingHorizontal: width * 0.25,
+  },
+  friendItem: {
+    width: width * 0.5,
+    height: height * 0.18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectedFriendItem: {
+    zIndex: 2,
+  },
+  blurredFriendItem: {
+    zIndex: 1,
+  },
+  friendImage: {
+    width: width * 0.35,
+    height: width * 0.35,
+    borderRadius: width * 0.175,
+    resizeMode: "cover",
+    borderWidth: 2,
+    borderColor: "#4B5C6B",
+  },
+  blurredImage: {
+    opacity: 0.4,
+    transform: [{ scale: 0.8 }],
+    blurRadius: 5,
+  },
+  friendTextContainer: {
+    alignItems: "center",
+    marginTop: 5,
+  },
+  lockButton: {
+    position: "absolute",
+    bottom: -20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#ED7E31",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 3,
+  },
+  currentFriendName: {
+    fontSize: width * 0.07,
+    fontWeight: "bold",
+    color: "#4B5C6B",
+    marginTop: 5,
+    marginBottom: 15,
+  },
+  sideFriendContainer: {
+    width: width * 0.22,
+    height: height * 0.15,
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0.8,
+  },
+  sideFriendImage: {
+    width: width * 0.22,
+    height: width * 0.22,
+    borderRadius: width * 0.11,
+    resizeMode: "cover",
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  sideOverlay: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: '100%',
+    borderRadius: width * 0.11,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  leftOverlay: {
+    left: 0,
+    right: 0,
+  },
+  rightOverlay: {
+    left: 0,
+    right: 0,
+  },
+  currentFriendContainer: {
+    width: width * 0.35,
+    height: height * 0.2,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+    marginHorizontal: width * 0.03,
+  },
+  currentFriendImage: {
+    width: width * 0.35,
+    height: width * 0.35,
+    borderRadius: width * 0.175,
+    resizeMode: "cover",
+    borderWidth: 3,
+    borderColor: "#4B5C6B",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
 });
