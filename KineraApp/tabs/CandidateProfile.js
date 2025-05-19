@@ -24,6 +24,7 @@ const COLORS = {
   buttonPeach: "#F7D0B5",
   buttonShadow: "#E98E42",
 };
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Get device dimensions to use for more precise sizing
 const { width, height } = Dimensions.get("window");
@@ -148,7 +149,7 @@ export default function CandidateProfile({ route, navigation }) {
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
               <Ionicons
-                name="person-outline"
+                name="male-female-outline"
                 size={24}
                 color={COLORS.primaryNavy}
               />
@@ -160,8 +161,8 @@ export default function CandidateProfile({ route, navigation }) {
 
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons
-                name="resize-outline"
+              <MaterialCommunityIcons
+                name="ruler"
                 size={24}
                 color={COLORS.primaryNavy}
               />
