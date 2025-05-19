@@ -2312,9 +2312,9 @@ const styles = StyleSheet.create({
   friendAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: COLORS.primaryNavy,
+    borderRadius: 20,
+    // borderWidth: 1,
+    // borderColor: COLORS.primaryNavy,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,

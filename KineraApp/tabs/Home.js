@@ -8,6 +8,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Animated
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
@@ -31,6 +32,14 @@ import { hasAccessToScreen } from "../utils/accessControl";
 import LockedScreen from "../components/LockedScreen";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
+import { 
+  ensureSwipingPoolsStructure, 
+  ensureSwipedPoolArray,
+  addToSwipedPool,
+  recordSwipeAction,
+  logSwipeStructures 
+} from "../utils/swipeUtils";
+import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get("window");
 
@@ -44,10 +53,110 @@ export default function AvailabilityScreen() {
   const [matchmakerFriends, setMatchmakerFriends] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [swipedCandidates, setSwipedCandidates] = useState({});
+  const [friendSelectorLocked, setFriendSelectorLocked] = useState(false);
+  const [preloadedImages, setPreloadedImages] = useState({});
+  const prevFriendsRef = useRef([]);
   const { user } = useAuth();
   const userType = user?.userType || "";
   const hasAccess = hasAccessToScreen(userType, "Home");
-  const prevFriendsRef = useRef([]);
+
+  // Helper to get image source with fallback
+  const getImageSource = (friend) => {
+    if (!friend) return require("../assets/photos/daniel.png");
+    
+    // Use preloaded image if available
+    if (preloadedImages[friend.id]) {
+      return { uri: preloadedImages[friend.id] };
+    }
+    
+    // Fallback to direct rendering
+    return friend.profileData?.photos?.[0]
+      ? { uri: friend.profileData.photos[0] }
+      : require("../assets/photos/daniel.png");
+  };
+
+  // Get the previous, current, and next friends in the list
+  const getPrevFriend = () => {
+    if (!matchmakerFriends.length) return null;
+    const prevIndex = currentFriendIndex === 0 ? matchmakerFriends.length - 1 : currentFriendIndex - 1;
+    return prevIndex !== currentFriendIndex ? matchmakerFriends[prevIndex] : null;
+  };
+
+  const getNextFriend = () => {
+    if (!matchmakerFriends.length) return null;
+    const nextIndex = (currentFriendIndex + 1) % matchmakerFriends.length;
+    return nextIndex !== currentFriendIndex ? matchmakerFriends[nextIndex] : null;
+  };
+
+  // Preload images effect
+  useEffect(() => {
+    if (matchmakerFriends.length > 0) {
+      const imagesToPreload = {};
+      matchmakerFriends.forEach(friend => {
+        if (friend && friend.id) {
+          const imageUri = friend.profileData?.photos?.[0] || null;
+          if (imageUri) {
+            imagesToPreload[friend.id] = imageUri;
+          }
+        }
+      });
+      setPreloadedImages(imagesToPreload);
+    }
+  }, [matchmakerFriends]);
+
+  // Navigation focus effect
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      if (navigation.getState) {
+        const routes = navigation.getState().routes;
+        const currentRoute = routes[routes.length - 1];
+        if (currentRoute.params?.friendsChanged) {
+          updateMatchmakerFriends(user);
+          navigation.setParams({ friendsChanged: false });
+        }
+      }
+    });
+    return unsubscribe;
+  }, [navigation, user]);
+
+  // Update matchmaker friends when user changes
+  useEffect(() => {
+    updateMatchmakerFriends(user);
+  }, [user?.friends]);
+
+  // Load candidates when current friend changes
+  useEffect(() => {
+    if (
+      currentUser &&
+      matchmakerFriends.length > 0 &&
+      currentFriendIndex < matchmakerFriends.length
+    ) {
+      const currentFriend = matchmakerFriends[currentFriendIndex];
+      loadCandidatesForFriend(currentUser, currentFriend);
+      setCurrentCandidateIndex(0);
+    }
+  }, [currentFriendIndex, matchmakerFriends]);
+
+  // Load initial user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setLoading(true);
+        const userData = await AsyncStorage.getItem("userData");
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setCurrentUser(parsedUser);
+          await updateMatchmakerFriends(parsedUser);
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [navigation]);
 
   // Function to update matchmaker friends list
   const updateMatchmakerFriends = async (user) => {
@@ -84,24 +193,6 @@ export default function AvailabilityScreen() {
     }
   };
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      if (navigation.getState) {
-        // Get the current route
-        const routes = navigation.getState().routes;
-        const currentRoute = routes[routes.length - 1];
-        if (currentRoute.params?.friendsChanged) {
-          updateMatchmakerFriends(user);
-          // Reset the flag so it doesn't reload every time
-          navigation.setParams({ friendsChanged: false });
-        }
-      }
-    });
-    return unsubscribe;
-  }, [navigation, user]);
-  useEffect(() => {
-    updateMatchmakerFriends(user);
-  }, [user?.friends]);
   // Load candidates for a specific friend
   const loadCandidatesForFriend = async (user, friend) => {
     if (!user || !friend) {
@@ -126,146 +217,6 @@ export default function AvailabilityScreen() {
       setCandidates([]);
     }
   };
-
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        setLoading(true);
-
-        // Load user data from AsyncStorage
-        const userData = await AsyncStorage.getItem("userData");
-        if (userData) {
-          const parsedUser = JSON.parse(userData);
-          setCurrentUser(parsedUser);
-
-          // Automatically call the "Match Friends By Name" functionality
-          if (
-            parsedUser &&
-            parsedUser.friends &&
-            parsedUser.friends.length > 0
-          ) {
-            console.log(`User has ${parsedUser.friends.length} friends:`);
-            parsedUser.friends.forEach((friend, index) => {
-              console.log(`Friend ${index}: ${friend.name} (ID: ${friend.id})`);
-            });
-
-            // Match friends by name with the mock data
-            const friendNameMap = {
-              "Emily Chen": "user7",
-              "Ryan Patel": "user5",
-              "Sarah Johnson": "user6",
-              "Sophia Martinez": "user8",
-              "Olivia Kim": "user9",
-              "Isabella Wang": "user10",
-            };
-
-            // Extract friend names
-            const friendNames = parsedUser.friends.map((f) => f.name);
-            console.log("Friend names:", friendNames);
-
-            // Find matching mock users
-            const matchedFriends = [];
-            for (const friend of parsedUser.friends) {
-              const mockUserId = friendNameMap[friend.name];
-              if (mockUserId) {
-                const mockUser = mockData.users.find(
-                  (u) => u.id === mockUserId
-                );
-                if (mockUser) {
-                  console.log(
-                    `Matched friend ${friend.name} to mock user ${mockUserId}`
-                  );
-                  matchedFriends.push(mockUser);
-                }
-              }
-            }
-
-            console.log(`Found ${matchedFriends.length} matching mock users`);
-
-            if (matchedFriends.length > 0) {
-              // Set the matched friends as matchmaker friends
-              setMatchmakerFriends(matchedFriends);
-              setCurrentFriendIndex(0);
-
-              // Get the first friend's swiping pool
-              const firstFriend = matchedFriends[0];
-              console.log(`Loading swiping pool for ${firstFriend.name}`);
-
-              // Extract pool user IDs from swipingPool
-              const poolUserIds = Object.keys(firstFriend.swipingPool || {});
-              console.log(
-                `Pool has ${poolUserIds.length} user IDs:`,
-                poolUserIds
-              );
-
-              // Get the candidate user objects
-              const poolCandidates = poolUserIds
-                .map((id) => mockData.users.find((u) => u.id === id))
-                .filter((u) => u !== null);
-
-              console.log(`Found ${poolCandidates.length} pool candidates`);
-              setCandidates(poolCandidates);
-              setCurrentCandidateIndex(0);
-
-              console.log(
-                "Successfully matched friends by name and loaded candidates automatically"
-              );
-            } else {
-              // If we couldn't match any friends, fall back to the original method
-              console.log(
-                "No matched friends found, falling back to regular matchmaker friends"
-              );
-              await updateMatchmakerFriends(parsedUser);
-            }
-          } else {
-            // Fall back to the original method if no friends
-            console.log(
-              "No friends found, falling back to regular matchmaker friends"
-            );
-            await updateMatchmakerFriends(parsedUser);
-          }
-        } else {
-          console.log("No user data found in AsyncStorage");
-        }
-      } catch (error) {
-        console.error("Error loading user data:", error);
-        // Try to continue with the fallback method
-        try {
-          if (currentUser) {
-            await updateMatchmakerFriends(currentUser);
-          }
-        } catch (fallbackError) {
-          console.error("Fallback error:", fallbackError);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserData();
-  }, [navigation]);
-
-  // useEffect(() => {
-  //   const unsubscribe = navigation.addListener("focus", () => {
-  //     if (user) {
-  //       updateMatchmakerFriends(user);
-  //     }
-  //   });
-  //   return unsubscribe;
-  // }, [navigation, user]);
-
-  // When current friend changes, load candidates for that friend
-  useEffect(() => {
-    if (
-      currentUser &&
-      matchmakerFriends.length > 0 &&
-      currentFriendIndex < matchmakerFriends.length
-    ) {
-      const currentFriend = matchmakerFriends[currentFriendIndex];
-      loadCandidatesForFriend(currentUser, currentFriend);
-      setCurrentCandidateIndex(0);
-    }
-  }, [currentFriendIndex, matchmakerFriends]);
 
   console.log("matchmakerFriends", matchmakerFriends.length);
   console.log("candidates", candidates.length);
@@ -518,16 +469,6 @@ export default function AvailabilityScreen() {
     await handleSwipe("right"); // Handle approval
   };
 
-  // const handleReverseSwipe = () => {
-  //   if (candidates.length > 0 && currentCandidateIndex > 0) {
-  //     // Go back to the previous candidate
-  //     setCurrentCandidateIndex(currentCandidateIndex - 1);
-  //   } else if (candidates.length > 0) {
-  //     // Go to the last candidate if at the first one
-  //     setCurrentCandidateIndex(candidates.length - 1);
-  //   }
-  // };
-
   // Create a centralized function to load the mock data directly
   const loadMockUser = async (
     userIdToLoad,
@@ -646,147 +587,138 @@ export default function AvailabilityScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
+      <View style={styles.headerTextContainer}>
+        <Text style={styles.title}>You are vouching for</Text>
+      </View>
       <View style={styles.header}>
-        <Text style={styles.title}>Set Up</Text>
-        <Text>You're Swiping for:</Text>
-        {/* Debug buttons */}
-        <View style={styles.debugButtonsContainer}>
-          <TouchableOpacity
-            style={[styles.debugButton, { backgroundColor: "#325475" }]}
-            onPress={() => {
-              if (currentFriend && currentCandidate) {
-                Alert.alert(
-                  "Current Match State",
-                  `Friend: ${currentFriend.name}\n` +
-                    `Friend Matches: ${JSON.stringify(
-                      currentFriend.matches || {},
-                      null,
-                      2
-                    )}\n\n` +
-                    `Candidate: ${currentCandidate.name}\n` +
-                    `Candidate Matches: ${JSON.stringify(
-                      currentCandidate.matches || {},
-                      null,
-                      2
-                    )}`
-                );
-              }
-            }}
-          >
-            <Text style={styles.debugButtonText}>Debug Match</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Friend name display - separate from the carousel */}
+        {currentFriend && (
+          <Text style={styles.currentFriendName}>
+            {currentFriend.name}
+          </Text>
+        )}
       </View>
 
-      {/* Friend Selector */}
-      <View style={styles.friendSelector}>
-        <TouchableOpacity onPress={handlePreviousFriend}>
-          <Ionicons name="chevron-back" size={40} color="#325475" />
-          <Text style={styles.friendText}>Previous{"\n"}friend</Text>
+      {/* Friend Selector with Fixed Layout */}
+      <View style={styles.newFriendSelector}>
+        {/* Left (previous) friend */}
+        <TouchableOpacity 
+          style={styles.sideFriendContainer} 
+          onPress={handlePreviousFriend}
+          disabled={friendSelectorLocked}
+          activeOpacity={0.7}
+        >
+          {getPrevFriend() && (
+            <>
+              <Image
+                source={getImageSource(getPrevFriend())}
+                style={styles.sideFriendImage}
+                blurRadius={5}
+              />
+              <View style={[styles.sideOverlay, styles.leftOverlay]} />
+            </>
+          )}
         </TouchableOpacity>
 
-        <View style={styles.friendInfo}>
-          <Image
-            source={
-              currentFriend.profileData?.photos?.[0]
-                ? { uri: currentFriend.profileData.photos[0] }
-                : require("../assets/photos/daniel.png")
-            }
-            style={styles.temp}
-          />
-          <Text style={styles.friendName}>{currentFriend.name}</Text>
-          <Text style={styles.friendSubtext}>
-            {currentFriend.profileData?.year} •{" "}
-            {currentFriend.profileData?.gender}
-          </Text>
+        {/* Current friend (center) */}
+        <View style={styles.currentFriendContainer}>
+          {currentFriend && (
+            <Image
+              source={getImageSource(currentFriend)}
+              style={styles.currentFriendImage}
+            />
+          )}
         </View>
 
-        <TouchableOpacity onPress={handleNextFriend}>
-          <Ionicons name="chevron-forward" size={40} color="#325475" />
-          <Text style={styles.friendText}>Next{"\n"}friend</Text>
+        {/* Right (next) friend */}
+        <TouchableOpacity 
+          style={styles.sideFriendContainer} 
+          onPress={handleNextFriend}
+          disabled={friendSelectorLocked}
+          activeOpacity={0.7}
+        >
+          {getNextFriend() && (
+            <>
+              <Image
+                source={getImageSource(getNextFriend())}
+                style={styles.sideFriendImage}
+                blurRadius={5}
+              />
+              <View style={[styles.sideOverlay, styles.rightOverlay]} />
+            </>
+          )}
         </TouchableOpacity>
+
+        {/* Lock/Unlock Button */}
+        <TouchableOpacity
+          style={styles.lockButton}
+          onPress={() => setFriendSelectorLocked(!friendSelectorLocked)}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={friendSelectorLocked ? "lock-closed" : "lock-open"}
+            size={24}
+            color="white"
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Hidden preloaded images for all potential friends */}
+      <View style={{position: 'absolute', opacity: 0, width: 1, height: 1, overflow: 'hidden'}}>
+        {matchmakerFriends.map((friend, index) => 
+          friend ? (
+            <Image 
+              key={`preload-friend-${friend.id}`}
+              source={getImageSource(friend)}
+              style={{width: 1, height: 1}}
+            />
+          ) : null
+        )}
       </View>
 
       {/* Candidate Card */}
-      <TouchableOpacity
-        style={styles.cardContainer}
-        onPress={handleCardPress}
-        activeOpacity={0.7}
-        disabled={swipeLoading || !currentCandidate}
-      >
-        <View style={styles.card}>
-          {swipeLoading ? (
-            <ActivityIndicator
-              size="large"
-              color="#325475"
-              style={{ flex: 1 }}
-            />
-          ) : currentCandidate ? (
+      <View style={styles.candidateCardContainer}>
+        {currentCandidate ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleCardPress}
+            disabled={swipeLoading}
+          >
             <Image
-              source={
-                currentCandidate.profileData?.photos?.[0]
-                  ? { uri: currentCandidate.profileData.photos[0] }
-                  : require("../assets/photos/image.png")
-              }
-              style={styles.cardImage}
+              source={getImageSource(currentCandidate)}
+              style={styles.candidateImage}
             />
-          ) : (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{
-                  color: "#325475",
-                  fontSize: 18,
-                  textAlign: "center",
-                  marginHorizontal: 20,
-                }}
-              >
-                No more candidates left to swipe, check back later
+            <BlurView intensity={0} tint="default" style={styles.candidateOverlay}>
+              <Text style={styles.candidateName}>{currentCandidate.name}</Text>
+              <Text style={styles.candidateDetails}>
+                {currentCandidate.profileData?.age} - {currentCandidate.profileData?.year}
               </Text>
-            </View>
-          )}
-        </View>
-        {!swipeLoading && currentCandidate && (
-          <Text style={styles.cardText}>
-            {currentCandidate.name} {"\n"}
-            {currentCandidate.profileData?.age} •{" "}
-            {currentCandidate.profileData?.year}
-            {"\n"}
-            {currentCandidate.profileData?.city}
-          </Text>
+            </BlurView>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.noCandidateContainer}>
+            <Text style={styles.noCandidateText}>
+              No more candidates left to swipe, check back later
+            </Text>
+          </View>
         )}
-      </TouchableOpacity>
+      </View>
 
-      {/* Approve/Reject/Reverse Buttons */}
-      <View style={styles.buttonRow}>
+      {/* Approve/Reject Buttons at Bottom */}
+      <View style={styles.bottomButtonRow}>
         <TouchableOpacity
-          style={styles.rejectButton}
+          style={styles.dislikeButton}
           onPress={handlePreviousCandidate}
           disabled={swipeLoading || !currentCandidate}
         >
-          <Text style={styles.buttonText}>✕</Text>
+          <Ionicons name="close" size={40} color="#fff" />
         </TouchableOpacity>
-
-        {/* <TouchableOpacity
-          style={styles.reverseButton}
-          onPress={handle
-          Swipe}
-          disabled={swipeLoading || !currentCandidate}
-        >
-          <Text style={styles.buttonText}>↺</Text>
-        </TouchableOpacity> */}
-
         <TouchableOpacity
-          style={styles.acceptButton}
+          style={styles.likeButton}
           onPress={handleNextCandidate}
           disabled={swipeLoading || !currentCandidate}
         >
-          <Text style={styles.buttonText}>✓</Text>
+          <Ionicons name="heart" size={40} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -987,5 +919,189 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "column",
     alignItems: "center",
+  },
+  newFriendSelector: {
+    flexDirection: 'row',
+    height: height * 0.22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: height * 0.03,
+    position: 'relative',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+  sideFriendContainer: {
+    width: width * 0.22,
+    height: height * 0.15,
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0.8,
+  },
+  sideFriendImage: {
+    width: width * 0.22,
+    height: width * 0.22,
+    borderRadius: width * 0.11,
+    resizeMode: "cover",
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  sideOverlay: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: '100%',
+    borderRadius: width * 0.11,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  leftOverlay: {
+    left: 0,
+    right: 0,
+  },
+  rightOverlay: {
+    left: 0,
+    right: 0,
+  },
+  currentFriendContainer: {
+    width: width * 0.35,
+    height: height * 0.2,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+    marginHorizontal: width * 0.03,
+  },
+  currentFriendImage: {
+    width: width * 0.35,
+    height: width * 0.35,
+    borderRadius: width * 0.175,
+    resizeMode: "cover",
+    // borderWidth: 0.5,
+    borderColor: "#4B5C6B",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  lockButton: {
+    position: "absolute",
+    bottom: -20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#ED7E31",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 0,
+    borderColor: "white",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 3,
+  },
+  currentFriendName: {
+    fontSize: width * 0.07,
+    fontWeight: "bold",
+    color: "#4B5C6B",
+    marginTop: 5,
+    marginBottom: 0,
+  },
+  headerTextContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  candidateCardContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  candidateImage: {
+    width: width,
+    height: width * 0.8,
+    borderRadius: 20,
+    resizeMode: 'cover',
+  },
+  candidateOverlay: {
+    position: 'absolute',
+    left: 0,
+    bottom: 0,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    overflow: 'hidden',
+    minWidth: 120,
+    // backgroundColor: "#F7C4A5",
+  },
+  candidateName: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 22,
+    textShadowColor: '#ED7E31',
+    textShadowOffset: { width: -2, height: 0},
+    textShadowRadius: 2,
+    paddingLeft: 3
+  },
+  candidateDetails: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textShadowColor: '#ED7E31',
+    textShadowOffset: {width: -2, height: 0},
+    textShadowRadius: 2,
+    paddingLeft: 3
+  },
+  noCandidateContainer: {
+    width: width,
+    height: width * 0.8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(227, 171, 140, 0.5)',
+    justifyContent: "center",
+    // alignItems: 'center',
+
+  },
+  noCandidateText: {
+    color: '#fff',
+    textShadowOffset: {width: -2, height: 0},
+    textShadowRadius: 2,
+    textShadowColor: '#ED7E31',
+    fontSize: 20,
+    fontWeight: "900",
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 5
+  },
+  bottomButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    width: '100%',
+    // position: 'absolute',
+    // bottom: 30,
+    // left: 0,
+    // right: 0,
+    paddingHorizontal: 20,
+    marginTop: 0,
+    marginBottom: 10,
+    // paddingHorizontal: 40,
+  },
+  dislikeButton: {
+    backgroundColor: '#F7C4A5',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    elevation: 3,
+  },
+  likeButton: {
+    backgroundColor: '#A9B9CC',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    elevation: 3,
   },
 });
