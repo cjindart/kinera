@@ -16,7 +16,7 @@ import {
   Modal,
   FlatList,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
@@ -1412,7 +1412,7 @@ export default function ProfileScreen({ route }) {
           >
             <View style={styles.iconCircle}>
               <Ionicons
-                name="person-outline"
+                name="male-female-outline"
                 size={24}
                 color={COLORS.primaryNavy}
               />
@@ -1450,11 +1450,7 @@ export default function ProfileScreen({ route }) {
             }}
           >
             <View style={styles.iconCircle}>
-              <Ionicons
-                name="resize-outline"
-                size={24}
-                color={COLORS.primaryNavy}
-              />
+              <MaterialCommunityIcons name="ruler" size={24} color={COLORS.primaryNavy} />
             </View>
             <Text style={styles.summaryText}>
               {typeof height === "string" ? height : "-"}
