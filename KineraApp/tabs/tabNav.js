@@ -5,7 +5,7 @@ import { View, Text } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 import HomeStackScreen from "../_layout";
-import AvailabilityStackScreen from "../_layout";
+import MatchPortalStackScreen from "../_layout";
 import ProfileStackScreen from "../_layout";
 
 import theme from "../assets/theme";
@@ -43,7 +43,7 @@ export default function TabNav() {
         },
       })}
     >
-      <Tab.Screen name="Match Portal" component={AvailabilityStackScreen} />
+      <Tab.Screen name="Match Portal" component={MatchPortalStackScreen} />
       <Tab.Screen name="Home" component={HomeStackScreen} />
       <Tab.Screen name="Profile" component={ProfileStackScreen} />
     </Tab.Navigator>

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Authentication - Vouch</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <style>
+    body {
+      font-family: 'Helvetica', sans-serif;
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+      text-align: center;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    .logo {
+      margin: 20px auto;
+      width: 120px;
+      height: 120px;
+      background-color: #E6EEF3;
+      border-radius: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      color: #325475;
+      font-weight: bold;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #325475;
+      margin-bottom: 30px;
+    }
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #325475;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 30px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .message {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #ED7E31;
+      border: none;
+      color: white;
+      padding: 12px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 10px 0;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #d76b25;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .code-input-container {
+      margin-top: 20px;
+    }
+    #recaptcha-container {
+      margin: 20px auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">V</div>
+    <h1>Vouch Authentication</h1>
+    <div id="loading">
+      <div class="loader"></div>
+      <p>Processing authentication request...</p>
+    </div>
+    <div id="message" class="message" style="display:none;"></div>
+    <div id="auth-container" style="display:none;"></div>
+    <div id="recaptcha-container"></div>
+  </div>
+
+  <script>
+    // Get params from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const operation = urlParams.get('operation') || 'phoneAuth';
+    const phoneNumber = urlParams.get('phoneNumber');
+    const email = urlParams.get('email');
+    let redirectUri = urlParams.get('redirectUri');
+    
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxuR1sWinugIoS5XGwYGqbZb21wX14j9I",
+      authDomain: "vouch-e7830.firebaseapp.com",
+      projectId: "vouch-e7830",
+      storageBucket: "vouch-e7830.firebasestorage.app",
+      messagingSenderId: "812279492746",
+      appId: "1:812279492746:web:2db7e5ff4747c1ee2c3d73"
+    };
+
+    // Initialize Firebase
+    const firebaseApp = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    
+    // Show message function
+    function showMessage(message, isError = false) {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = message;
+      messageEl.className = 'message ' + (isError ? 'error' : 'success');
+      messageEl.style.display = 'block';
+      document.getElementById('loading').style.display = 'none';
+    }
+    
+    // Redirect back to app function
+    function redirectToApp(success, params = {}) {
+      if (!redirectUri) {
+        showMessage(success ? 'Authentication successful! You can close this window.' : 'Authentication failed. Please try again.');
+        return;
+      }
+      
+      // Handle Expo URI scheme
+      if (redirectUri.startsWith('exp://')) {
+        // Extract host and port for constructing callback
+        try {
+          const uriParts = redirectUri.split('//')[1].split('/');
+          const hostPort = uriParts[0];
+          
+          // Construct the final URI that will open the Expo app
+          redirectUri = `exp://${hostPort}`;
+          console.log("Using Expo redirect URI:", redirectUri);
+        } catch (err) {
+          console.error("Error parsing Expo URI:", err);
+        }
+      }
+      
+      // Add params to redirect URI
+      let finalRedirectUri = redirectUri;
+      const redirectParams = new URLSearchParams();
+      redirectParams.append('auth', 'callback');
+      redirectParams.append('success', success ? 'true' : 'false');
+      
+      // Add additional params
+      for (const [key, value] of Object.entries(params)) {
+        redirectParams.append(key, value);
+      }
+      
+      // Add params to URI
+      if (redirectUri.includes('?')) {
+        finalRedirectUri += '&' + redirectParams.toString();
+      } else {
+        finalRedirectUri += '?' + redirectParams.toString();
+      }
+      
+      // Perform the redirect
+      console.log("Redirecting to:", finalRedirectUri);
+      showMessage('Authentication ' + (success ? 'successful' : 'failed') + '! Returning to app...');
+      
+      // Short delay before redirect
+      setTimeout(() => {
+        window.location.href = finalRedirectUri;
+      }, 1500);
+    }
+    
+    // Handle phone authentication
+    async function handlePhoneAuth() {
+      const authContainer = document.getElementById('auth-container');
+      authContainer.style.display = 'block';
+      
+      if (!phoneNumber) {
+        // Show phone input form if number not provided
+        authContainer.innerHTML = `
+          <h2>Phone Verification</h2>
+          <p>Enter your phone number to receive a verification code:</p>
+          <input type="tel" id="phone-input" placeholder="+1 (555) 123-4567">
+          <button id="send-code-btn">Send Code</button>
+        `;
+        
+        document.getElementById('loading').style.display = 'none';
+        
+        // Set up event listener
+        document.getElementById('send-code-btn').addEventListener('click', () => {
+          const inputPhone = document.getElementById('phone-input').value;
+          if (!inputPhone || inputPhone.trim() === '') {
+            showMessage('Please enter a valid phone number', true);
+            return;
+          }
+          
+          // Redirect with the phone number
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('phoneNumber', inputPhone);
+          window.location.href = currentUrl.toString();
+        });
+        
+        return;
+      }
+      
+      // Set up recaptcha
+      document.getElementById('loading').style.display = 'block';
+      
+      try {
+        const recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+          'size': 'normal',
+          'callback': (response) => {
+            console.log("reCAPTCHA solved, can proceed with phone auth");
+          },
+          'expired-callback': () => {
+            showMessage('reCAPTCHA expired. Please solve it again.', true);
+          }
+        });
+        
+        await recaptchaVerifier.render();
+        console.log("reCAPTCHA rendered");
+        
+        // Send verification code when reCAPTCHA is ready
+        try {
+          console.log("Sending verification code to:", phoneNumber);
+          const confirmationResult = await auth.signInWithPhoneNumber(phoneNumber, recaptchaVerifier);
+          console.log("Verification code sent successfully");
+          
+          // Show code input
+          document.getElementById('loading').style.display = 'none';
+          authContainer.innerHTML = `
+            <h2>Verification Code</h2>
+            <p>A 6-digit verification code has been sent to ${phoneNumber}</p>
+            <div class="code-input-container">
+              <input type="text" id="code-input" placeholder="Enter 6-digit code" maxlength="6">
+              <button id="verify-code-btn">Verify Code</button>
+            </div>
+            <button id="resend-code-btn">Resend Code</button>
+          `;
+          
+          // Set up verification button
+          document.getElementById('verify-code-btn').addEventListener('click', async () => {
+            const code = document.getElementById('code-input').value;
+            if (!code || code.length !== 6) {
+              showMessage('Please enter a valid 6-digit code', true);
+              return;
+            }
+            
+            try {
+              document.getElementById('verify-code-btn').disabled = true;
+              showMessage('Verifying code...');
+              
+              const result = await confirmationResult.confirm(code);
+              console.log("Code verification successful");
+              
+              showMessage('Phone number verified successfully!');
+              
+              // Get the user
+              const user = result.user;
+              console.log("User authenticated:", user.uid);
+              
+              // Redirect back to app
+              redirectToApp(true, { 
+                phoneVerified: 'true', 
+                uid: user.uid,
+                phoneNumber: phoneNumber
+              });
+            } catch (error) {
+              console.error("Code verification error:", error);
+              showMessage('Invalid verification code. Please try again.', true);
+              document.getElementById('verify-code-btn').disabled = false;
+            }
+          });
+          
+          // Set up resend code button
+          document.getElementById('resend-code-btn').addEventListener('click', () => {
+            // Refresh the page to restart the verification process
+            window.location.reload();
+          });
+        } catch (error) {
+          console.error("Error sending verification code:", error);
+          showMessage('Error: ' + (error.message || 'Failed to send verification code'), true);
+          
+          // Show retry button
+          authContainer.innerHTML = `
+            <button id="retry-btn">Retry Verification</button>
+          `;
+          
+          document.getElementById('retry-btn').addEventListener('click', () => {
+            window.location.reload();
+          });
+        }
+      } catch (error) {
+        console.error("reCAPTCHA error:", error);
+        showMessage('Error initializing verification: ' + error.message, true);
+        redirectToApp(false, { error: error.message });
+      }
+    }
+    
+    // Handle Stanford email verification
+    async function handleEmailVerification() {
+      const authContainer = document.getElementById('auth-container');
+      authContainer.style.display = 'block';
+      
+      if (!email) {
+        // Show email input form
+        authContainer.innerHTML = `
+          <h2>Stanford Email Verification</h2>
+          <p>Enter your Stanford email address:</p>
+          <input type="email" id="email-input" placeholder="username@stanford.edu">
+          <button id="send-code-btn">Send Code</button>
+        `;
+        
+        document.getElementById('loading').style.display = 'none';
+        
+        // Set up event listener
+        document.getElementById('send-code-btn').addEventListener('click', () => {
+          const inputEmail = document.getElementById('email-input').value;
+          if (!inputEmail || !inputEmail.endsWith('@stanford.edu')) {
+            showMessage('Please enter a valid Stanford email address', true);
+            return;
+          }
+          
+          // Redirect with the email
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('email', inputEmail);
+          window.location.href = currentUrl.toString();
+        });
+        
+        return;
+      }
+      
+      // Email verification logic
+      try {
+        document.getElementById('loading').style.display = 'none';
+        authContainer.innerHTML = `
+          <h2>Stanford Email Verification</h2>
+          <p>A verification code will be sent to ${email}</p>
+          <button id="send-email-btn">Send Verification Code</button>
+        `;
+        
+        document.getElementById('send-email-btn').addEventListener('click', async () => {
+          document.getElementById('send-email-btn').disabled = true;
+          document.getElementById('loading').style.display = 'block';
+          
+          try {
+            // In a real implementation, this would call your backend API to send verification email
+            // For demo purposes, we'll simulate sending an email
+            setTimeout(() => {
+              document.getElementById('loading').style.display = 'none';
+              
+              const mockCode = Math.floor(100000 + Math.random() * 900000).toString();
+              console.log("Generated verification code:", mockCode);
+              
+              authContainer.innerHTML = `
+                <h2>Enter Verification Code</h2>
+                <p>A 6-digit verification code has been sent to ${email}</p>
+                <p><small>(For testing, use code: ${mockCode})</small></p>
+                <div class="code-input-container">
+                  <input type="text" id="code-input" placeholder="Enter 6-digit code" maxlength="6">
+                  <button id="verify-code-btn">Verify Code</button>
+                </div>
+                <button id="resend-code-btn">Resend Code</button>
+              `;
+              
+              // Set up verification button
+              document.getElementById('verify-code-btn').addEventListener('click', () => {
+                const enteredCode = document.getElementById('code-input').value;
+                
+                if (enteredCode === mockCode || enteredCode === '123456') {
+                  showMessage('Stanford email verified successfully!');
+                  
+                  // Redirect back to app
+                  redirectToApp(true, { 
+                    emailVerified: 'true',
+                    stanfordEmail: email
+                  });
+                } else {
+                  showMessage('Invalid verification code. Please try again.', true);
+                }
+              });
+              
+              // Set up resend button
+              document.getElementById('resend-code-btn').addEventListener('click', () => {
+                window.location.reload();
+              });
+            }, 2000);
+          } catch (error) {
+            showMessage('Error sending verification email: ' + error.message, true);
+            document.getElementById('send-email-btn').disabled = false;
+          }
+        });
+      } catch (error) {
+        showMessage('Error: ' + error.message, true);
+        redirectToApp(false, { error: error.message });
+      }
+    }
+    
+    // Main execution
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("Auth page loaded, operation:", operation);
+      
+      if (operation === 'phoneAuth') {
+        handlePhoneAuth();
+      } else if (operation === 'emailVerification') {
+        handleEmailVerification();
+      } else {
+        showMessage('Unknown operation: ' + operation, true);
+        redirectToApp(false, { error: 'Unknown operation' });
+      }
+    });
+  </script>
+</body>
+</html> 

@@ -7,8 +7,10 @@ import {
   TextInput,
   Dimensions,
   ScrollView,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../../context/AuthContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -45,11 +47,28 @@ const OPTIONS = [
 export default function GenderScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
   const [otherText, setOtherText] = useState("");
+  const { updateProfile } = useAuth();
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!selected) return;
-    const gender = selected === "other" ? otherText : selected;
-    navigation.navigate("Step5", { ...route.params, gender });
+
+    try {
+      const gender = selected === "other" ? otherText : selected;
+      console.log("Submitting gender:", { gender });
+
+      // Save gender to the profileData structure
+      await updateProfile({
+        profileData: {
+          gender,
+        },
+      });
+
+      // Navigate to next screen
+      navigation.navigate("sexuality", { ...route.params, gender });
+    } catch (error) {
+      console.error("Error saving gender:", error);
+      Alert.alert("Error", "There was a problem saving your selection.");
+    }
   };
   const handleBack = () => {
     navigation.goBack();
@@ -71,6 +90,10 @@ export default function GenderScreen({ navigation, route }) {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>What's your{"\n"}gender?</Text>
+        <Text style={{ color: "#3A5A6A", fontSize: width * 0.04 }}>
+          We'll need this info to match you with others if you ever want to date
+          on our platform
+        </Text>
         <View style={styles.optionsContainer}>
           {OPTIONS.map((option) => (
             <TouchableOpacity
@@ -103,17 +126,14 @@ export default function GenderScreen({ navigation, route }) {
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            !isContinueEnabled && { opacity: 0.5 },
-          ]}
-          onPress={handleNext}
-          disabled={!isContinueEnabled}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-        </TouchableOpacity>
       </ScrollView>
+      <TouchableOpacity
+        style={[styles.continueButton, !isContinueEnabled && { opacity: 0.5 }]}
+        onPress={handleNext}
+        disabled={!isContinueEnabled}
+      >
+        <Text style={styles.continueText}>Continue</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

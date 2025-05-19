@@ -1,0 +1,43 @@
+{
+  "rules": {
+    "firestore": {
+      "rules_version": "2",
+      "service": "cloud.firestore",
+      "database": {
+        "match": {
+          "/databases/{database}/documents": {
+            "match /users/{userId}": {
+              "allow read, update, delete": "request.auth != null && request.auth.uid == userId",
+              "allow create": "request.auth != null"
+            },
+            "match /activities/{activityId}": {
+              "allow read": "request.auth != null",
+              "allow write": "request.auth != null && (resource == null || resource.data.creatorId == request.auth.uid)"
+            },
+            "match /test_users/{testDocId}": {
+              "allow read, write": "request.auth != null"
+            },
+            "match /debug_tests/{testDocId}": {
+              "allow read, write": "request.auth != null"
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "rules_version": "2",
+      "service": "firebase.storage",
+      "match": {
+        "/b/{bucket}/o": {
+          "match /profiles/{userId}/{allImages=**}": {
+            "allow read": "request.auth != null",
+            "allow write": "request.auth != null && request.auth.uid == userId"
+          },
+          "match /debug_tests/{testFile=**}": {
+            "allow read, write": "request.auth != null"
+          }
+        }
+      }
+    }
+  }
+} 

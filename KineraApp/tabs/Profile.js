@@ -13,10 +13,24 @@ import {
   Pressable,
   TextInput,
   Alert,
+  Modal,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../context/AuthContext";
+import {
+  doc,
+  updateDoc,
+  collection,
+  getDocs,
+  getDoc,
+} from "firebase/firestore";
+import { db } from "../utils/firebase";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import mockData from "../assets/mockUserData.json";
+import FirebaseTest from "../components/FirebaseTest";
 
 // Use try-catch for imports that might not be available
 let ImagePicker;
@@ -96,40 +110,265 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
   );
 };
 
-export default function ProfileScreen() {
+// LogoutButton component with press animation
+const LogoutButton = ({ onLogout }) => {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(translateY, {
+      toValue: 3,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(translateY, {
+      toValue: 0,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+
+    // Call logout function when button is released
+    onLogout();
+  };
+
+  return (
+    <View style={styles.logoutButtonContainer}>
+      {/* Bottom layer - shadow/base */}
+      <View style={styles.logoutButtonShadow} />
+
+      {/* Top layer - animated */}
+      <Animated.View
+        style={[styles.logoutButtonTop, { transform: [{ translateY }] }]}
+      >
+        <Pressable
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={styles.logoutButtonPressable}
+        >
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+};
+
+export default function ProfileScreen({ route }) {
+  // Debug logging of route params
+  console.log("Profile: Received route params:", JSON.stringify(route?.params));
+
+  // Welcome animation states - initialize to true by default to ensure it shows
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
+  const welcomeOpacity = useRef(new Animated.Value(0)).current;
+  const welcomeTranslateY = useRef(new Animated.Value(50)).current;
+
   // State to track whether profile is in edit mode
   const [isEditing, setIsEditing] = useState(false);
   const navigation = useNavigation();
+  const { user, updateProfile, logout, setUser } = useAuth();
 
-  // Mock data for the profile
-  const profile = {
-    name: "Gavin",
-    role: "dater-swiper",
-    age: "22",
-    gender: "Man",
-    height: "6'0\"",
-    year: "Sophomore",
-    interests: ["Politics", "Sports", "Music", "Pets"],
-    dateActivities: ["Voyager", "Jazz Night", "Study Date", "KA Basement"],
-    friends: [
-      { id: 1, name: "Daniel", avatar: null },
-      { id: 2, name: "CJ", avatar: null },
-      { id: 3, name: "Cole", avatar: null },
-      { id: 4, name: "Maya", avatar: null },
-    ],
-  };
-
-  // State for photos - update to support more photos
+  // State for photos
   const [mainPhoto, setMainPhoto] = useState(null);
-  const [additionalPhotos, setAdditionalPhotos] = useState([null, null, null]);
+  const [additionalPhotos, setAdditionalPhotos] = useState([]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const MAX_PHOTOS = 5; // Maximum number of photos (including main photo)
 
-  // State for tracking selected interests and edited data
-  const [selectedInterests, setSelectedInterests] = useState(["Music"]);
-  const [interests, setInterests] = useState(profile.interests);
-  const [dateActivities, setDateActivities] = useState(profile.dateActivities);
+  // State for profile data
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("");
+  const [height, setHeight] = useState("");
+  const [year, setYear] = useState("");
+  const [city, setCity] = useState("");
+  const [selectedInterests, setSelectedInterests] = useState([]);
+  const [interests, setInterests] = useState([]);
+  const [dateActivities, setDateActivities] = useState([]);
   const [newInterestText, setNewInterestText] = useState("");
   const [newActivityText, setNewActivityText] = useState("");
+  const [userType, setUserType] = useState("");
+  const [isAddFriendsModalVisible, setIsAddFriendsModalVisible] =
+    useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+
+  // Add new state for friend data
+  const [friendData, setFriendData] = useState({});
+
+  // Add new state for switch user modal
+  const [showSwitchUserModal, setShowSwitchUserModal] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+
+  // Load user data when component mounts
+  useEffect(() => {
+    if (user) {
+      console.log(
+        "Loading user profile data:",
+        JSON.stringify(
+          {
+            name: user.name,
+            userType: user.userType,
+            profileDataExists: !!user.profileData,
+            profileData: user.profileData
+              ? {
+                  age: user.profileData.age,
+                  gender: user.profileData.gender,
+                  height: user.profileData.height,
+                  year: user.profileData.year,
+                  interestsCount: user.profileData.interests?.length || 0,
+                  activitiesCount: user.profileData.dateActivities?.length || 0,
+                  photosCount: user.profileData.photos?.length || 0,
+                }
+              : null,
+            friendsCount: user.friends?.length || 0,
+            friends: user.friends || [],
+            standAloneFields: {
+              age: user.age,
+              gender: user.gender,
+              height: user.height,
+            },
+          },
+          null,
+          2
+        )
+      );
+
+      // Basic info
+      setName(typeof user.name === "string" ? user.name : "");
+      setUserType(typeof user.userType === "string" ? user.userType : "");
+
+      // Profile data from profileData object
+      if (user.profileData) {
+        // Convert age to string for TextInput
+        setAge(
+          typeof user.profileData.age === "number"
+            ? user.profileData.age.toString()
+            : typeof user.profileData.age === "string"
+            ? user.profileData.age
+            : ""
+        );
+        setGender(
+          typeof user.profileData.gender === "string"
+            ? user.profileData.gender
+            : ""
+        );
+        setHeight(
+          typeof user.profileData.height === "string"
+            ? user.profileData.height
+            : ""
+        );
+        setYear(
+          typeof user.profileData.year === "string"
+            ? user.profileData.year
+            : typeof user.profileData.classYear === "string"
+            ? user.profileData.classYear
+            : ""
+        );
+
+        setCity(
+          typeof user.profileData.city === "string" ? user.profileData.city : ""
+        );
+
+        // Interests and activities
+        const userInterests = Array.isArray(user.profileData.interests)
+          ? user.profileData.interests
+          : [];
+        setInterests(userInterests);
+
+        const userActivities = Array.isArray(user.profileData.dateActivities)
+          ? user.profileData.dateActivities
+          : Array.isArray(user.profileData.activities)
+          ? user.profileData.activities
+          : [];
+        setDateActivities(userActivities);
+
+        // Load photos
+        if (
+          user.profileData.photos &&
+          Array.isArray(user.profileData.photos) &&
+          user.profileData.photos.length > 0
+        ) {
+          setMainPhoto(
+            typeof user.profileData.photos[0] === "string"
+              ? user.profileData.photos[0]
+              : null
+          );
+          setAdditionalPhotos(
+            user.profileData.photos
+              .slice(1)
+              .filter((photo) => typeof photo === "string")
+          );
+        }
+
+        // Set default selected interest
+        if (userInterests.length > 0) {
+          setSelectedInterests([userInterests[0]]);
+        }
+      }
+
+      // Direct properties (in case they're not in profileData)
+      if (!user.profileData?.age && user.age) {
+        setAge(
+          typeof user.age === "number"
+            ? user.age.toString()
+            : typeof user.age === "string"
+            ? user.age
+            : ""
+        );
+      }
+
+      if (!user.profileData?.gender && user.gender) {
+        setGender(typeof user.gender === "string" ? user.gender : "");
+      }
+
+      if (!user.profileData?.height && user.height) {
+        setHeight(typeof user.height === "string" ? user.height : "");
+      }
+
+      if (
+        !user.profileData?.year &&
+        !user.profileData?.classYear &&
+        user.classYear
+      ) {
+        setYear(typeof user.classYear === "string" ? user.classYear : "");
+      }
+
+      if (!user.profileData?.interests && user.interests) {
+        const validInterests = Array.isArray(user.interests)
+          ? user.interests
+          : [];
+        setInterests(validInterests);
+        if (validInterests.length > 0) {
+          setSelectedInterests([validInterests[0]]);
+        }
+      }
+
+      if (
+        !user.profileData?.dateActivities &&
+        !user.profileData?.activities &&
+        user.activities
+      ) {
+        setDateActivities(
+          Array.isArray(user.activities) ? user.activities : []
+        );
+      }
+
+      if (
+        !user.profileData?.photos &&
+        user.photos &&
+        Array.isArray(user.photos) &&
+        user.photos.length > 0
+      ) {
+        setMainPhoto(
+          typeof user.photos[0] === "string" ? user.photos[0] : null
+        );
+        setAdditionalPhotos(
+          user.photos.slice(1).filter((photo) => typeof photo === "string")
+        );
+      }
+    }
+  }, [user]);
 
   // Request camera and media library permissions on component mount
   useEffect(() => {
@@ -164,8 +403,168 @@ export default function ProfileScreen() {
     })();
   }, []);
 
-  // Toggle edit mode
-  const toggleEditMode = () => {
+  // Check if welcome has been shown before
+  useEffect(() => {
+    const checkWelcomeShown = async () => {
+      try {
+        const hasSeenWelcome = await AsyncStorage.getItem("hasSeenWelcome");
+        console.log("Profile: Has seen welcome before:", hasSeenWelcome);
+
+        // Check if this is a new user from route params
+        const isNewUser = route?.params?.isNewUser;
+        console.log("Profile: Is new user from route params:", isNewUser);
+
+        if (hasSeenWelcome === "true" && !isNewUser) {
+          // User has seen welcome before and is not a new user
+          setShowWelcome(false);
+        } else {
+          // First time user or new account, show welcome
+          setShowWelcome(true);
+          // Start animation immediately
+          startWelcomeAnimation();
+        }
+
+        setHasCheckedStorage(true);
+      } catch (error) {
+        console.error("Error checking welcome status:", error);
+        // Default to showing welcome on error
+        setShowWelcome(true);
+        setHasCheckedStorage(true);
+      }
+    };
+
+    checkWelcomeShown();
+  }, [route?.params?.isNewUser]);
+
+  // Function to start welcome animation
+  const startWelcomeAnimation = () => {
+    console.log("Profile: Starting welcome animation...");
+    Animated.parallel([
+      Animated.timing(welcomeOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(welcomeTranslateY, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  // Function to dismiss welcome animation
+  const dismissWelcomeAnimation = (onComplete = () => {}) => {
+    console.log("Profile: Dismissing welcome animation");
+    Animated.parallel([
+      Animated.timing(welcomeOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(welcomeTranslateY, {
+        toValue: -50,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start(async () => {
+      setShowWelcome(false);
+
+      // Mark that welcome has been shown
+      try {
+        await AsyncStorage.setItem("hasSeenWelcome", "true");
+      } catch (error) {
+        console.error("Error saving welcome status:", error);
+      }
+
+      onComplete();
+    });
+  };
+
+  // Toggle edit mode and save changes if exiting edit mode
+  const toggleEditMode = async () => {
+    if (isEditing) {
+      // Save changes
+      try {
+        console.log("Saving profile changes");
+
+        // Get all photo URLs
+        const allPhotos = mainPhoto
+          ? [mainPhoto, ...additionalPhotos.filter(Boolean)]
+          : [];
+
+        // Create updated user data
+        const updatedUserData = {
+          ...user,
+          profileData: {
+            ...user.profileData,
+            age: age ? parseInt(age, 10) : null,
+            gender,
+            height,
+            year,
+            city,
+            interests,
+            dateActivities,
+            photos: allPhotos,
+          },
+          userType: userType || user.userType, // Preserve existing userType if not changed
+        };
+
+        // Save to AsyncStorage
+        try {
+          await AsyncStorage.setItem(
+            "userData",
+            JSON.stringify(updatedUserData)
+          );
+          console.log("User data saved to AsyncStorage");
+        } catch (storageError) {
+          console.error("Error saving to AsyncStorage:", storageError);
+        }
+
+        // Update Firebase if needed
+        if (user.id) {
+          try {
+            const userRef = doc(db, "users", user.id);
+            await updateDoc(userRef, {
+              profileData: updatedUserData.profileData,
+              userType: updatedUserData.userType,
+            });
+            console.log("User data updated in Firebase");
+          } catch (firebaseError) {
+            console.error("Error updating Firebase:", firebaseError);
+          }
+        }
+
+        // Update the user context
+        await updateProfile(updatedUserData);
+
+        console.log("Profile data saved successfully");
+
+        // Update route params
+        if (navigation && navigation.setParams) {
+          navigation.setParams({
+            showWelcome: false,
+            isNewUser: false,
+            fromOnboarding: false,
+          });
+        }
+
+        // Clear isNewUser flag in AsyncStorage
+        try {
+          await AsyncStorage.setItem("isNewUser", "false");
+        } catch (error) {
+          console.error("Error clearing isNewUser flag:", error);
+        }
+      } catch (error) {
+        console.error("Error saving profile data:", error);
+        Alert.alert(
+          "Error",
+          "Failed to save profile changes. Please try again."
+        );
+      }
+    }
+
+    // Toggle edit mode
     setIsEditing(!isEditing);
 
     // Clear input fields when exiting edit mode
@@ -175,18 +574,23 @@ export default function ProfileScreen() {
     }
   };
 
+  // Handle logout
   const handleLogout = async () => {
     try {
-      // Remove user data from AsyncStorage
-      await AsyncStorage.removeItem("user");
+      const success = await logout();
 
-      // Navigate back to auth flow
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Auth" }],
-      });
+      if (success) {
+        // Navigate back to auth flow
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Auth" }],
+        });
+      } else {
+        Alert.alert("Error", "Failed to log out. Please try again.");
+      }
     } catch (error) {
       console.error("Error logging out:", error);
+      Alert.alert("Error", "Failed to log out. Please try again.");
     }
   };
 
@@ -195,15 +599,6 @@ export default function ProfileScreen() {
     if (isEditing) {
       // In edit mode, remove the interest
       setInterests(interests.filter((item) => item !== interest));
-    } else {
-      // In view mode, select/deselect the interest
-      if (selectedInterests.includes(interest)) {
-        setSelectedInterests(
-          selectedInterests.filter((item) => item !== interest)
-        );
-      } else {
-        setSelectedInterests([...selectedInterests, interest]);
-      }
     }
   };
 
@@ -236,6 +631,30 @@ export default function ProfileScreen() {
     setDateActivities(dateActivities.filter((item) => item !== activity));
   };
 
+  // Function to upload image to Firebase Storage
+  const uploadImageToFirebase = async (uri) => {
+    try {
+      // Fetch the image data
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      // Create a reference to Firebase Storage
+      const storage = getStorage();
+      const filename = `profiles/${user.id}/${Date.now()}.jpg`;
+      const storageRef = ref(storage, filename);
+
+      // Upload the image
+      await uploadBytes(storageRef, blob);
+
+      // Get the download URL
+      const downloadURL = await getDownloadURL(storageRef);
+      return downloadURL;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
+  };
+
   // Updated function to pick an image
   const pickImage = async (index = 0) => {
     try {
@@ -256,13 +675,44 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        if (index === 0) {
-          setMainPhoto(result.assets[0].uri);
-        } else {
-          const newPhotos = [...additionalPhotos];
-          newPhotos[index - 1] = result.assets[0].uri;
-          setAdditionalPhotos(newPhotos);
+        const imageUri = result.assets[0].uri;
+        // For demo purposes, we'll just use the local URI
+        // In production, we would upload to Firebase Storage
+        try {
+          const firebaseUrl = await uploadImageToFirebase(imageUri);
+
+          if (index === 0) {
+            setMainPhoto(firebaseUrl);
+          } else {
+            const newPhotos = [...additionalPhotos];
+            // If adding a new photo at the end
+            if (index - 1 === additionalPhotos.length) {
+              newPhotos.push(firebaseUrl);
+            } else {
+              // Replacing an existing photo
+              newPhotos[index - 1] = firebaseUrl;
+            }
+            setAdditionalPhotos(newPhotos);
+          }
+        } catch (error) {
+          console.error("Error uploading to Firebase:", error);
+          Alert.alert("Error", "Failed to upload image. Please try again.");
         }
+
+        //     // Use local URI for now
+        //     if (index === 0) {
+        //       setMainPhoto(imageUri);
+        //     } else {
+        //       const newPhotos = [...additionalPhotos];
+        //       // If adding a new photo at the end
+        //       if (index - 1 === additionalPhotos.length) {
+        //         newPhotos.push(imageUri);
+        //       } else {
+        //         // Replacing an existing photo
+        //         newPhotos[index - 1] = imageUri;
+        //       }
+        //       setAdditionalPhotos(newPhotos);
+        //     }
       }
     } catch (error) {
       console.error("Error picking image:", error);
@@ -289,13 +739,45 @@ export default function ProfileScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        if (index === 0) {
-          setMainPhoto(result.assets[0].uri);
-        } else {
-          const newPhotos = [...additionalPhotos];
-          newPhotos[index - 1] = result.assets[0].uri;
-          setAdditionalPhotos(newPhotos);
+        const imageUri = result.assets[0].uri;
+
+        // For demo purposes, we'll just use the local URI
+        // In production, we would upload to Firebase Storage
+        try {
+          const firebaseUrl = await uploadImageToFirebase(imageUri);
+
+          if (index === 0) {
+            setMainPhoto(firebaseUrl);
+          } else {
+            const newPhotos = [...additionalPhotos];
+            // If adding a new photo at the end
+            if (index - 1 === additionalPhotos.length) {
+              newPhotos.push(firebaseUrl);
+            } else {
+              // Replacing an existing photo
+              newPhotos[index - 1] = firebaseUrl;
+            }
+            setAdditionalPhotos(newPhotos);
+          }
+        } catch (error) {
+          console.error("Error uploading to Firebase:", error);
+          Alert.alert("Error", "Failed to upload image. Please try again.");
         }
+
+        //     // Use local URI for now
+        //     if (index === 0) {
+        //       setMainPhoto(imageUri);
+        //     } else {
+        //       const newPhotos = [...additionalPhotos];
+        //       // If adding a new photo at the end
+        //       if (index - 1 === additionalPhotos.length) {
+        //         newPhotos.push(imageUri);
+        //       } else {
+        //         // Replacing an existing photo
+        //         newPhotos[index - 1] = imageUri;
+        //       }
+        //       setAdditionalPhotos(newPhotos);
+        //     }
       }
     } catch (error) {
       console.error("Error taking photo:", error);
@@ -339,15 +821,344 @@ export default function ProfileScreen() {
     setCurrentPhotoIndex(pageNum);
   };
 
+  // // Function to handle friend search
+  // const handleFriendSearch = (text) => {
+  //   setSearchQuery(text);
+  //   if (text.trim() === "") {
+  //     setSearchResults([]);
+  //     return;
+  //   }
+
+  //   // Filter mock users based on search query and exclude existing friends
+  //   const results = mockData.users.filter(
+  //     (user) =>
+  //       user.name.toLowerCase().includes(text.trim().toLowerCase()) &&
+  //       !user.friends?.includes(user.id)
+  //   );
+  //   setSearchResults(results);
+  // };
+
+  const handleFriendSearch = async (text) => {
+    setSearchQuery(text);
+    if (text.trim() === "") {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      // Query Firestore for users matching the search
+      const usersRef = collection(db, "users");
+      const searchTerm = text.trim().toLowerCase();
+
+      // Get all users and filter client-side for more flexible searching
+      const querySnapshot = await getDocs(usersRef);
+      const results = [];
+
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        const userName = (userData.name || "").toLowerCase();
+
+        // Skip if this is the current user
+        if (doc.id === user.id) return;
+
+        // Check if name contains the search term
+        if (userName.includes(searchTerm)) {
+          // Only include users who aren't already friends
+          const isAlreadyFriend = user.friends?.some(
+            (friend) =>
+              (typeof friend === "object" ? friend.id : friend) === doc.id
+          );
+
+          if (!isAlreadyFriend) {
+            results.push({
+              id: doc.id,
+              name: userData.name,
+              photos: userData.profileData?.photos || [],
+              interests: userData.profileData?.interests || [],
+              dateActivities: userData.profileData?.dateActivities || [],
+            });
+          }
+        }
+      });
+
+      // Sort results alphabetically by name
+      results.sort((a, b) => a.name.localeCompare(b.name));
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Error searching for friends:", error);
+      Alert.alert("Error", "Failed to search for friends. Please try again.");
+    }
+  };
+
+  // Add this function to update the swiping pool
+  const updateSwipingPool = async (updatedFriends) => {
+    try {
+      if (!user.id) return;
+
+      // Get all users from Firestore
+      const usersRef = collection(db, "users");
+      const querySnapshot = await getDocs(usersRef);
+
+      // Create a set of friend IDs for quick lookup
+      const friendIds = new Set(
+        updatedFriends.map((friend) =>
+          typeof friend === "object" ? friend.id : friend
+        )
+      );
+
+      // Create array of user IDs who are not friends and not the current user
+      const swipingPool = [];
+      querySnapshot.forEach((doc) => {
+        if (doc.id !== user.id && !friendIds.has(doc.id)) {
+          swipingPool.push(doc.id);
+        }
+      });
+
+      // Update Firestore with new swiping pool
+      const userRef = doc(db, "users", user.id);
+      await updateDoc(userRef, {
+        swipingPool: swipingPool,
+      });
+
+      console.log("Swiping pool updated successfully");
+    } catch (error) {
+      console.error("Error updating swiping pool:", error);
+      throw error;
+    }
+  };
+
+  // Update handleAddFriend function
+  const handleAddFriend = async (friendId) => {
+    try {
+      // Get friend data from Firestore
+      const friendDoc = await getDoc(doc(db, "users", friendId));
+      if (!friendDoc.exists()) {
+        Alert.alert("Error", "Friend not found");
+        return;
+      }
+
+      const friendData = friendDoc.data();
+
+      // Create friend object with necessary data
+      const friendObject = {
+        id: friendId,
+        name: friendData.name || "Unknown",
+        avatar: friendData.profileData?.photos?.[0] || null,
+        interests: friendData.profileData?.interests || [],
+        dateActivities: friendData.profileData?.dateActivities || [],
+      };
+
+      const updatedFriends = [...(user.friends || []), friendObject];
+
+      // Update user data
+      const updatedUserData = {
+        ...user,
+        friends: updatedFriends,
+      };
+
+      // Update the user context directly
+      setUser(updatedUserData);
+
+      // Save to AsyncStorage
+      await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
+
+      // Update Firestore
+      if (user.id) {
+        try {
+          const userRef = doc(db, "users", user.id);
+          await updateDoc(userRef, {
+            friends: updatedFriends,
+          });
+
+          // Update swiping pool after adding friend
+          await updateSwipingPool(updatedFriends);
+
+          console.log(
+            "Friends and swiping pool updated in Firestore successfully"
+          );
+        } catch (firestoreError) {
+          console.error("Error updating Firestore:", firestoreError);
+          Alert.alert(
+            "Error",
+            "Failed to update Firestore, but local changes were saved."
+          );
+        }
+      }
+
+      // Clear search
+      setSearchQuery("");
+      setSearchResults([]);
+    } catch (error) {
+      console.error("Error adding friend:", error);
+      Alert.alert("Error", "Failed to add friend. Please try again.");
+    }
+    navigation.setParams({ friendsChanged: true });
+  };
+
+  // Update handleRemoveFriend function
+  const handleRemoveFriend = async (friendId) => {
+    try {
+      const updatedFriends = user.friends.filter(
+        (friend) =>
+          (typeof friend === "object" ? friend.id : friend) !== friendId
+      );
+
+      // Update user data
+      const updatedUserData = {
+        ...user,
+        friends: updatedFriends,
+      };
+
+      // Update the user context directly
+      setUser(updatedUserData);
+
+      // Save to AsyncStorage
+      await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
+
+      // Update Firestore if user has an ID
+      if (user.id) {
+        try {
+          const userRef = doc(db, "users", user.id);
+          await updateDoc(userRef, {
+            friends: updatedFriends,
+          });
+
+          // Update swiping pool after removing friend
+          await updateSwipingPool(updatedFriends);
+
+          console.log(
+            "Friends and swiping pool updated in Firestore successfully"
+          );
+        } catch (firestoreError) {
+          console.error("Error updating Firestore:", firestoreError);
+          Alert.alert(
+            "Error",
+            "Failed to update Firestore, but local changes were saved."
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error removing friend:", error);
+      Alert.alert("Error", "Failed to remove friend. Please try again.");
+    }
+    navigation.setParams({ friendsChanged: true });
+  };
+
+  // Add useEffect to fetch friend data
+  useEffect(() => {
+    const fetchFriendData = async () => {
+      if (!user?.friends) return;
+
+      const newFriendData = {};
+      for (const friend of user.friends) {
+        const friendId = typeof friend === "object" ? friend.id : friend;
+        try {
+          const friendDoc = await getDoc(doc(db, "users", friendId));
+          if (friendDoc.exists()) {
+            newFriendData[friendId] = friendDoc.data();
+          }
+        } catch (error) {
+          console.error(`Error fetching friend ${friendId}:`, error);
+        }
+      }
+      setFriendData(newFriendData);
+    };
+
+    fetchFriendData();
+  }, [user?.friends]);
+
+  // On app start or after login
+  useEffect(() => {
+    const syncUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.id));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser(userData); // update context/state
+          await AsyncStorage.setItem("userData", JSON.stringify(userData)); // update local storage
+        }
+      } catch (error) {
+        console.error("Error syncing user data:", error);
+      }
+    };
+
+    syncUserData();
+  }, [user.id, setUser]);
+
+  // Fetch all users for switch user modal
+  const fetchAllUsers = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const querySnapshot = await getDocs(usersRef);
+      const users = [];
+      querySnapshot.forEach((doc) => {
+        users.push({ id: doc.id, ...doc.data() });
+      });
+      setAllUsers(users);
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+    }
+  };
+
+  // Handler to switch user
+  const handleSwitchUser = async (userId) => {
+    try {
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setUser({ ...userData, id: userId });
+        setShowSwitchUserModal(false);
+      }
+    } catch (error) {
+      console.error("Error switching user:", error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Welcome Message Overlay - only shown if showWelcome is true and we've checked storage */}
+      {showWelcome && hasCheckedStorage && (
+        <Animated.View
+          style={[styles.welcomeOverlay, { opacity: welcomeOpacity }]}
+        >
+          <Animated.View
+            style={[
+              styles.welcomeContent,
+              { transform: [{ translateY: welcomeTranslateY }] },
+            ]}
+          >
+            <Text style={styles.welcomeTitle}>Welcome to Vouch!</Text>
+            <Text style={styles.welcomeMessage}>
+              Complete your profile to get started.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.welcomeButton}
+              onPress={() => {
+                // Hide welcome overlay and enter edit mode
+                dismissWelcomeAnimation(() => {
+                  setIsEditing(true);
+                });
+              }}
+            >
+              <Text style={styles.welcomeButtonText}>Complete Profile</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      )}
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* 1. Header Section */}
         <View style={styles.headerSection}>
           <View style={styles.headerContent}>
             <View style={styles.nameContainer}>
-              <Text style={styles.headerTitle}>{profile.name}</Text>
-              <Text style={styles.roleText}>You are a: {profile.role}</Text>
+              <Text style={styles.headerTitle}>
+                {typeof name === "string" ? name : "Profile"}
+              </Text>
+              <Text style={styles.roleText}>
+                You are a: {typeof userType === "string" ? userType : ""}
+              </Text>
             </View>
             <EditButton isEditing={isEditing} onToggleEdit={toggleEditMode} />
           </View>
@@ -444,35 +1255,107 @@ export default function ProfileScreen() {
                 }
               </View>
             ))}
+
+            {/* "Add Photo" container - only shown in edit mode and if there's room for more photos */}
+            {isEditing &&
+              mainPhoto &&
+              additionalPhotos.length < MAX_PHOTOS - 1 && (
+                <View key="add-photo-container" style={styles.photoCard}>
+                  <TouchableOpacity
+                    style={styles.photoFrame}
+                    onPress={() =>
+                      showImagePickerOptions(additionalPhotos.length + 1)
+                    }
+                  >
+                    <View style={styles.editPhotoPlaceholder}>
+                      <Ionicons
+                        name="add-circle"
+                        size={50}
+                        color={COLORS.primaryNavy}
+                      />
+                      <Text style={styles.editPhotoText}>
+                        Add Photo {additionalPhotos.length + 1}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
           </ScrollView>
 
           {/* Photo indicator dots */}
           <View style={styles.photoIndicators}>
-            <View
-              key="main-photo-indicator"
-              style={[
-                styles.indicatorDot,
-                currentPhotoIndex === 0 && styles.activeDot,
-              ]}
-            />
-            {additionalPhotos.map((photo, index) =>
-              // Only show indicator for photos that exist in view mode
-              !isEditing && !photo ? null : (
+            {/* Only show main photo indicator if it exists */}
+            {(mainPhoto || isEditing) && (
+              <View
+                key="main-photo-indicator"
+                style={[
+                  styles.indicatorDot,
+                  currentPhotoIndex === 0 && styles.activeDot,
+                ]}
+              />
+            )}
+
+            {/* Indicators for additional photos */}
+            {additionalPhotos.map((_, index) => (
+              <View
+                key={`photo-indicator-${index}`}
+                style={[
+                  styles.indicatorDot,
+                  currentPhotoIndex === index + 1 && styles.activeDot,
+                ]}
+              />
+            ))}
+
+            {/* Add photo indicator in edit mode */}
+            {isEditing &&
+              mainPhoto &&
+              additionalPhotos.length < MAX_PHOTOS - 1 && (
                 <View
-                  key={`photo-indicator-${index}`}
+                  key="add-photo-indicator"
                   style={[
                     styles.indicatorDot,
-                    currentPhotoIndex === index + 1 && styles.activeDot,
+                    currentPhotoIndex === additionalPhotos.length + 1 &&
+                      styles.activeDot,
                   ]}
                 />
-              )
-            )}
+              )}
           </View>
         </View>
 
         {/* 3. Profile Summary Bar */}
         <View style={styles.summaryBarSection}>
-          <View style={styles.summaryBlock}>
+          <TouchableOpacity
+            style={styles.summaryBlock}
+            onPress={() => {
+              if (isEditing) {
+                Alert.prompt(
+                  "Edit Age",
+                  "Enter your age:",
+                  [
+                    {
+                      text: "Cancel",
+                      style: "cancel",
+                    },
+                    {
+                      text: "Save",
+                      onPress: (newAge) => {
+                        if (newAge && !isNaN(newAge)) {
+                          setAge(newAge);
+                        } else {
+                          Alert.alert(
+                            "Invalid Input",
+                            "Please enter a valid age"
+                          );
+                        }
+                      },
+                    },
+                  ],
+                  "plain-text",
+                  age
+                );
+              }
+            }}
+          >
             <View style={styles.iconCircle}>
               <Ionicons
                 name="calendar-outline"
@@ -480,10 +1363,53 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{profile.age}</Text>
-          </View>
+            <Text style={styles.summaryText}>
+              {typeof age === "string" || typeof age === "number" ? age : "-"}
+            </Text>
+          </TouchableOpacity>
 
-          <View style={styles.summaryBlock}>
+          <TouchableOpacity
+            style={styles.summaryBlock}
+            onPress={() => {
+              if (isEditing) {
+                Alert.alert("Edit Gender", "Select your gender:", [
+                  {
+                    text: "Male",
+                    onPress: () => setGender("Male"),
+                  },
+                  {
+                    text: "Female",
+                    onPress: () => setGender("Female"),
+                  },
+                  {
+                    text: "Input another gender",
+                    onPress: () =>
+                      Alert.prompt(
+                        "Input Gender",
+                        "Enter your gender:",
+                        [
+                          {
+                            text: "Cancel",
+                            style: "cancel",
+                          },
+                          {
+                            text: "Save",
+                            onPress: (newGender) => {
+                              setGender(newGender);
+                            },
+                          },
+                        ],
+                        "plain-text"
+                      ),
+                  },
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                ]);
+              }
+            }}
+          >
             <View style={styles.iconCircle}>
               <Ionicons
                 name="person-outline"
@@ -491,10 +1417,38 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{profile.gender}</Text>
-          </View>
+            <Text style={styles.summaryText}>
+              {typeof gender === "string" ? gender : "-"}
+            </Text>
+          </TouchableOpacity>
 
-          <View style={styles.summaryBlock}>
+          <TouchableOpacity
+            style={styles.summaryBlock}
+            onPress={() => {
+              if (isEditing) {
+                Alert.prompt(
+                  "Edit Height",
+                  "Enter your height (e.g., 5'7):",
+                  [
+                    {
+                      text: "Cancel",
+                      style: "cancel",
+                    },
+                    {
+                      text: "Save",
+                      onPress: (newHeight) => {
+                        if (newHeight) {
+                          setHeight(newHeight);
+                        }
+                      },
+                    },
+                  ],
+                  "plain-text",
+                  height
+                );
+              }
+            }}
+          >
             <View style={styles.iconCircle}>
               <Ionicons
                 name="resize-outline"
@@ -502,10 +1456,48 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{profile.height}</Text>
-          </View>
+            <Text style={styles.summaryText}>
+              {typeof height === "string" ? height : "-"}
+            </Text>
+          </TouchableOpacity>
 
-          <View style={styles.summaryBlock}>
+          <TouchableOpacity
+            style={styles.summaryBlock}
+            onPress={() => {
+              if (isEditing) {
+                Alert.alert("Edit Year", "Select your year:", [
+                  {
+                    text: "Freshman",
+                    onPress: () => setYear("Freshman"),
+                  },
+                  {
+                    text: "Sophomore",
+                    onPress: () => setYear("Sophomore"),
+                  },
+                  {
+                    text: "Junior",
+                    onPress: () => setYear("Junior"),
+                  },
+                  {
+                    text: "Senior",
+                    onPress: () => setYear("Senior"),
+                  },
+                  {
+                    text: "Grad-Student",
+                    onPress: () => setYear("Grad-Student"),
+                  },
+                  {
+                    text: "Post-Grad",
+                    onPress: () => setYear("Post-Grad"),
+                  },
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                ]);
+              }
+            }}
+          >
             <View style={styles.iconCircle}>
               <Ionicons
                 name="school-outline"
@@ -513,9 +1505,62 @@ export default function ProfileScreen() {
                 color={COLORS.primaryNavy}
               />
             </View>
-            <Text style={styles.summaryText}>{profile.year}</Text>
-          </View>
+            <Text style={styles.summaryText}>
+              {typeof year === "string" ? year : "-"}
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        {/* City display */}
+        {city && (
+          <View style={styles.cityContainer}>
+            <View style={styles.cityIconContainer}>
+              <Ionicons
+                name="location-outline"
+                size={22}
+                color={COLORS.primaryNavy}
+              />
+            </View>
+            <Text style={styles.cityText}>
+              {typeof city === "string" ? city : ""}
+            </Text>
+          </View>
+        )}
+
+        {/* Add Dater-Swiper Edit Button */}
+        {isEditing && (
+          <TouchableOpacity
+            style={styles.daterSwiperButton}
+            onPress={() => {
+              Alert.alert(
+                "Edit Dater or eSwiper Status",
+                "Choose your user experience!",
+                [
+                  {
+                    text: "Dater only",
+                    onPress: () => setUserType("Dater"),
+                  },
+                  {
+                    text: "Match Maker only",
+                    onPress: () => setUserType("Match Maker"),
+                  },
+                  {
+                    text: "Dater & Match Maker",
+                    onPress: () => setUserType("Dater & Match Maker"),
+                  },
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                ]
+              );
+            }}
+          >
+            <Text style={styles.daterSwiperButtonText}>
+              Edit Dater-Swiper Status
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* 4. Interest Tags Section */}
         <View style={styles.sectionContainer}>
@@ -556,22 +1601,10 @@ export default function ProfileScreen() {
                 style={[
                   styles.tagPill,
                   isEditing ? styles.editableTagPill : null,
-                  !isEditing &&
-                    selectedInterests.includes(interest) &&
-                    styles.selectedTagPill,
                 ]}
-                onPress={() => toggleInterest(interest)}
+                onPress={() => isEditing && toggleInterest(interest)}
               >
-                <Text
-                  style={[
-                    styles.tagText,
-                    !isEditing &&
-                      selectedInterests.includes(interest) &&
-                      styles.selectedTagText,
-                  ]}
-                >
-                  {interest}
-                </Text>
+                <Text style={styles.tagText}>{interest}</Text>
                 {isEditing && (
                   <TouchableOpacity
                     style={styles.removeIconContainer}
@@ -592,7 +1625,9 @@ export default function ProfileScreen() {
         {/* 5. Favorite Date Activities Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>Favorite date activities:</Text>
+            <Text style={styles.sectionLabel}>
+              Favorite Stanford date activities:
+            </Text>
             {isEditing && (
               <TouchableOpacity
                 style={styles.addCircleButton}
@@ -655,53 +1690,288 @@ export default function ProfileScreen() {
         <View style={styles.friendsSection}>
           <View style={styles.friendsHeader}>
             <Text style={styles.friendsTitle}>friends:</Text>
-            <TouchableOpacity style={styles.addFriendButton}>
+            <TouchableOpacity
+              style={styles.addFriendButton}
+              onPress={() => setIsAddFriendsModalVisible(true)}
+            >
               <Text style={styles.addFriendText}>+ new friend</Text>
             </TouchableOpacity>
           </View>
 
           {/* Friends List */}
           <View style={styles.friendsList}>
-            {profile.friends.map((friend) => (
-              <View key={friend.id} style={styles.friendItem}>
-                <View style={styles.friendAvatar}>
-                  <Ionicons
-                    name="sad-outline"
-                    size={24}
-                    color={COLORS.primaryNavy}
-                  />
+            {user?.friends?.map((friend, index) => {
+              // Add debug logging
+              console.log(`Rendering friend ${index}:`, JSON.stringify(friend));
+
+              // Handle both object-based friends and legacy ID-based friends
+              const friendId = typeof friend === "object" ? friend.id : friend;
+              const friendName =
+                typeof friend === "object" ? friend.name : null;
+              const friendInterests =
+                typeof friend === "object" && Array.isArray(friend.interests)
+                  ? friend.interests
+                  : [];
+              const friendActivities =
+                typeof friend === "object" &&
+                Array.isArray(friend.dateActivities)
+                  ? friend.dateActivities
+                  : [];
+
+              // Get friend data from Firestore
+              const firestoreFriendData = friendData[friendId];
+              const friendUserType = firestoreFriendData?.userType;
+
+              // For legacy ID-based friends, look up in mock data
+              let mockFriend = null;
+              if (!friendName) {
+                mockFriend = mockData.users.find((u) => u.id === friendId);
+              }
+
+              // If friend can't be found in any way, skip rendering
+              if (!friendName && !mockFriend) {
+                console.log(`Skipping friend ${index} - no data available`);
+                return null;
+              }
+
+              // Determine user type to display
+              const displayUserType =
+                friendUserType || mockFriend?.userType || "Unknown";
+
+              return (
+                <View
+                  key={`friend-${index}-${friendId}`}
+                  style={styles.friendItem}
+                >
+                  <View style={styles.friendAvatar}>
+                    {firestoreFriendData?.profileData?.photos?.[0] ||
+                    mockFriend?.photos?.[0] ? (
+                      <Image
+                        source={{
+                          uri:
+                            firestoreFriendData?.profileData?.photos?.[0] ||
+                            mockFriend?.photos?.[0],
+                        }}
+                        style={styles.friendAvatarImage}
+                      />
+                    ) : (
+                      <Ionicons
+                        name="person"
+                        size={24}
+                        color={COLORS.primaryNavy}
+                      />
+                    )}
+                  </View>
+                  <View style={styles.friendDetails}>
+                    <Text style={styles.friendName}>
+                      {(friendName || mockFriend?.name || "Unknown") +
+                        " -- " +
+                        displayUserType}
+                    </Text>
+                    {(friendInterests.length > 0 ||
+                      (mockFriend?.interests &&
+                        mockFriend.interests.length > 0)) && (
+                      <Text style={styles.friendInterests}>
+                        Interests:{" "}
+                        {(friendInterests.length > 0
+                          ? friendInterests
+                          : mockFriend?.interests || []
+                        )
+                          .slice(0, 2)
+                          .join(", ")}
+                        {(friendInterests.length > 0
+                          ? friendInterests.length
+                          : (mockFriend?.interests || []).length) > 2
+                          ? "..."
+                          : ""}
+                      </Text>
+                    )}
+                  </View>
+                  {isEditing && (
+                    <TouchableOpacity
+                      style={styles.removeFriendButton}
+                      onPress={() => handleRemoveFriend(friendId)}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={20}
+                        color={COLORS.primaryNavy}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
-                <Text style={styles.friendName}>{friend.name}</Text>
-              </View>
-            ))}
+              );
+            })}
+
+            {(!user?.friends || user.friends.length === 0) && (
+              <Text style={styles.noFriendsText}>
+                You haven't added any friends yet
+              </Text>
+            )}
           </View>
         </View>
 
+        {/* Add Friends Modal */}
+        <Modal
+          visible={isAddFriendsModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsAddFriendsModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Friends</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setIsAddFriendsModalVisible(false)}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name..."
+                value={searchQuery}
+                onChangeText={handleFriendSearch}
+              />
+
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.searchResultItem}
+                    onPress={() => handleAddFriend(item.id)}
+                  >
+                    <View style={styles.searchResultAvatar}>
+                      {item.photos?.[0] ? (
+                        <Image
+                          source={{ uri: item.photos[0] }}
+                          style={styles.searchResultAvatarImage}
+                        />
+                      ) : (
+                        <Ionicons
+                          name="person"
+                          size={24}
+                          color={COLORS.primaryNavy}
+                        />
+                      )}
+                    </View>
+                    <Text style={styles.searchResultName}>{item.name}</Text>
+                    <Ionicons
+                      name="add-circle"
+                      size={24}
+                      color={COLORS.primaryNavy}
+                    />
+                  </TouchableOpacity>
+                )}
+                style={styles.searchResultsList}
+              />
+            </View>
+          </View>
+        </Modal>
+
         {/* 6. Divider */}
         <View style={styles.divider} />
-        <TouchableOpacity
-          title="Logout"
-          onPress={() => {
-            handleLogout();
-          }}
-          style={{
-            margin: "5%",
-            fontFamily: "Gill Sans",
-            fontWeight: "bold",
-            fontSize: 16,
-            color: COLORS.primaryNavy,
-            backgroundColor: COLORS.buttonPeach,
-            width: "20%",
-            borderRadius: 18,
-            padding: 10,
-            textAlign: "center",
-          }}
-        >
-          <Text>Logout</Text>
-        </TouchableOpacity>
+
+        {/* Logout Button */}
+        <View style={styles.logoutButtonWrapper}>
+          <LogoutButton onLogout={handleLogout} />
+        </View>
 
         {/* Add bottom padding to account for tab bar */}
         <View style={styles.bottomPadding} />
+
+        {/* Add Firebase Test Component */}
+        <View style={styles.testSection}>
+          <Text style={styles.sectionTitle}>Firebase Services Test</Text>
+          <FirebaseTest />
+        </View>
+
+        {/* Add Switch User Button at the bottom */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: COLORS.accentOrange,
+            padding: 16,
+            borderRadius: 12,
+            alignItems: "center",
+            margin: 24,
+          }}
+          onPress={() => {
+            fetchAllUsers();
+            setShowSwitchUserModal(true);
+          }}
+        >
+          <Text style={{ color: "white", fontSize: 18, fontWeight: "bold" }}>
+            Switch User
+          </Text>
+        </TouchableOpacity>
+
+        {/* Switch User Modal */}
+        <Modal
+          visible={showSwitchUserModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowSwitchUserModal(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "white",
+                borderRadius: 16,
+                padding: 24,
+                width: "85%",
+                maxHeight: "70%",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: "bold",
+                  marginBottom: 16,
+                  color: COLORS.primaryNavy,
+                }}
+              >
+                Select a User
+              </Text>
+              <FlatList
+                data={allUsers}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{
+                      paddingVertical: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: COLORS.paleBlue,
+                    }}
+                    onPress={() => handleSwitchUser(item.id)}
+                  >
+                    <Text style={{ fontSize: 18, color: COLORS.primaryNavy }}>
+                      {item.name || item.id}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <TouchableOpacity
+                style={{ marginTop: 18, alignItems: "center" }}
+                onPress={() => setShowSwitchUserModal(false)}
+              >
+                <Text style={{ color: COLORS.accentOrange, fontSize: 16 }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -749,6 +2019,46 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 17, // Adjusted for inline placement
+    fontWeight: "bold",
+    color: "#000",
+  },
+
+  // Logout Button Styles
+  logoutButtonWrapper: {
+    alignItems: "center",
+    marginVertical: 15,
+  },
+  logoutButtonContainer: {
+    width: 120,
+    height: 45,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoutButtonShadow: {
+    position: "absolute",
+    width: 110,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.buttonShadow,
+    bottom: 0,
+  },
+  logoutButtonTop: {
+    position: "absolute",
+    width: 110,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.buttonPeach,
+    bottom: 3,
+  },
+  logoutButtonPressable: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoutButtonText: {
+    fontSize: 18,
     fontWeight: "bold",
     color: "#000",
   },
@@ -851,6 +2161,8 @@ const styles = StyleSheet.create({
   summaryBlock: {
     flex: 1,
     alignItems: "center",
+    padding: 8,
+    borderRadius: 8,
   },
   iconCircle: {
     width: 40,
@@ -927,16 +2239,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.paleBlue,
     borderColor: COLORS.mutedBlue,
   },
-  selectedTagPill: {
-    backgroundColor: COLORS.accentOrange,
-    borderColor: COLORS.accentOrange,
-  },
   tagText: {
     fontSize: 14,
     color: COLORS.primaryNavy,
-  },
-  selectedTagText: {
-    color: COLORS.offWhite,
   },
   removeIconContainer: {
     position: "absolute",
@@ -1007,22 +2312,223 @@ const styles = StyleSheet.create({
   friendAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: COLORS.primaryNavy,
+    borderRadius: 20,
+    // borderWidth: 1,
+    // borderColor: COLORS.primaryNavy,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
+    overflow: "hidden",
+  },
+  friendDetails: {
+    flex: 1,
+    justifyContent: "center",
   },
   friendName: {
-    fontSize: 24,
+    fontSize: 18,
     color: COLORS.primaryNavy,
-    fontWeight: "400",
+    fontWeight: "500",
     fontFamily: Platform.OS === "ios" ? "Gill Sans" : "sans-serif",
+    marginBottom: 2,
+  },
+  friendInterests: {
+    fontSize: 14,
+    color: COLORS.mutedBlue,
+    fontStyle: "italic",
+  },
+  friendAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
+  },
+  removeFriendButton: {
+    padding: 5,
+  },
+  noFriendsText: {
+    padding: 20,
+    textAlign: "center",
+    color: COLORS.mutedBlue,
+    fontStyle: "italic",
   },
 
   // Extra bottom padding
   bottomPadding: {
     height: 20,
+  },
+
+  // Add Firebase Test Component
+  testSection: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#325475",
+    marginBottom: 10,
+  },
+
+  // City display styles
+  cityContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  cityIconContainer: {
+    marginRight: 8,
+  },
+  cityText: {
+    fontSize: 16,
+    color: COLORS.primaryNavy,
+    fontWeight: "500",
+  },
+
+  daterSwiperButton: {
+    backgroundColor: COLORS.buttonPeach,
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  daterSwiperButtonText: {
+    color: COLORS.primaryNavy,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    width: "90%",
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: COLORS.primaryNavy,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: COLORS.primaryNavy,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  searchResultsList: {
+    maxHeight: "80%",
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.mutedBlue,
+  },
+  searchResultAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.paleBlue,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  searchResultAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  searchResultName: {
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.primaryNavy,
+  },
+
+  // Welcome Animation Styles
+  welcomeOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(50, 84, 117, 0.9)",
+    zIndex: 1000,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  welcomeContent: {
+    backgroundColor: "white",
+    padding: 24,
+    borderRadius: 16,
+    width: "85%",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  welcomeTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: COLORS.accentOrange,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  welcomeMessage: {
+    fontSize: 18,
+    lineHeight: 26,
+    textAlign: "center",
+    color: COLORS.primaryNavy,
+    marginBottom: 20,
+  },
+  welcomeButton: {
+    backgroundColor: COLORS.accentOrange,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    marginTop: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  welcomeButtonText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "600",
   },
 });

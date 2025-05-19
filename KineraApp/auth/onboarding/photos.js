@@ -6,59 +6,99 @@ import {
   Image,
   StyleSheet,
   Alert,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
 
-export default function Step2UploadPhotos({ navigation, route }) {
+export default function PhotosScreen({ navigation, route }) {
   const [photos, setPhotos] = useState([null, null, null, null]);
+  const { updateProfile } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     (async () => {
-      const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-      const mediaStatus =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      // Optionally, check cameraStatus.status and mediaStatus.status === 'granted'
+      try {
+        const cameraPermission =
+          await ImagePicker.requestCameraPermissionsAsync();
+        const mediaLibraryPermission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (!cameraPermission.granted) {
+          console.warn("Camera permission not granted");
+        }
+
+        if (!mediaLibraryPermission.granted) {
+          console.warn("Media library permission not granted");
+        }
+      } catch (error) {
+        console.error("Error requesting permissions:", error);
+      }
     })();
   }, []);
 
-  // Helper to pick or take a photo
   const pickImage = async (index) => {
+    try {
+      if (!ImagePicker.launchImageLibraryAsync) {
+        Alert.alert(
+          "Feature Unavailable",
+          "Image picking is not available in this build."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        updatePhoto(index, result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick an image. Please try again.");
+    }
+  };
+
+  const takePhoto = async (index) => {
+    try {
+      if (!ImagePicker.launchCameraAsync) {
+        Alert.alert(
+          "Feature Unavailable",
+          "Camera is not available in this build."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        updatePhoto(index, result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+      Alert.alert("Error", "Failed to take a photo. Please try again.");
+    }
+  };
+
+  const showImagePickerOptions = (index) => {
     Alert.alert(
-      "Add Photo",
-      "Choose an option",
+      "Choose Photo",
+      "Select a photo from your library or take a new one",
       [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            let result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaType.Image,
-              allowsEditing: true,
-              aspect: [4, 5],
-              quality: 0.7,
-            });
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-              updatePhoto(index, result.assets[0].uri);
-            }
-          },
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            let result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaType.Image,
-              allowsEditing: true,
-              aspect: [4, 5],
-              quality: 0.7,
-            });
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-              updatePhoto(index, result.assets[0].uri);
-            }
-          },
-        },
         { text: "Cancel", style: "cancel" },
-      ],
-      { cancelable: true }
+        { text: "Take Photo", onPress: () => takePhoto(index) },
+        { text: "Choose from Library", onPress: () => pickImage(index) },
+      ]
     );
   };
 
@@ -69,15 +109,34 @@ export default function Step2UploadPhotos({ navigation, route }) {
   };
 
   const handleContinue = async () => {
-    // Here you would upload the photos to Firebase
-    // For now, just pass them to the next step
-    //On the final onboarding step, you can upload the images to Firebase Storage
-    // and save their URLs to Firestore.
-    // You'll need to convert the local URI to a blob and use the Firebase Storage SDK.
-    navigation.navigate("Step3", {
-      ...route.params, // pass previous onboarding data
-      photos,
-    });
+    try {
+      // Filter out empty photos
+      const validPhotos = photos.filter((p) => p !== null);
+      console.log("Saving photos:", validPhotos);
+
+      // Only continue if at least one photo was added
+      if (validPhotos.length === 0) {
+        Alert.alert("Please add at least one photo");
+        return;
+      }
+
+      // Save photos using the standardized structure
+      await updateProfile({
+        profileData: {
+          photos: validPhotos,
+        },
+      });
+
+      // Navigate directly to userType in our simplified flow
+      console.log("Photos: Navigating to userType screen in simplified flow");
+      navigation.navigate("userType", {
+        ...route.params,
+        photos: validPhotos,
+      });
+    } catch (error) {
+      console.error("Error saving photos to AsyncStorage:", error);
+      Alert.alert("Error", "There was a problem saving your photos. Please try again.");
+    }
   };
 
   return (
@@ -96,7 +155,7 @@ export default function Step2UploadPhotos({ navigation, route }) {
           <TouchableOpacity
             key={i}
             style={styles.photoBox}
-            onPress={() => pickImage(i)}
+            onPress={() => showImagePickerOptions(i)}
           >
             {photos[i] ? (
               <Image source={{ uri: photos[i] }} style={styles.photo} />

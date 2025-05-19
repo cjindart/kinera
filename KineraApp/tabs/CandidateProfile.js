@@ -26,41 +26,43 @@ const COLORS = {
 };
 
 // Get device dimensions to use for more precise sizing
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export default function CandidateProfile({ route, navigation }) {
-  // Get candidate info from route params or use default values
-  const candidateInfo = route.params?.candidateInfo || {
-    name: "Madison",
-    age: "22",
-    gender: "Woman",
-    height: "5'7\"",
-    year: "Sophomore",
-    interests: ["Politics", "Sports", "Music", "Fizz", "Pets"],
-    dateActivities: ["Voyager", "Jazz night", "Study date", "RA basement"]
-  };
+  // Get candidate info from route params
+  const candidateInfo = route.params?.candidateInfo;
+
+  if (!candidateInfo) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.errorText}>No candidate information available</Text>
+      </SafeAreaView>
+    );
+  }
 
   // State for tracking selected interests
-  const [selectedInterests, setSelectedInterests] = useState(["Music"]);
-  
-  // Toggle function for interests (for highlighting/selecting)
+  const [selectedInterests, setSelectedInterests] = useState([]);
+
+  // Toggle function for interests
   const toggleInterest = (interest) => {
     if (selectedInterests.includes(interest)) {
-      setSelectedInterests(selectedInterests.filter(item => item !== interest));
+      setSelectedInterests(
+        selectedInterests.filter((item) => item !== interest)
+      );
     } else {
       setSelectedInterests([...selectedInterests, interest]);
     }
   };
 
-  // Mock images array for demonstration
-  const profileImages = [null, null, null]; // Placeholders for demo images
+  // Get photos from profileData or use placeholder
+  const profileImages = candidateInfo.profileData?.photos || [];
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={COLORS.primaryNavy} />
@@ -88,33 +90,40 @@ export default function CandidateProfile({ route, navigation }) {
             {/* Main profile picture */}
             <View style={styles.photoCard}>
               <View style={styles.photoFrame}>
-                <Ionicons name="person" size={100} color={COLORS.mutedBlue} />
+                {profileImages[0] ? (
+                  <Image
+                    source={{ uri: profileImages[0] }}
+                    style={styles.photoImage}
+                  />
+                ) : (
+                  <Ionicons name="person" size={100} color={COLORS.mutedBlue} />
+                )}
               </View>
             </View>
 
             {/* Additional photos */}
-            {profileImages.map((image, index) => (
+            {profileImages.slice(1).map((image, index) => (
               <View key={`additional-photo-${index}`} style={styles.photoCard}>
                 <View style={styles.photoFrame}>
-                  <Ionicons name="image" size={60} color={COLORS.mutedBlue} />
-                  <Text style={styles.photoText}>Photo {index + 1}</Text>
+                  {image ? (
+                    <Image source={{ uri: image }} style={styles.photoImage} />
+                  ) : (
+                    <Ionicons name="image" size={60} color={COLORS.mutedBlue} />
+                  )}
                 </View>
               </View>
             ))}
           </ScrollView>
-          
+
           {/* Photo indicator dots */}
           <View style={styles.photoIndicators}>
-            <View 
+            <View
               key="main-photo-indicator"
-              style={[
-                styles.indicatorDot, 
-                styles.activeDot
-              ]} 
+              style={[styles.indicatorDot, styles.activeDot]}
             />
-            {profileImages.map((_, index) => (
-              <View 
-                key={`photo-indicator-${index}`} 
+            {profileImages.slice(1).map((_, index) => (
+              <View
+                key={`photo-indicator-${index}`}
                 style={styles.indicatorDot}
               />
             ))}
@@ -125,30 +134,54 @@ export default function CandidateProfile({ route, navigation }) {
         <View style={styles.summaryBarSection}>
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons name="calendar-outline" size={24} color={COLORS.primaryNavy} />
+              <Ionicons
+                name="calendar-outline"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
             </View>
-            <Text style={styles.summaryText}>{candidateInfo.age}</Text>
+            <Text style={styles.summaryText}>
+              {candidateInfo.profileData?.age}
+            </Text>
           </View>
-          
+
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons name="person-outline" size={24} color={COLORS.primaryNavy} />
+              <Ionicons
+                name="person-outline"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
             </View>
-            <Text style={styles.summaryText}>{candidateInfo.gender}</Text>
+            <Text style={styles.summaryText}>
+              {candidateInfo.profileData?.gender}
+            </Text>
           </View>
-          
+
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons name="resize-outline" size={24} color={COLORS.primaryNavy} />
+              <Ionicons
+                name="resize-outline"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
             </View>
-            <Text style={styles.summaryText}>{candidateInfo.height}</Text>
+            <Text style={styles.summaryText}>
+              {candidateInfo.profileData?.height}cm
+            </Text>
           </View>
-          
+
           <View style={styles.summaryBlock}>
             <View style={styles.iconCircle}>
-              <Ionicons name="school-outline" size={24} color={COLORS.primaryNavy} />
+              <Ionicons
+                name="school-outline"
+                size={24}
+                color={COLORS.primaryNavy}
+              />
             </View>
-            <Text style={styles.summaryText}>{candidateInfo.year}</Text>
+            <Text style={styles.summaryText}>
+              {candidateInfo.profileData?.year}
+            </Text>
           </View>
         </View>
 
@@ -156,19 +189,21 @@ export default function CandidateProfile({ route, navigation }) {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionLabel}>Interests:</Text>
           <View style={styles.tagsContainer}>
-            {candidateInfo.interests.map((interest, index) => (
+            {candidateInfo.profileData?.interests?.map((interest, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
                   styles.tagPill,
-                  selectedInterests.includes(interest) && styles.selectedTagPill,
+                  selectedInterests.includes(interest) &&
+                    styles.selectedTagPill,
                 ]}
                 onPress={() => toggleInterest(interest)}
               >
                 <Text
                   style={[
                     styles.tagText,
-                    selectedInterests.includes(interest) && styles.selectedTagText,
+                    selectedInterests.includes(interest) &&
+                      styles.selectedTagText,
                   ]}
                 >
                   {interest}
@@ -182,14 +217,16 @@ export default function CandidateProfile({ route, navigation }) {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionLabel}>Favorite date activities:</Text>
           <View style={styles.tagsContainer}>
-            {candidateInfo.dateActivities.map((activity, index) => (
-              <View key={index} style={styles.tagPill}>
-                <Text style={styles.tagText}>{activity}</Text>
-              </View>
-            ))}
+            {candidateInfo.profileData?.dateActivities?.map(
+              (activity, index) => (
+                <View key={index} style={styles.tagPill}>
+                  <Text style={styles.tagText}>{activity}</Text>
+                </View>
+              )
+            )}
           </View>
         </View>
-        
+
         {/* Add bottom padding to account for tab bar */}
         <View style={styles.bottomPadding} />
       </ScrollView>
@@ -218,7 +255,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     color: COLORS.primaryNavy,
   },
-  
+
   // 1. Header Section
   headerSection: {
     marginTop: 10,
@@ -241,7 +278,7 @@ const styles = StyleSheet.create({
     color: COLORS.primaryNavy,
     marginBottom: 2,
   },
-  
+
   // 2. Photo Gallery Section with Horizontal Scrolling
   photoSection: {
     marginVertical: 15,
@@ -253,7 +290,7 @@ const styles = StyleSheet.create({
     width: width, // Full screen width
   },
   photoFrame: {
-    width: '92%', // Slightly less than full width to provide some margin
+    width: "92%", // Slightly less than full width to provide some margin
     height: width * 0.6, // Larger images
     borderRadius: 20,
     borderWidth: 2,
@@ -261,18 +298,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: COLORS.paleBlue,
-    overflow: 'hidden',
-    marginHorizontal: '4%', // Center the frame
+    overflow: "hidden",
+    marginHorizontal: "4%", // Center the frame
   },
-  photoText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: COLORS.mutedBlue,
+  photoImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   photoIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 10,
   },
   indicatorDot: {
@@ -288,7 +325,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
   },
-  
+
   // 3. Profile Summary Bar
   summaryBarSection: {
     flexDirection: "row",
@@ -313,7 +350,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: COLORS.primaryNavy,
   },
-  
+
   // 4 & 5. Section Containers (Interests & Date Activities)
   sectionContainer: {
     paddingHorizontal: 16,
@@ -336,8 +373,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     margin: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   selectedTagPill: {
     backgroundColor: COLORS.accentOrange,
@@ -350,9 +387,15 @@ const styles = StyleSheet.create({
   selectedTagText: {
     color: COLORS.offWhite,
   },
-  
+
   // Extra bottom padding
   bottomPadding: {
     height: 20,
-  }
-}); 
+  },
+  errorText: {
+    fontSize: 18,
+    color: COLORS.primaryNavy,
+    textAlign: "center",
+    marginTop: 20,
+  },
+});
