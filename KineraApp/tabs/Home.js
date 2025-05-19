@@ -494,25 +494,29 @@ export default function AvailabilityScreen() {
         const friendDoc = await getDoc(friendRef);
         const friendData = friendDoc.data();
 
-        // Update swipedPool
-        const currentSwipedPool = friendData.swipedPool || [];
-        let newSwipedPool = currentSwipedPool;
-        if (!currentSwipedPool.includes(candidateId)) {
-          newSwipedPool = [...currentSwipedPool, candidateId];
+        let swipingPools = friendData.swipingPools || {};
+        if (!swipingPools[currentUser.id]) {
+          swipingPools[currentUser.id] = { pool: [], swipedPool: [] };
         }
 
-        // Update swipingPools for this matchmaker
-        let swipingPools = friendData.swipingPools || {};
-        let pool = swipingPools[currentUser.id] || [];
+        // Remove candidate from pool
+        let pool = swipingPools[currentUser.id].pool || [];
         pool = pool.filter((id) => id !== candidateId);
-        swipingPools[currentUser.id] = pool;
+        swipingPools[currentUser.id].pool = pool;
 
+        // Add candidate to swipedPool for this matchmaker/friend pair
+        let swipedPool = swipingPools[currentUser.id].swipedPool || [];
+        if (!swipedPool.includes(candidateId)) {
+          swipedPool = [...swipedPool, candidateId];
+        }
+        swipingPools[currentUser.id].swipedPool = swipedPool;
+
+        // Update Firestore
         await updateDoc(friendRef, {
-          swipedPool: newSwipedPool,
           swipingPools: swipingPools,
         });
       } catch (error) {
-        console.error("Error updating swipedPool and swipingPools:", error);
+        console.error("Error updating swipingPools:", error);
       }
 
       // Mark current candidate as swiped in local state
