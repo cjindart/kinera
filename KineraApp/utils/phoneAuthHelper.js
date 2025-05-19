@@ -44,7 +44,7 @@ export function usePhoneAuth() {
       setError(null);
 
       console.log(`Sending verification code to: ${phoneNumber}`);
-      
+
       // Store the original phone number for later use
       await AsyncStorage.setItem('originalPhoneNumber', phoneNumber);
       console.log('Saved original phone number to storage:', phoneNumber);

@@ -257,50 +257,50 @@ export function AuthProvider({ children }) {
       if (formattedPhoneNumber) {
         console.log("No user found by UID, checking by phone number:", formattedPhoneNumber);
         const userByPhone = await findUserByPhone(formattedPhoneNumber);
-        if (userByPhone) {
-          console.log("User found by phone number, ID:", userByPhone.id);
+      if (userByPhone) {
+        console.log("User found by phone number, ID:", userByPhone.id);
+        
+        // If we need to migrate from a local ID to Firebase UID
+        if (userByPhone.id !== firebaseUid) {
+          console.log("Migrating user from local ID to Firebase UID");
           
-          // If we need to migrate from a local ID to Firebase UID
-          if (userByPhone.id !== firebaseUid) {
-            console.log("Migrating user from local ID to Firebase UID");
-            
-            // Try to migrate the data
-            const migrationSuccess = await migrateUserData(userByPhone.id, firebaseUid);
-            
-            if (migrationSuccess) {
-              console.log("Migration successful");
-            } else {
-              console.warn("Migration failed, will create updated user object");
-            }
-            
-            // Create updated user with Firebase UID
-            const updatedUser = new User({
-              ...userByPhone,
-              id: firebaseUid,
-              previousId: userByPhone.id,
-              isAuthenticated: true,
-              updatedAt: new Date().toISOString()
-            });
-            
-            // Save the updated user data
-            await updatedUser.save();
-            safelySetUser(updatedUser);
-            setIsNewUser(false);
-            await AsyncStorage.setItem('isNewUser', 'false');
-            return { success: true, isNewUser: false };
+          // Try to migrate the data
+          const migrationSuccess = await migrateUserData(userByPhone.id, firebaseUid);
+          
+          if (migrationSuccess) {
+            console.log("Migration successful");
           } else {
-            // User already has the correct Firebase UID
-            const existingUser = new User({
-              ...userByPhone,
-              isAuthenticated: true
-            });
-            
-            await existingUser.save();
-            safelySetUser(existingUser);
-            setIsNewUser(false);
-            await AsyncStorage.setItem('isNewUser', 'false');
-            return { success: true, isNewUser: false };
+            console.warn("Migration failed, will create updated user object");
           }
+          
+          // Create updated user with Firebase UID
+          const updatedUser = new User({
+            ...userByPhone,
+            id: firebaseUid,
+            previousId: userByPhone.id,
+            isAuthenticated: true,
+            updatedAt: new Date().toISOString()
+          });
+          
+          // Save the updated user data
+          await updatedUser.save();
+            safelySetUser(updatedUser);
+          setIsNewUser(false);
+            await AsyncStorage.setItem('isNewUser', 'false');
+          return { success: true, isNewUser: false };
+        } else {
+          // User already has the correct Firebase UID
+          const existingUser = new User({
+            ...userByPhone,
+            isAuthenticated: true
+          });
+          
+          await existingUser.save();
+            safelySetUser(existingUser);
+          setIsNewUser(false);
+            await AsyncStorage.setItem('isNewUser', 'false');
+          return { success: true, isNewUser: false };
+        }
         }
       } else {
         console.log("No phone number available to search for existing user");
