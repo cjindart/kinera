@@ -8,13 +8,15 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
-  Animated
+  Animated,
+  SafeAreaView,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import theme from "../assets/theme";
 import User from "../models/User";
+//import { COLORS } from "../assets/theme";
 import {
   fetchAllUsers,
   getMatchmakerFriends,
@@ -32,14 +34,14 @@ import { hasAccessToScreen } from "../utils/accessControl";
 import LockedScreen from "../components/LockedScreen";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
-import { 
-  ensureSwipingPoolsStructure, 
+import {
+  ensureSwipingPoolsStructure,
   ensureSwipedPoolArray,
   addToSwipedPool,
   recordSwipeAction,
-  logSwipeStructures 
+  logSwipeStructures,
 } from "../utils/swipeUtils";
-import { BlurView } from 'expo-blur';
+import { BlurView } from "expo-blur";
 
 const { width, height } = Dimensions.get("window");
 
@@ -63,12 +65,12 @@ export default function AvailabilityScreen() {
   // Helper to get image source with fallback
   const getImageSource = (friend) => {
     if (!friend) return require("../assets/photos/daniel.png");
-    
+
     // Use preloaded image if available
     if (preloadedImages[friend.id]) {
       return { uri: preloadedImages[friend.id] };
     }
-    
+
     // Fallback to direct rendering
     return friend.profileData?.photos?.[0]
       ? { uri: friend.profileData.photos[0] }
@@ -78,21 +80,28 @@ export default function AvailabilityScreen() {
   // Get the previous, current, and next friends in the list
   const getPrevFriend = () => {
     if (!matchmakerFriends.length) return null;
-    const prevIndex = currentFriendIndex === 0 ? matchmakerFriends.length - 1 : currentFriendIndex - 1;
-    return prevIndex !== currentFriendIndex ? matchmakerFriends[prevIndex] : null;
+    const prevIndex =
+      currentFriendIndex === 0
+        ? matchmakerFriends.length - 1
+        : currentFriendIndex - 1;
+    return prevIndex !== currentFriendIndex
+      ? matchmakerFriends[prevIndex]
+      : null;
   };
 
   const getNextFriend = () => {
     if (!matchmakerFriends.length) return null;
     const nextIndex = (currentFriendIndex + 1) % matchmakerFriends.length;
-    return nextIndex !== currentFriendIndex ? matchmakerFriends[nextIndex] : null;
+    return nextIndex !== currentFriendIndex
+      ? matchmakerFriends[nextIndex]
+      : null;
   };
 
   // Preload images effect
   useEffect(() => {
     if (matchmakerFriends.length > 0) {
       const imagesToPreload = {};
-      matchmakerFriends.forEach(friend => {
+      matchmakerFriends.forEach((friend) => {
         if (friend && friend.id) {
           const imageUri = friend.profileData?.photos?.[0] || null;
           if (imageUri) {
@@ -593,17 +602,15 @@ export default function AvailabilityScreen() {
       <View style={styles.header}>
         {/* Friend name display - separate from the carousel */}
         {currentFriend && (
-          <Text style={styles.currentFriendName}>
-            {currentFriend.name}
-          </Text>
+          <Text style={styles.currentFriendName}>{currentFriend.name}</Text>
         )}
       </View>
 
       {/* Friend Selector with Fixed Layout */}
       <View style={styles.newFriendSelector}>
         {/* Left (previous) friend */}
-        <TouchableOpacity 
-          style={styles.sideFriendContainer} 
+        <TouchableOpacity
+          style={styles.sideFriendContainer}
           onPress={handlePreviousFriend}
           disabled={friendSelectorLocked}
           activeOpacity={0.7}
@@ -631,8 +638,8 @@ export default function AvailabilityScreen() {
         </View>
 
         {/* Right (next) friend */}
-        <TouchableOpacity 
-          style={styles.sideFriendContainer} 
+        <TouchableOpacity
+          style={styles.sideFriendContainer}
           onPress={handleNextFriend}
           disabled={friendSelectorLocked}
           activeOpacity={0.7}
@@ -664,13 +671,21 @@ export default function AvailabilityScreen() {
       </View>
 
       {/* Hidden preloaded images for all potential friends */}
-      <View style={{position: 'absolute', opacity: 0, width: 1, height: 1, overflow: 'hidden'}}>
-        {matchmakerFriends.map((friend, index) => 
+      <View
+        style={{
+          position: "absolute",
+          opacity: 0,
+          width: 1,
+          height: 1,
+          overflow: "hidden",
+        }}
+      >
+        {matchmakerFriends.map((friend, index) =>
           friend ? (
-            <Image 
+            <Image
               key={`preload-friend-${friend.id}`}
               source={getImageSource(friend)}
-              style={{width: 1, height: 1}}
+              style={{ width: 1, height: 1 }}
             />
           ) : null
         )}
@@ -684,14 +699,21 @@ export default function AvailabilityScreen() {
             onPress={handleCardPress}
             disabled={swipeLoading}
           >
-            <Image
-              source={getImageSource(currentCandidate)}
-              style={styles.candidateImage}
-            />
-            <BlurView intensity={0} tint="default" style={styles.candidateOverlay}>
+            <View style={styles.shadow}>
+              <Image
+                source={getImageSource(currentCandidate)}
+                style={styles.candidateImage}
+              />
+            </View>
+            <BlurView
+              intensity={0}
+              tint="default"
+              style={styles.candidateOverlay}
+            >
               <Text style={styles.candidateName}>{currentCandidate.name}</Text>
               <Text style={styles.candidateDetails}>
-                {currentCandidate.profileData?.age} - {currentCandidate.profileData?.year}
+                {currentCandidate.profileData?.age} -{" "}
+                {currentCandidate.profileData?.year}
               </Text>
             </BlurView>
           </TouchableOpacity>
@@ -723,7 +745,7 @@ export default function AvailabilityScreen() {
       </View>
 
       {!hasAccess && <LockedScreen userType={userType} />}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -783,7 +805,7 @@ const styles = StyleSheet.create({
     width: width * 0.7,
     height: width * 0.6,
     borderWidth: 1,
-    borderColor: COLORS.primaryNavy,
+    borderColor: "#325475",
     justifyContent: "center",
     alignItems: "center",
     // marginBottom: height * 0.01,
@@ -820,7 +842,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   approve: {
-    color: COLORS.primaryNavy,
+    color: "#325475",
     fontSize: 14,
     fontWeight: "600",
     flex: 1,
@@ -932,13 +954,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   newFriendSelector: {
-    flexDirection: 'row',
-    height: height * 0.22,
+    flexDirection: "row",
+    height: height * 0.18,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: height * 0.03,
-    position: 'relative',
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    position: "relative",
+    backgroundColor: "rgba(255,255,255,0.95)",
   },
   sideFriendContainer: {
     width: width * 0.22,
@@ -959,7 +981,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     bottom: 0,
-    width: '100%',
+    width: "100%",
     borderRadius: width * 0.11,
     backgroundColor: "rgba(255, 255, 255, 0.5)",
   },
@@ -984,8 +1006,8 @@ const styles = StyleSheet.create({
     height: width * 0.35,
     borderRadius: width * 0.175,
     resizeMode: "cover",
-    // borderWidth: 0.5,
-    borderColor: "#4B5C6B",
+    borderWidth: 2,
+    borderColor: "#ED7E31",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
@@ -1021,98 +1043,121 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   candidateCardContainer: {
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 10,
+    width: "100%",
+    alignItems: "center",
+    marginTop: 7,
     marginBottom: 10,
   },
   candidateImage: {
-    width: width,
+    width: width * 0.9,
     height: width * 0.8,
     borderRadius: 20,
-    resizeMode: 'cover',
+    resizeMode: "cover",
+    borderWidth: 2,
+    borderColor: "#325475",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  shadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
   },
   candidateOverlay: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     bottom: 0,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
     minWidth: 120,
     // backgroundColor: "#F7C4A5",
   },
   candidateName: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 22,
-    textShadowColor: '#ED7E31',
-    textShadowOffset: { width: -2, height: 0},
+    color: "#ffff",
+    fontWeight: "bold",
+    fontSize: 26,
+    textShadowColor: "#ED7E31",
+    textShadowOffset: { width: -2, height: 0 },
     textShadowRadius: 2,
-    paddingLeft: 3
+    paddingLeft: 3,
   },
   candidateDetails: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textShadowColor: '#ED7E31',
-    textShadowOffset: {width: -2, height: 0},
+    color: "#ffff",
+    fontSize: 18,
+    fontWeight: "600",
+    textShadowColor: "#ED7E31",
+    textShadowOffset: { width: -2, height: 0 },
     textShadowRadius: 2,
-    paddingLeft: 3
+    paddingLeft: 3,
   },
   noCandidateContainer: {
-    width: width,
+    width: width * 0.9,
     height: width * 0.8,
     borderRadius: 20,
-    backgroundColor: 'rgba(227, 171, 140, 0.5)',
+    backgroundColor: "rgba(227, 171, 140, 0.5)",
     justifyContent: "center",
-    // alignItems: 'center',
-
+    alignItems: "center",
   },
   noCandidateText: {
-    color: '#fff',
-    textShadowOffset: {width: -2, height: 0},
+    color: "#fff",
+    textShadowOffset: { width: -2, height: 0 },
     textShadowRadius: 2,
-    textShadowColor: '#ED7E31',
+    textShadowColor: "#ED7E31",
     fontSize: 20,
     fontWeight: "900",
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 5
+    justifyContent: "center",
+    alignItems: "center",
+    marginHorizontal: 10,
   },
   bottomButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    width: "100%",
     // position: 'absolute',
     // bottom: 30,
     // left: 0,
     // right: 0,
     paddingHorizontal: 20,
     marginTop: 0,
-    marginBottom: 10,
+    marginBottom: 12,
     // paddingHorizontal: 40,
   },
   dislikeButton: {
-    backgroundColor: '#F7C4A5',
+    backgroundColor: "#F7C4A5",
     width: 70,
     height: 70,
     borderRadius: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginHorizontal: 20,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 5,
   },
   likeButton: {
-    backgroundColor: '#A9B9CC',
+    backgroundColor: "#A9B9CC",
     width: 70,
     height: 70,
     borderRadius: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginHorizontal: 20,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 5,
   },
 });
