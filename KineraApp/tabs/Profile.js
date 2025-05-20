@@ -1880,14 +1880,14 @@ export default function ProfileScreen({ route }) {
         {/* Add bottom padding to account for tab bar */}
         <View style={styles.bottomPadding} />
 
-        {/* Add Firebase Test Component */}
+        {/* Add Firebase Test Component
         <View style={styles.testSection}>
           <Text style={styles.sectionTitle}>Firebase Services Test</Text>
           <FirebaseTest />
-        </View>
+        </View> */}
 
         {/* Add Switch User Button at the bottom */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={{
             backgroundColor: COLORS.accentOrange,
             padding: 16,
@@ -1903,7 +1903,7 @@ export default function ProfileScreen({ route }) {
           <Text style={{ color: "white", fontSize: 18, fontWeight: "bold" }}>
             Switch User
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Switch User Modal */}
         <Modal
