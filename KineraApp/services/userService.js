@@ -442,9 +442,6 @@ export const approveCandidateForFriend = async (
           typeof f === "object" ? f.userType !== "Dater" : true
         ).length
       : 0;
-    // const approvedSwipes = Object.values(friend.matches).filter(
-    //   (match) => match.approvalRate > 0
-    // ).length;
 
     let newApprovalRate = 0;
     if (friend.matches[candidateId]) {
@@ -459,17 +456,12 @@ export const approveCandidateForFriend = async (
         newApprovalRate + (totalFriends > 0 ? 1 / totalFriends : 0);
     }
 
-    // Check if candidate already has friend in their matches
-    const candidateHasFriend = candidate.matches[friendId] !== undefined;
-    const matchBack =
-      candidateHasFriend && candidate.matches[friendId].matchBack;
-
     const candidateApprovalRate =
       candidate.matches[friendId]?.approvalRate || 0;
 
-    // Create match ID if conditions are met (50%+ approval AND matchBack == true for both users)
+    // Create match ID if both approval rates are >= 0.5
     let matchId = null;
-    if (matchBack && newApprovalRate >= 0.5 && candidateApprovalRate >= 0.5) {
+    if (newApprovalRate >= 0.5 && candidateApprovalRate >= 0.5) {
       matchId = `${friendId}_${candidateId}_${Date.now()}`;
       if (
         typeof global !== "undefined" &&
@@ -498,14 +490,12 @@ export const approveCandidateForFriend = async (
     // Update friend's matches with candidate
     friend.matches[candidateId] = {
       approvalRate: newApprovalRate,
-      matchBack: matchBack,
       matchId: matchId,
     };
 
     // Update candidate's matches with friend
     candidate.matches[friendId] = {
       approvalRate: candidate.matches[friendId]?.approvalRate || 0,
-      matchBack: true,
       matchId: matchId,
     };
 
@@ -573,7 +563,6 @@ export const rejectCandidateForFriend = async (
     if (!friend.matches[candidateId]) {
       friend.matches[candidateId] = {
         approvalRate: 0,
-        matchBack: false,
         matchId: null,
       };
 
