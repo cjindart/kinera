@@ -16,7 +16,7 @@ import {
   Modal,
   FlatList,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
@@ -949,6 +949,15 @@ export default function ProfileScreen({ route }) {
         dateActivities: friendData.profileData?.dateActivities || [],
       };
 
+      // Create current user object for friend's friend list
+      const currentUserObject = {
+        id: user.id,
+        name: user.name || "Unknown",
+        avatar: user.profileData?.photos?.[0] || null,
+        interests: user.profileData?.interests || [],
+        dateActivities: user.profileData?.dateActivities || [],
+      };
+
       const updatedFriends = [...(user.friends || []), friendObject];
 
       // Update user data
@@ -963,19 +972,30 @@ export default function ProfileScreen({ route }) {
       // Save to AsyncStorage
       await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
 
-      // Update Firestore
+      // Update Firestore for both users
       if (user.id) {
         try {
+          // Update current user's friends list
           const userRef = doc(db, "users", user.id);
           await updateDoc(userRef, {
             friends: updatedFriends,
+          });
+
+          // Update friend's friends list
+          const friendRef = doc(db, "users", friendId);
+          const friendFriends = [
+            ...(friendData.friends || []),
+            currentUserObject,
+          ];
+          await updateDoc(friendRef, {
+            friends: friendFriends,
           });
 
           // Update swiping pool after adding friend
           await updateSwipingPool(updatedFriends);
 
           console.log(
-            "Friends and swiping pool updated in Firestore successfully"
+            "Friends lists and swiping pool updated in Firestore successfully"
           );
         } catch (firestoreError) {
           console.error("Error updating Firestore:", firestoreError);
@@ -1412,7 +1432,7 @@ export default function ProfileScreen({ route }) {
           >
             <View style={styles.iconCircle}>
               <Ionicons
-                name="person-outline"
+                name="male-female-outline"
                 size={24}
                 color={COLORS.primaryNavy}
               />
@@ -1450,8 +1470,8 @@ export default function ProfileScreen({ route }) {
             }}
           >
             <View style={styles.iconCircle}>
-              <Ionicons
-                name="resize-outline"
+              <MaterialCommunityIcons
+                name="ruler"
                 size={24}
                 color={COLORS.primaryNavy}
               />
@@ -1884,14 +1904,14 @@ export default function ProfileScreen({ route }) {
         {/* Add bottom padding to account for tab bar */}
         <View style={styles.bottomPadding} />
 
-        {/* Add Firebase Test Component */}
+        {/* Add Firebase Test Component
         <View style={styles.testSection}>
           <Text style={styles.sectionTitle}>Firebase Services Test</Text>
           <FirebaseTest />
-        </View>
+        </View> */}
 
         {/* Add Switch User Button at the bottom */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={{
             backgroundColor: COLORS.accentOrange,
             padding: 16,
@@ -1907,7 +1927,7 @@ export default function ProfileScreen({ route }) {
           <Text style={{ color: "white", fontSize: 18, fontWeight: "bold" }}>
             Switch User
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Switch User Modal */}
         <Modal
@@ -2312,9 +2332,9 @@ const styles = StyleSheet.create({
   friendAvatar: {
     width: 40,
     height: 40,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: COLORS.primaryNavy,
+    borderRadius: 20,
+    // borderWidth: 1,
+    // borderColor: COLORS.primaryNavy,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,

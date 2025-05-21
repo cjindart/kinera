@@ -22,21 +22,21 @@ const getFirebaseConfig = () => {
   // 3. Fallback to a development configuration
   
   // Hardcoded Firebase config for Vouch app - Replace with your own Firebase project values
-  const hardcodedConfig = {
-    apiKey: "AIzaSyAZQb0O_xtQkI4lwv7jPmkz7jIGhbBGWoM",
-    authDomain: "vouch-e7830.firebaseapp.com",
-    projectId: "vouch-e7830",
-    storageBucket: "vouch-e7830.appspot.com",
-    messagingSenderId: "517599462809",
-    appId: "1:517599462809:web:cc63f6a61a4ee3bae2a37d"
-  };
+  // const hardcodedConfig = {
+  //   apiKey: "AIzaSyAZQb0O_xtQkI4lwv7jPmkz7jIGhbBGWoM",
+  //   authDomain: "vouch-e7830.firebaseapp.com",
+  //   projectId: "vouch-e7830",
+  //   storageBucket: "vouch-e7830.appspot.com",
+  //   messagingSenderId: "517599462809",
+  //   appId: "1:517599462809:web:cc63f6a61a4ee3bae2a37d"
+  // };
   
   return {
-    apiKey: expoConstants.firebaseApiKey || process.env.FIREBASE_API_KEY || hardcodedConfig.apiKey,
-    authDomain: expoConstants.firebaseAuthDomain || process.env.FIREBASE_AUTH_DOMAIN || hardcodedConfig.authDomain,
-    projectId: expoConstants.firebaseProjectId || process.env.FIREBASE_PROJECT_ID || hardcodedConfig.projectId,
-    storageBucket: expoConstants.firebaseStorageBucket || process.env.FIREBASE_STORAGE_BUCKET || hardcodedConfig.storageBucket,
-    messagingSenderId: expoConstants.firebaseMessagingSenderId || process.env.FIREBASE_MESSAGING_SENDER_ID || hardcodedConfig.messagingSenderId,
+    apiKey: expoConstants.firebaseApiKey || process.env.FIREBASE_API_KEY,
+    authDomain: expoConstants.firebaseAuthDomain || process.env.FIREBASE_AUTH_DOMAIN,
+    projectId: expoConstants.firebaseProjectId || process.env.FIREBASE_PROJECT_ID,
+    storageBucket: expoConstants.firebaseStorageBucket || process.env.FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: expoConstants.firebaseMessagingSenderId || process.env.FIREBASE_MESSAGING_SENDER_ID,
     appId: expoConstants.firebaseAppId || process.env.FIREBASE_APP_ID || hardcodedConfig.appId,
     measurementId: expoConstants.firebaseMeasurementId || process.env.FIREBASE_MEASUREMENT_ID || null
   };

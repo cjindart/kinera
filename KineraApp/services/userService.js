@@ -206,53 +206,39 @@ export const getCandidatesForFriend = async (matchmakerUser, friendId) => {
 
     // Get potential matches based on preferences
     const potentialMatches = await getPotentialMatches(friend);
-    const candidateIds = potentialMatches.map((u) => u.id);
 
-    // Get the friend's document reference
-    const friendRef = doc(db, "users", friendId);
-    const friendDoc = await getDoc(friendRef);
+    // Filter out the current user (matchmaker) from potential matches
+    const filteredPotentialMatches = potentialMatches.filter(
+      (match) => match.id !== matchmakerUser.id
+    );
 
-    // Initialize swipingPools if it doesn't exist
-    let swipingPools = friendDoc.exists()
-      ? friendDoc.data().swipingPools || {}
-      : {};
-
-    // Initialize this matchmaker's pool if it doesn't exist
+    // Initialize or get the matchmaker's swiping pool
+    let swipingPools = friend.swipingPools || {};
     if (!swipingPools[matchmakerUser.id]) {
-      console.log(
-        `Initializing new swipingPools for matchmaker ${matchmakerUser.id}`
-      );
-      swipingPools[matchmakerUser.id] = {
-        pool: candidateIds,
-        swipedPool: [],
-      };
-    } else {
-      console.log(`Existing pool found for matchmaker ${matchmakerUser.id}`);
-      // Only add new candidates that aren't in the pool or swipedPool
-      const existingPool = new Set(swipingPools[matchmakerUser.id].pool || []);
-      const swipedPool = new Set(
-        swipingPools[matchmakerUser.id].swipedPool || []
-      );
-
-      // Filter out candidates that are already in either pool
-      const newCandidates = candidateIds.filter(
-        (id) => !existingPool.has(id) && !swipedPool.has(id)
-      );
-
-      if (newCandidates.length > 0) {
-        console.log(`Adding ${newCandidates.length} new candidates to pool`);
-        swipingPools[matchmakerUser.id].pool = [
-          ...existingPool,
-          ...newCandidates,
-        ];
-      } else {
-        console.log("No new candidates to add to pool");
-      }
+      swipingPools[matchmakerUser.id] = { pool: [], swipedPool: [] };
     }
 
-    // Update Firestore with the new swipingPools
+    // Get this matchmaker's swiped pool
+    const matchmakerSwipedPool = new Set(
+      swipingPools[matchmakerUser.id].swipedPool || []
+    );
+
+    // Filter out users that this matchmaker has already swiped on
+    const filteredMatches = filteredPotentialMatches.filter(
+      (match) => !matchmakerSwipedPool.has(match.id)
+    );
+
+    // Update this matchmaker's pool with new potential matches
+    swipingPools[matchmakerUser.id].pool = filteredMatches.map(
+      (match) => match.id
+    );
+
+    // Update Firestore with the new swiping pools
     try {
-      await updateDoc(friendRef, { swipingPools });
+      const userRef = doc(db, "users", friendId);
+      await updateDoc(userRef, {
+        swipingPools: swipingPools,
+      });
       console.log(
         `Updated swipingPools for ${friend.name} with ${
           swipingPools[matchmakerUser.id].pool.length
@@ -262,16 +248,14 @@ export const getCandidatesForFriend = async (matchmakerUser, friendId) => {
       console.error(`Error updating swipingPools for ${friend.name}:`, error);
     }
 
-    // Get the candidates from the pool
-    const poolIds = swipingPools[matchmakerUser.id].pool;
-    const poolCandidates = poolIds
-      .map((id) => allUsers.find((u) => u.id === id))
-      .filter((u) => u !== null);
+    // Return the filtered matches as candidate objects
+    const candidates = filteredMatches.map((match) => ({
+      ...match,
+      _swipeStatus: "pending",
+    }));
 
-    console.log(
-      `Returning ${poolCandidates.length} candidates from swipingPools`
-    );
-    return poolCandidates;
+    console.log(`Returning ${candidates.length} candidates for ${friend.name}`);
+    return candidates;
   } catch (error) {
     console.error(`Error getting candidates for friend ${friendId}:`, error);
     return [];
@@ -460,9 +444,6 @@ export const approveCandidateForFriend = async (
           typeof f === "object" ? f.userType !== "Dater" : true
         ).length
       : 0;
-    // const approvedSwipes = Object.values(friend.matches).filter(
-    //   (match) => match.approvalRate > 0
-    // ).length;
 
     let newApprovalRate = 0;
     if (friend.matches[candidateId]) {
@@ -477,17 +458,12 @@ export const approveCandidateForFriend = async (
         newApprovalRate + (totalFriends > 0 ? 1 / totalFriends : 0);
     }
 
-    // Check if candidate already has friend in their matches
-    const candidateHasFriend = candidate.matches[friendId] !== undefined;
-    const matchBack =
-      candidateHasFriend && candidate.matches[friendId].matchBack;
-
     const candidateApprovalRate =
       candidate.matches[friendId]?.approvalRate || 0;
 
-    // Create match ID if conditions are met (50%+ approval AND matchBack == true for both users)
+    // Create match ID if both approval rates are >= 0.5
     let matchId = null;
-    if (matchBack && newApprovalRate >= 0.5 && candidateApprovalRate >= 0.5) {
+    if (newApprovalRate >= 0.5 && candidateApprovalRate >= 0.5) {
       matchId = `${friendId}_${candidateId}_${Date.now()}`;
       if (
         typeof global !== "undefined" &&
@@ -516,14 +492,12 @@ export const approveCandidateForFriend = async (
     // Update friend's matches with candidate
     friend.matches[candidateId] = {
       approvalRate: newApprovalRate,
-      matchBack: matchBack,
       matchId: matchId,
     };
 
     // Update candidate's matches with friend
     candidate.matches[friendId] = {
       approvalRate: candidate.matches[friendId]?.approvalRate || 0,
-      matchBack: true,
       matchId: matchId,
     };
 
@@ -591,7 +565,6 @@ export const rejectCandidateForFriend = async (
     if (!friend.matches[candidateId]) {
       friend.matches[candidateId] = {
         approvalRate: 0,
-        matchBack: false,
         matchId: null,
       };
 
@@ -612,6 +585,96 @@ export const rejectCandidateForFriend = async (
     return true;
   } catch (error) {
     console.error("Error rejecting candidate:", error);
+    return false;
+  }
+};
+
+/**
+ * Handle a swipe for a candidate
+ * @param {Object} currentUser Current user object
+ * @param {string} friendId Friend ID
+ * @param {string} candidateId Candidate ID
+ * @param {boolean} isApproved Whether the swipe is approved
+ * @param {Array} allUsers Array of all users
+ * @returns {Promise<boolean>} Success status
+ */
+export const handleSwipe = async (
+  currentUser,
+  friendId,
+  candidateId,
+  isApproved,
+  allUsers
+) => {
+  try {
+    // Get the friend's user record
+    const friend = await fetchUserById(friendId);
+    if (!friend) {
+      console.error(`Friend ${friendId} not found`);
+      return false;
+    }
+
+    // Get the candidate's user record
+    const candidate = allUsers.find((u) => u.id === candidateId);
+    if (!candidate) {
+      console.error(`Candidate ${candidateId} not found`);
+      return false;
+    }
+
+    console.log(
+      `Handling swipe for ${friend.name} (${friendId}) on ${candidate.name} (${candidateId})`
+    );
+
+    // Initialize or get the matchmaker's swiping pool
+    let swipingPools = friend.swipingPools || {};
+    if (!swipingPools[currentUser.id]) {
+      swipingPools[currentUser.id] = { pool: [], swipedPool: [] };
+    }
+
+    // Get current pools
+    const pool = swipingPools[currentUser.id].pool || [];
+    const swipedPool = swipingPools[currentUser.id].swipedPool || [];
+
+    // Remove the candidate from the pool and add to swiped pool
+    const updatedPool = pool.filter((id) => id !== candidateId);
+    const updatedSwipedPool = [...swipedPool, candidateId];
+
+    // Update the swiping pools for this matchmaker only
+    swipingPools[currentUser.id] = {
+      pool: updatedPool,
+      swipedPool: updatedSwipedPool,
+    };
+
+    // Update Firestore
+    const userRef = doc(db, "users", friendId);
+    await updateDoc(userRef, {
+      swipingPools: swipingPools,
+    });
+
+    console.log(
+      `Updated swipingPools for ${friend.name} with key ${currentUser.id}`
+    );
+    console.log(
+      `Pool size: ${updatedPool.length}, SwipedPool size: ${updatedSwipedPool.length}`
+    );
+
+    // Handle the approval/rejection
+    if (isApproved) {
+      return await approveCandidateForFriend(
+        currentUser,
+        friendId,
+        candidateId,
+        allUsers
+      );
+    } else {
+      return await rejectCandidateForFriend(
+        currentUser,
+        friendId,
+        candidateId,
+        allUsers
+      );
+    }
+  } catch (error) {
+    console.error("Error handling swipe:", error);
     return false;
   }
 };
