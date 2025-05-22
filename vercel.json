@@ -1,0 +1,11 @@
+{
+  "buildCommand": "expo export:web",
+  "outputDirectory": "web-build",
+  "framework": "expo",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+} 

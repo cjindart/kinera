@@ -9,9 +9,19 @@
     "metro-babel-transformer": "^0.82.2",
     "metro-core": "^0.82.2",
     "metro-react-native-babel-transformer": "^0.77.0",
-    "react-native-webview": "^13.13.5"
+    "react-native-webview": "^13.13.5",
+    "react-native-web": "~0.19.6",
+    "react-dom": "18.2.0",
+    "@expo/webpack-config": "^18.0.1",
+    "react": "18.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
   }
 }
