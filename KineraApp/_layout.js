@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { ActivityIndicator, View, StyleSheet } from "react-native";
+import { ActivityIndicator, View, StyleSheet, Text } from "react-native";
 
 import HomeScreen from "./tabs/Home";
 import ProfileScreen from "./tabs/Profile";
@@ -133,22 +133,47 @@ function TabNavigator({ route }) {
   );
 }
 
+// Simple test auth component to debug the white screen issue
+function TestAuthComponent() {
+  console.log("🧪 TestAuthComponent rendering");
+  return (
+    <View style={{ 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center',
+      backgroundColor: '#f0f0f0',
+      padding: 20
+    }}>
+      <Text style={{ fontSize: 24, marginBottom: 10 }}>
+        🔓 Auth Screen Working!
+      </Text>
+      <Text style={{ fontSize: 16, textAlign: 'center' }}>
+        This means the logout transition works.
+        {'\n'}The issue was with AuthNavigator.
+      </Text>
+    </View>
+  );
+}
+
 export default function Layout() {
   const { user, isLoading, isNewUser } = useAuth();
   
   // Determine if user is logged in
   const isLoggedIn = !!user && user.isAuthenticated === true;
   
-  console.log("Layout render - Auth state:", { 
+  console.log("🔄 Layout render - Auth state:", { 
     hasUser: !!user, 
     isAuthenticated: !!user?.isAuthenticated,
     isLoading,
     isNewUser: isNewUser,
-    shouldGoToMain: isLoggedIn && !isNewUser
+    shouldGoToMain: isLoggedIn && !isNewUser,
+    willShowAuth: !isLoggedIn,
+    willShowMain: isLoggedIn
   });
 
   // Show loading screen while checking auth status
   if (isLoading) {
+    console.log("⏳ Layout: Showing loading screen");
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#ED7E31" />
@@ -156,18 +181,24 @@ export default function Layout() {
     );
   }
 
+  console.log(`🏗️ Layout: Rendering NavigationContainer with ${isLoggedIn ? 'Main' : 'Auth'} screen`);
+
   return (
     <NavigationContainer>
       <RootStack.Navigator
-        initialRouteName={isLoggedIn ? (isNewUser ? "Auth" : "Main") : "Auth"}
         screenOptions={{ headerShown: false }}
       >
-        <RootStack.Screen name="Auth" component={AuthNavigator} />
-        <RootStack.Screen 
-          name="Main" 
-          component={TabNavigator}
-          options={{ gestureEnabled: false }} // Prevent swipe back to auth
-        />
+        {isLoggedIn ? (
+          // User is logged in - show main app
+          <RootStack.Screen 
+            name="Main" 
+            component={TabNavigator}
+            options={{ gestureEnabled: false }} // Prevent swipe back to auth
+          />
+        ) : (
+          // User is not logged in - show auth flow
+          <RootStack.Screen name="Auth" component={AuthNavigator} />
+        )}
       </RootStack.Navigator>
     </NavigationContainer>
   );

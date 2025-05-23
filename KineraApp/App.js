@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Linking, Platform } from "react-native";
+import { Linking, Platform, Text, View } from "react-native";
 import Layout from "./_layout";
 import { AuthProvider } from "./context/AuthContext";
 import * as WebBrowser from 'expo-web-browser';
@@ -15,32 +15,25 @@ if (__DEV__ || isDevelopmentMode()) {
 }
 
 export default function App() {
+  console.log('🚀 App component rendering...', { platform: Platform.OS });
+  
   // Initialize web browser sessions for authentication flows
   useEffect(() => {
+    console.log('🌐 Setting up web browser for auth...');
     WebBrowser.maybeCompleteAuthSession();
     
-    // Handle deep links for Firebase authentication
-    const cleanupDeepLinking = setupDeepLinking();
+    // Setup deep linking for auth redirects
+    setupDeepLinking();
     
-    // Get local IP information
-    const localIp = Constants.expoConfig?.extra?.localIp || '10.27.145.110';
-    
-    // Log environment information
-    if (isDevelopmentMode()) {
-      console.log('🛠️ Running in development mode - Firebase Auth simulated');
-    } else {
-      console.log(`🚀 Running in PRODUCTION mode on local IP (${localIp})`);
-      console.log('Using real Firebase services with direct authentication');
-      console.log('Stanford email verification will be simulated for testing');
-    }
-    
-    return () => {
-      // Clean up deep linking
-      if (cleanupDeepLinking) {
-        cleanupDeepLinking();
-      }
-    };
+    // Listen for deep links when app is already open
+    const subscription = Linking.addEventListener('url', (event) => {
+      console.log('🔗 Deep link received while app open:', event.url);
+    });
+
+    return () => subscription?.remove();
   }, []);
+
+  console.log('🏗️ Rendering AuthProvider + Layout...');
 
   return (
     <AuthProvider>

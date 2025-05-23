@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import User from '../models/User';
 import { 
@@ -16,7 +17,6 @@ import {
   checkDuplicateUsers,
   mergeDuplicateUsers 
 } from '../utils/firebaseDebug';
-import { Alert } from 'react-native';
 import Constants from 'expo-constants';
 
 // Create the context
@@ -75,13 +75,38 @@ export function AuthProvider({ children }) {
     const loadUser = async () => {
       try {
         setIsLoading(true);
+        console.log('🔄 AuthContext: Starting user load process...');
+        
+        // On web, prioritize AsyncStorage first since Firebase auth might be problematic
+        if (Platform.OS === 'web') {
+          console.log('📱 Web platform detected - checking AsyncStorage first');
+          const localUser = await User.load();
+          if (localUser && localUser.isAuthenticated) {
+            console.log('✅ Found authenticated user in AsyncStorage:', {
+              id: localUser.id,
+              name: localUser.name,
+              isAuthenticated: localUser.isAuthenticated
+            });
+            safelySetUser(localUser);
+            setIsLoading(false);
+            return;
+          } else {
+            console.log('❌ No authenticated user found in AsyncStorage');
+          }
+        }
         
         // Check if user is authenticated with Firebase
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+          console.log('🔥 Firebase auth state changed:', { 
+            hasFirebaseUser: !!firebaseUser,
+            uid: firebaseUser?.uid 
+          });
+          
           if (firebaseUser) {
             // User is signed in, get user data from Firestore
             const userData = await fetchUserData(firebaseUser.uid);
             if (userData) {
+              console.log('✅ Loaded user from Firestore');
               safelySetUser(userData);
               setIsNewUser(!!userData.newUser);
               
@@ -91,13 +116,19 @@ export function AuthProvider({ children }) {
                 await userData.save();
               }
             }
-          }
-          
-          // Fallback to AsyncStorage if Firebase auth isn't working
-          if (!firebaseUser) {
+          } else {
+            // Fallback to AsyncStorage if Firebase auth isn't working
+            console.log('🔄 No Firebase user - checking AsyncStorage fallback');
             const localUser = await User.load();
             if (localUser && localUser.isAuthenticated) {
+              console.log('✅ Found authenticated user in AsyncStorage fallback:', {
+                id: localUser.id,
+                name: localUser.name,
+                isAuthenticated: localUser.isAuthenticated
+              });
               safelySetUser(localUser);
+            } else {
+              console.log('❌ No authenticated user found in AsyncStorage fallback');
             }
           }
           
@@ -106,16 +137,17 @@ export function AuthProvider({ children }) {
         
         return () => unsubscribe();
       } catch (error) {
-        console.error('Error loading user data:', error);
+        console.error('💥 Error loading user data:', error);
         
         // Fallback to AsyncStorage if there's an error
         try {
           const localUser = await User.load();
           if (localUser && localUser.isAuthenticated) {
+            console.log('✅ Emergency fallback: Found user in AsyncStorage');
             safelySetUser(localUser);
           }
         } catch (innerError) {
-          console.error('Error loading from AsyncStorage:', innerError);
+          console.error('💥 Error loading from AsyncStorage:', innerError);
         }
         
         setIsLoading(false);
