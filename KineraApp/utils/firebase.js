@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, initializeAuth, getReactNativePersistence, connectAuthEmulator } from 'firebase/auth';
+import { getAuth, initializeAuth, getReactNativePersistence, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAnalytics, isSupported } from "firebase/analytics";
@@ -132,10 +132,15 @@ const isLocalhost =
   Constants.expoConfig?.hostUri?.includes('localhost') || 
   Constants.expoConfig?.hostUri?.includes('127.0.0.1');
 
-// Initialize Auth with AsyncStorage persistence
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
+let auth;
+if (Platform.OS === 'web') {
+  auth = getAuth(app);
+  setPersistence(auth, browserLocalPersistence);
+} else {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+}
 
 // Initialize Firestore
 const db = getFirestore(app);
