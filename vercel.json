@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "create-react-app",
   "buildCommand": "npm install --legacy-peer-deps && npx expo export",
-  "outputDirectory": "KineraApp/web-build",
+  "outputDirectory": "dist",
   "installCommand": "npm install --legacy-peer-deps"
 }
