@@ -19,27 +19,37 @@ const getFirebaseConfig = () => {
   // Configuration sources in order of precedence:
   // 1. Expo Constants (populated from app.config.js)
   // 2. Environment variables
-  // 3. Fallback to a development configuration
-  
-  // Hardcoded Firebase config for Vouch app - Replace with your own Firebase project values
-  // const hardcodedConfig = {
-  //   apiKey: "AIzaSyAZQb0O_xtQkI4lwv7jPmkz7jIGhbBGWoM",
-  //   authDomain: "vouch-e7830.firebaseapp.com",
-  //   projectId: "vouch-e7830",
-  //   storageBucket: "vouch-e7830.appspot.com",
-  //   messagingSenderId: "517599462809",
-  //   appId: "1:517599462809:web:cc63f6a61a4ee3bae2a37d"
-  // };
-  
-  return {
-    apiKey: expoConstants.firebaseApiKey || process.env.FIREBASE_API_KEY,
-    authDomain: expoConstants.firebaseAuthDomain || process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: expoConstants.firebaseProjectId || process.env.FIREBASE_PROJECT_ID,
-    storageBucket: expoConstants.firebaseStorageBucket || process.env.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: expoConstants.firebaseMessagingSenderId || process.env.FIREBASE_MESSAGING_SENDER_ID,
-    appId: expoConstants.firebaseAppId || process.env.FIREBASE_APP_ID || hardcodedConfig.appId,
+  // 3. Fallback to prevent crashes
+
+  // Basic fallback to prevent crashes (replace with your actual values)
+  const fallbackConfig = {
+    apiKey: "AIzaSyAZQb0O_xtQkI4lwv7jPmkz7jIGhbBGWoM",
+    authDomain: "vouch-e7830.firebaseapp.com",
+    projectId: "vouch-e7830",
+    storageBucket: "vouch-e7830.appspot.com",
+    messagingSenderId: "517599462809",
+    appId: "1:517599462809:web:cc63f6a61a4ee3bae2a37d"
+  };
+
+  const config = {
+    apiKey: expoConstants.firebaseApiKey || process.env.FIREBASE_API_KEY || fallbackConfig.apiKey,
+    authDomain: expoConstants.firebaseAuthDomain || process.env.FIREBASE_AUTH_DOMAIN || fallbackConfig.authDomain,
+    projectId: expoConstants.firebaseProjectId || process.env.FIREBASE_PROJECT_ID || fallbackConfig.projectId,
+    storageBucket: expoConstants.firebaseStorageBucket || process.env.FIREBASE_STORAGE_BUCKET || fallbackConfig.storageBucket,
+    messagingSenderId: expoConstants.firebaseMessagingSenderId || process.env.FIREBASE_MESSAGING_SENDER_ID || fallbackConfig.messagingSenderId,
+    appId: expoConstants.firebaseAppId || process.env.FIREBASE_APP_ID || fallbackConfig.appId,
     measurementId: expoConstants.firebaseMeasurementId || process.env.FIREBASE_MEASUREMENT_ID || null
   };
+
+  // Log configuration for debugging
+  console.log('🔧 Firebase Config Debug:', {
+    source: expoConstants.firebaseApiKey ? 'expo' : process.env.FIREBASE_API_KEY ? 'env' : 'fallback',
+    hasApiKey: !!config.apiKey && config.apiKey !== 'fallback-api-key',
+    domain: config.authDomain,
+    projectId: config.projectId
+  });
+
+  return config;
 };
 
 // Get the Firebase configuration
@@ -124,7 +134,17 @@ export const logFirebaseOperation = (operation, details, error = null) => {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app, auth, db, storage;
+
+try {
+  console.log('🔥 Initializing Firebase...');
+  app = initializeApp(firebaseConfig);
+  console.log('✅ Firebase app initialized');
+} catch (error) {
+  console.error('❌ Firebase app initialization failed:', error);
+  // Create a mock app object to prevent crashes
+  app = { name: 'fallback-app' };
+}
 
 // Get environment details
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -132,21 +152,42 @@ const isLocalhost =
   Constants.expoConfig?.hostUri?.includes('localhost') || 
   Constants.expoConfig?.hostUri?.includes('127.0.0.1');
 
-let auth;
-if (Platform.OS === 'web') {
-  auth = getAuth(app);
-  setPersistence(auth, browserLocalPersistence);
-} else {
-  auth = initializeAuth(app, {
-    persistence: browserLocalPersistence
-  });
+try {
+  if (Platform.OS === 'web') {
+    auth = getAuth(app);
+    setPersistence(auth, browserLocalPersistence);
+    console.log('✅ Firebase auth initialized for web');
+  } else {
+    auth = initializeAuth(app, {
+      persistence: browserLocalPersistence
+    });
+    console.log('✅ Firebase auth initialized for mobile');
+  }
+} catch (error) {
+  console.error('❌ Firebase auth initialization failed:', error);
+  // Create a mock auth object to prevent crashes
+  auth = { currentUser: null };
 }
 
 // Initialize Firestore
-const db = getFirestore(app);
+try {
+  db = getFirestore(app);
+  console.log('✅ Firestore initialized');
+} catch (error) {
+  console.error('❌ Firestore initialization failed:', error);
+  // Create a mock db object to prevent crashes
+  db = { collection: () => ({ doc: () => ({}) }) };
+}
 
 // Initialize Storage
-const storage = getStorage(app);
+try {
+  storage = getStorage(app);
+  console.log('✅ Firebase storage initialized');
+} catch (error) {
+  console.error('❌ Firebase storage initialization failed:', error);
+  // Create a mock storage object to prevent crashes
+  storage = { ref: () => ({}) };
+}
 
 // Initialize App Check in production mode
 // if (!isDevelopmentMode() && !isExpoGo) {

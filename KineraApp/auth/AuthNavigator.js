@@ -2,18 +2,19 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, Text } from "react-native";
 import SimpleLoginScreen from "./SimpleLoginScreen";
+import DiagnosticScreen from "./DiagnosticScreen";
 import RegistrationScreen from "./RegistrationScreen";
 import OnboardingNavigator from "./onboarding";
 
 const AuthStack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
-  console.log("🚪 AuthNavigator rendering with SimpleLoginScreen...");
+  console.log("🚪 AuthNavigator rendering with DiagnosticScreen for debugging...");
   
   try {
     return (
       <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-        <AuthStack.Screen name="Login" component={SimpleLoginScreen} />
+        <AuthStack.Screen name="Login" component={DiagnosticScreen} />
         <AuthStack.Screen name="Registration" component={RegistrationScreen} />
         <AuthStack.Screen name="Onboarding" component={OnboardingNavigator} />
       </AuthStack.Navigator>
