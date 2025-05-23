@@ -149,31 +149,31 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 // Initialize App Check in production mode
-if (!isDevelopmentMode() && !isExpoGo) {
-  try {
-    // Only initialize App Check in production web environments
-    if (Platform.OS === 'web') {
-      console.log('Initializing Firebase App Check');
-      
-      // Get reCAPTCHA key from environment variables or config
-      const recaptchaKey = Constants.expoConfig?.extra?.firebaseRecaptchaKey || 
-                           process.env.FIREBASE_RECAPTCHA_KEY || 
-                           '';
-      
-      // Replace with your reCAPTCHA site key
-      const appCheck = initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(recaptchaKey),
-        isTokenAutoRefreshEnabled: true
-      });
-      
-      console.log('Firebase App Check initialized successfully');
-    } else {
-      console.log('Skipping App Check for non-web platform');
-    }
-  } catch (error) {
-    console.error('Error initializing App Check:', error);
-  }
-}
+// if (!isDevelopmentMode() && !isExpoGo) {
+//   try {
+//     // Only initialize App Check in production web environments
+//     if (Platform.OS === 'web') {
+//       console.log('Initializing Firebase App Check');
+//       
+//       // Get reCAPTCHA key from environment variables or config
+//       const recaptchaKey = Constants.expoConfig?.extra?.firebaseRecaptchaKey || 
+//                            process.env.FIREBASE_RECAPTCHA_KEY || 
+//                            '';
+//       
+//       // Replace with your reCAPTCHA site key
+//       const appCheck = initializeAppCheck(app, {
+//         provider: new ReCaptchaV3Provider(recaptchaKey),
+//         isTokenAutoRefreshEnabled: true
+//       });
+//       
+//       console.log('Firebase App Check initialized successfully');
+//     } else {
+//       console.log('Skipping App Check for non-web platform');
+//     }
+//   } catch (error) {
+//     console.error('Error initializing App Check:', error);
+//   }
+// }
 
 // Handle authentication based on environment
 if (!isDevelopmentMode()) {
