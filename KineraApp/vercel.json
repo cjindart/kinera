@@ -1,4 +1,11 @@
 {
-    "$schema": "https://openapi.vercel.sh/vercel.json",
-    "framework": "create-react-app"
-}
+  "buildCommand": "expo export:web",
+  "outputDirectory": "web-build",
+  "framework": "expo",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+} 
