@@ -2,13 +2,31 @@ const path = require('path');
 const fs = require('fs');
 const dotenv = require('dotenv');
 
-// Load environment variables from .env
+// Load environment variables from .env and process.env
 function getEnvVars() {
   const envPath = path.resolve(__dirname, '.env');
+  let envVars = {};
+  
+  // First, load from .env file if it exists (local development)
   if (fs.existsSync(envPath)) {
-    return dotenv.parse(fs.readFileSync(envPath));
+    envVars = dotenv.parse(fs.readFileSync(envPath));
   }
-  return {};
+  
+  // Then, override with process.env variables (Vercel deployment)
+  // This ensures Vercel environment variables take precedence
+  return {
+    FIREBASE_API_KEY: process.env.FIREBASE_API_KEY || envVars.FIREBASE_API_KEY,
+    FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN || envVars.FIREBASE_AUTH_DOMAIN,
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || envVars.FIREBASE_PROJECT_ID,
+    FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET || envVars.FIREBASE_STORAGE_BUCKET,
+    FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID || envVars.FIREBASE_MESSAGING_SENDER_ID,
+    FIREBASE_APP_ID: process.env.FIREBASE_APP_ID || envVars.FIREBASE_APP_ID,
+    FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID || envVars.FIREBASE_MEASUREMENT_ID,
+    FIREBASE_RECAPTCHA_KEY: process.env.FIREBASE_RECAPTCHA_KEY || envVars.FIREBASE_RECAPTCHA_KEY,
+    FORCE_DEVELOPMENT_MODE: process.env.FORCE_DEVELOPMENT_MODE || envVars.FORCE_DEVELOPMENT_MODE,
+    HOST_URI: process.env.HOST_URI || envVars.HOST_URI,
+    LOCAL_IP: process.env.LOCAL_IP || envVars.LOCAL_IP
+  };
 }
 
 const envVars = getEnvVars();
