@@ -307,5 +307,5 @@ if (isDevelopmentMode()) {
   console.log('📱 Firebase initialized in PRODUCTION mode. Using real authentication and database services.');
 }
 
-// Export firebaseConfig and isDevelopmentMode for other modules
-export { firebaseConfig, isDevelopmentMode }; 
+// Export firebaseConfig for other modules
+export { firebaseConfig }; 
