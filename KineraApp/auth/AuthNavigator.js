@@ -9,14 +9,15 @@ import OnboardingNavigator from "./onboarding";
 const AuthStack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
-  console.log("🚪 AuthNavigator rendering with DiagnosticScreen for debugging...");
+  console.log("🚪 AuthNavigator rendering with LoginScreen for production...");
   
   try {
     return (
       <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-        <AuthStack.Screen name="Login" component={DiagnosticScreen} />
+        <AuthStack.Screen name="Login" component={LoginScreen} />
         <AuthStack.Screen name="Registration" component={RegistrationScreen} />
         <AuthStack.Screen name="Onboarding" component={OnboardingNavigator} />
+        <AuthStack.Screen name="Diagnostic" component={DiagnosticScreen} />
       </AuthStack.Navigator>
     );
   } catch (error) {
