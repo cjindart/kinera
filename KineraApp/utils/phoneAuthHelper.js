@@ -1,27 +1,9 @@
 import * as React from 'react';
 import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import { auth } from './firebase';
+import { auth, firebaseConfig } from './firebase';
 import { PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
-
-// Get Firebase config from environment or existing firebase.js
-let firebaseConfig;
-try {
-  firebaseConfig = require('./firebase').firebaseConfig;
-} catch (error) {
-  console.warn('Could not import firebaseConfig, using default config');
-  // Fallback configuration if not exported from firebase.js
-  firebaseConfig = {
-    // Add your fallback config here if needed
-    apiKey: process.env.FIREBASE_API_KEY || '',
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN || '',
-    projectId: process.env.FIREBASE_PROJECT_ID || '',
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
-    appId: process.env.FIREBASE_APP_ID || '',
-  };
-}
 
 /**
  * A hook to manage Firebase Phone Authentication in Expo
