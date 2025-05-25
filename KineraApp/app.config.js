@@ -10,7 +10,16 @@ function getEnvVars() {
   // First, load from .env file if it exists (local development)
   if (fs.existsSync(envPath)) {
     envVars = dotenv.parse(fs.readFileSync(envPath));
+    console.log('📁 Loaded .env file from:', envPath);
+  } else {
+    console.log('📁 No .env file found at:', envPath);
   }
+  
+  // Debug: show what environment variables are available
+  console.log('🔧 Environment variables check:');
+  console.log('- FIREBASE_API_KEY:', process.env.FIREBASE_API_KEY ? 'SET' : 'NOT SET');
+  console.log('- FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET');
+  console.log('- FIREBASE_AUTH_DOMAIN:', process.env.FIREBASE_AUTH_DOMAIN ? 'SET' : 'NOT SET');
   
   // Then, override with process.env variables (Vercel deployment)
   // This ensures Vercel environment variables take precedence

@@ -1,8 +1,13 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, initializeAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
-import { getAnalytics, isSupported } from "firebase/analytics";
+import { 
+  getAuth as createAuth, 
+  initializeAuth, 
+  browserLocalPersistence, 
+  setPersistence 
+} from 'firebase/auth';
+import { getFirestore as createFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage as createStorage, connectStorageEmulator } from 'firebase/storage';
+import { getAnalytics as createAnalytics, isSupported } from "firebase/analytics";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isDev } from './devCheck';
@@ -54,6 +59,21 @@ const getFirebaseConfig = () => {
 
 // Get the Firebase configuration
 const firebaseConfig = getFirebaseConfig();
+
+// Add validation for the configuration
+console.log('🔧 Validating Firebase configuration...');
+const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
+
+if (missingFields.length > 0) {
+  console.error('❌ Missing required Firebase configuration fields:', missingFields);
+  console.error('Available configuration:', Object.keys(firebaseConfig).reduce((acc, key) => {
+    acc[key] = firebaseConfig[key] ? 'SET' : 'MISSING';
+    return acc;
+  }, {}));
+} else {
+  console.log('✅ All required Firebase configuration fields are present');
+}
 
 /**
  * IMPORTANT: If you're checking out this code from a public repository,
@@ -133,137 +153,130 @@ export const logFirebaseOperation = (operation, details, error = null) => {
   }
 };
 
-// Initialize Firebase
-let app, auth, db, storage;
+// Initialize Firebase with lazy loading and error handling
+let app, auth, db, storage, analytics;
+let firebaseInitialized = false;
+let initializationError = null;
 
-try {
-  console.log('🔥 Initializing Firebase...');
-  app = initializeApp(firebaseConfig);
-  console.log('✅ Firebase app initialized');
-} catch (error) {
-  console.error('❌ Firebase app initialization failed:', error);
-  // Create a mock app object to prevent crashes
-  app = { name: 'fallback-app' };
-}
+const initializeFirebase = () => {
+  if (firebaseInitialized) {
+    if (initializationError) {
+      throw initializationError;
+    }
+    return { app, auth, db, storage, analytics };
+  }
 
-// Get environment details
-const isExpoGo = Constants.appOwnership === 'expo';
-const isLocalhost = 
-  Constants.expoConfig?.hostUri?.includes('localhost') || 
-  Constants.expoConfig?.hostUri?.includes('127.0.0.1');
-
-try {
-  if (Platform.OS === 'web') {
-    auth = getAuth(app);
-    setPersistence(auth, browserLocalPersistence);
-    console.log('✅ Firebase auth initialized for web');
-  } else {
-    auth = initializeAuth(app, {
-      persistence: browserLocalPersistence
+  try {
+    console.log('🔥 Initializing Firebase...');
+    console.log('Firebase config being used:', {
+      hasApiKey: !!firebaseConfig.apiKey,
+      authDomain: firebaseConfig.authDomain,
+      projectId: firebaseConfig.projectId
     });
-    console.log('✅ Firebase auth initialized for mobile');
-  }
-} catch (error) {
-  console.error('❌ Firebase auth initialization failed:', error);
-  // Create a mock auth object to prevent crashes
-  auth = { currentUser: null };
-}
-
-// Initialize Firestore
-try {
-  db = getFirestore(app);
-  console.log('✅ Firestore initialized');
-} catch (error) {
-  console.error('❌ Firestore initialization failed:', error);
-  // Create a mock db object to prevent crashes
-  db = { collection: () => ({ doc: () => ({}) }) };
-}
-
-// Initialize Storage
-try {
-  storage = getStorage(app);
-  console.log('✅ Firebase storage initialized');
-} catch (error) {
-  console.error('❌ Firebase storage initialization failed:', error);
-  // Create a mock storage object to prevent crashes
-  storage = { ref: () => ({}) };
-}
-
-// Initialize App Check in production mode
-// if (!isDevelopmentMode() && !isExpoGo) {
-//   try {
-//     // Only initialize App Check in production web environments
-//     if (Platform.OS === 'web') {
-//       console.log('Initializing Firebase App Check');
-//       
-//       // Get reCAPTCHA key from environment variables or config
-//       const recaptchaKey = Constants.expoConfig?.extra?.firebaseRecaptchaKey || 
-//                            process.env.FIREBASE_RECAPTCHA_KEY || 
-//                            '';
-//       
-//       // Replace with your reCAPTCHA site key
-//       const appCheck = initializeAppCheck(app, {
-//         provider: new ReCaptchaV3Provider(recaptchaKey),
-//         isTokenAutoRefreshEnabled: true
-//       });
-//       
-//       console.log('Firebase App Check initialized successfully');
-//     } else {
-//       console.log('Skipping App Check for non-web platform');
-//     }
-//   } catch (error) {
-//     console.error('Error initializing App Check:', error);
-//   }
-// }
-
-// Handle authentication based on environment
-if (!isDevelopmentMode()) {
-  console.log('Setting up Firebase for production mode');
-  
-  if (Platform.OS === 'web') {
-    // For web, ensure we're using an authorized domain
-    console.log('Web platform detected. Authorized domains required.');
-    console.log('Current domain:', window.location.hostname);
     
-    const validAuthDomains = [
-      'vouch-e7830.firebaseapp.com',
-      'vouch-e7830.web.app',
-      'localhost',
-      'exp://10.27.145.110:8081',  // Expo domain
-      '10.27.145.110',             // Local IP
-      '10.27.145.110:8081',        // Local IP with port
-      'expo.dev'                   // Expo hosting domain
-    ];
-    
-    if (!validAuthDomains.includes(window.location.hostname)) {
-      console.warn('WARNING: Current domain is not in the list of authorized domains for Firebase Authentication.');
-      console.warn('This may cause authentication issues.');
+    // Validate that we have the required configuration
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') {
+      throw new Error('Firebase API key is missing or invalid. Please check your environment variables.');
     }
-  } else {
-    // For Expo mobile apps
-    console.log('Using local IP for Firebase authentication in production mode');
     
-    // Set the Expo IP as local
-    if (Constants.expoConfig?.hostUri?.includes('10.27.145.110')) {
-      console.log('✅ Using local IP address (10.27.145.110) for production testing');
+    if (!firebaseConfig.projectId) {
+      throw new Error('Firebase project ID is missing. Please check your environment variables.');
+    }
+    
+    app = initializeApp(firebaseConfig);
+    console.log('✅ Firebase app initialized successfully');
+
+    // Get environment details
+    const isExpoGo = Constants.appOwnership === 'expo';
+    const isLocalhost = 
+      Constants.expoConfig?.hostUri?.includes('localhost') || 
+      Constants.expoConfig?.hostUri?.includes('127.0.0.1');
+
+    // Initialize auth
+    if (Platform.OS === 'web') {
+      auth = createAuth(app);
+      setPersistence(auth, browserLocalPersistence);
+      console.log('✅ Firebase auth initialized for web');
     } else {
-      console.log('ℹ️ Current Expo host:', Constants.expoConfig?.hostUri);
+      auth = initializeAuth(app, {
+        persistence: browserLocalPersistence
+      });
+      console.log('✅ Firebase auth initialized for mobile');
     }
+
+    // Initialize Firestore
+    db = createFirestore(app);
+    console.log('✅ Firestore initialized');
+
+    // Initialize Storage
+    storage = createStorage(app);
+    console.log('✅ Firebase storage initialized');
+
+    firebaseInitialized = true;
+    console.log('✅ All Firebase services initialized successfully');
+    
+    return { app, auth, db, storage, analytics };
+  } catch (error) {
+    console.error('❌ Firebase initialization failed:', error);
+    console.error('This will cause Firebase services to fail. Please check your environment variables.');
+    initializationError = error;
+    firebaseInitialized = true; // Mark as attempted so we don't retry
+    throw error;
   }
-} else {
-  console.log('Development mode active - using simulated Firebase services.');
-}
+};
+
+// Lazy getters for Firebase services
+const getFirebaseServices = () => {
+  try {
+    return initializeFirebase();
+  } catch (error) {
+    // In development or when Firebase fails, provide mock services
+    console.warn('⚠️ Firebase initialization failed, providing mock services for development');
+    return {
+      app: null,
+      auth: null,
+      db: null,
+      storage: null,
+      analytics: null
+    };
+  }
+};
+
+// Export services with lazy initialization
+export const getApp = () => getFirebaseServices().app;
+export const getAuth = () => getFirebaseServices().auth;
+export const getDb = () => getFirebaseServices().db;
+export const getStorage = () => getFirebaseServices().storage;
+export const getAnalytics = () => getFirebaseServices().analytics;
+
+// Legacy exports for backward compatibility - these will initialize Firebase on first access
+Object.defineProperty(exports, 'app', {
+  get: () => getFirebaseServices().app
+});
+
+Object.defineProperty(exports, 'auth', {
+  get: () => getFirebaseServices().auth
+});
+
+Object.defineProperty(exports, 'db', {
+  get: () => getFirebaseServices().db
+});
+
+Object.defineProperty(exports, 'storage', {
+  get: () => getFirebaseServices().storage
+});
+
+Object.defineProperty(exports, 'analytics', {
+  get: () => getFirebaseServices().analytics
+});
 
 // Initialize Analytics (if supported in this environment)
-let analytics = null;
-
-// Only attempt to initialize analytics in production environments
 const initializeAnalytics = async () => {
   if (!isDevelopmentMode() && typeof window !== 'undefined' && !global.expo) {
     try {
       const analyticsSupported = await isSupported();
-      if (analyticsSupported) {
-        analytics = getAnalytics(app);
+      if (analyticsSupported && app) {
+        analytics = createAnalytics(app);
         console.log('Firebase Analytics initialized successfully');
       } else {
         console.log('Firebase Analytics is not supported in this environment');
@@ -276,10 +289,16 @@ const initializeAnalytics = async () => {
   }
 };
 
-// Initialize analytics
-initializeAnalytics().catch(error => {
-  console.log('Failed to initialize analytics:', error);
-});
+// Initialize analytics if Firebase is available
+try {
+  if (app) {
+    initializeAnalytics().catch(error => {
+      console.log('Failed to initialize analytics:', error);
+    });
+  }
+} catch (error) {
+  console.log('Analytics initialization skipped:', error.message);
+}
 
 // Show warning if using development mode
 if (isDevelopmentMode()) {
@@ -288,4 +307,5 @@ if (isDevelopmentMode()) {
   console.log('📱 Firebase initialized in PRODUCTION mode. Using real authentication and database services.');
 }
 
-export { app, auth, db, storage, analytics, firebaseConfig }; 
+// Export firebaseConfig and isDevelopmentMode for other modules
+export { firebaseConfig, isDevelopmentMode }; 
