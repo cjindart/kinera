@@ -154,7 +154,7 @@ export const logFirebaseOperation = (operation, details, error = null) => {
 };
 
 // Initialize Firebase with lazy loading and error handling
-let app, auth, db, storage, analytics;
+let firebaseApp, firebaseAuth, firebaseDb, firebaseStorage, firebaseAnalytics;
 let firebaseInitialized = false;
 let initializationError = null;
 
@@ -163,7 +163,7 @@ const initializeFirebase = () => {
     if (initializationError) {
       throw initializationError;
     }
-    return { app, auth, db, storage, analytics };
+    return { app: firebaseApp, auth: firebaseAuth, db: firebaseDb, storage: firebaseStorage, analytics: firebaseAnalytics };
   }
 
   try {
@@ -183,7 +183,7 @@ const initializeFirebase = () => {
       throw new Error('Firebase project ID is missing. Please check your environment variables.');
     }
     
-    app = initializeApp(firebaseConfig);
+    firebaseApp = initializeApp(firebaseConfig);
     console.log('✅ Firebase app initialized successfully');
 
     // Get environment details
@@ -194,28 +194,28 @@ const initializeFirebase = () => {
 
     // Initialize auth
     if (Platform.OS === 'web') {
-      auth = createAuth(app);
-      setPersistence(auth, browserLocalPersistence);
+      firebaseAuth = createAuth(firebaseApp);
+      setPersistence(firebaseAuth, browserLocalPersistence);
       console.log('✅ Firebase auth initialized for web');
     } else {
-      auth = initializeAuth(app, {
+      firebaseAuth = initializeAuth(firebaseApp, {
         persistence: browserLocalPersistence
       });
       console.log('✅ Firebase auth initialized for mobile');
     }
 
     // Initialize Firestore
-    db = createFirestore(app);
+    firebaseDb = createFirestore(firebaseApp);
     console.log('✅ Firestore initialized');
 
     // Initialize Storage
-    storage = createStorage(app);
+    firebaseStorage = createStorage(firebaseApp);
     console.log('✅ Firebase storage initialized');
 
     firebaseInitialized = true;
     console.log('✅ All Firebase services initialized successfully');
     
-    return { app, auth, db, storage, analytics };
+    return { app: firebaseApp, auth: firebaseAuth, db: firebaseDb, storage: firebaseStorage, analytics: firebaseAnalytics };
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error);
     console.error('This will cause Firebase services to fail. Please check your environment variables.');
@@ -242,41 +242,64 @@ const getFirebaseServices = () => {
   }
 };
 
-// Export services with lazy initialization
-export const getApp = () => getFirebaseServices().app;
-export const getAuth = () => getFirebaseServices().auth;
-export const getDb = () => getFirebaseServices().db;
-export const getStorage = () => getFirebaseServices().storage;
-export const getAnalytics = () => getFirebaseServices().analytics;
+// Direct exports that initialize Firebase on first access
+let _app, _auth, _db, _storage, _analytics;
 
-// Legacy exports for backward compatibility - these will initialize Firebase on first access
-Object.defineProperty(exports, 'app', {
-  get: () => getFirebaseServices().app
-});
+// Initialize services on first access
+const getOrInitializeApp = () => {
+  if (_app === undefined) {
+    const services = getFirebaseServices();
+    _app = services.app;
+  }
+  return _app;
+};
 
-Object.defineProperty(exports, 'auth', {
-  get: () => getFirebaseServices().auth
-});
+const getOrInitializeAuth = () => {
+  if (_auth === undefined) {
+    const services = getFirebaseServices();
+    _auth = services.auth;
+  }
+  return _auth;
+};
 
-Object.defineProperty(exports, 'db', {
-  get: () => getFirebaseServices().db
-});
+const getOrInitializeDb = () => {
+  if (_db === undefined) {
+    const services = getFirebaseServices();
+    _db = services.db;
+  }
+  return _db;
+};
 
-Object.defineProperty(exports, 'storage', {
-  get: () => getFirebaseServices().storage
-});
+const getOrInitializeStorage = () => {
+  if (_storage === undefined) {
+    const services = getFirebaseServices();
+    _storage = services.storage;
+  }
+  return _storage;
+};
 
-Object.defineProperty(exports, 'analytics', {
-  get: () => getFirebaseServices().analytics
-});
+const getOrInitializeAnalytics = () => {
+  if (_analytics === undefined) {
+    const services = getFirebaseServices();
+    _analytics = services.analytics;
+  }
+  return _analytics;
+};
+
+// Export the services directly - these will trigger initialization on first import
+export const app = getOrInitializeApp();
+export const auth = getOrInitializeAuth();
+export const db = getOrInitializeDb();
+export const storage = getOrInitializeStorage();
+export const analytics = getOrInitializeAnalytics();
 
 // Initialize Analytics (if supported in this environment)
 const initializeAnalytics = async () => {
   if (!isDevelopmentMode() && typeof window !== 'undefined' && !global.expo) {
     try {
       const analyticsSupported = await isSupported();
-      if (analyticsSupported && app) {
-        analytics = createAnalytics(app);
+      if (analyticsSupported && firebaseApp) {
+        firebaseAnalytics = createAnalytics(firebaseApp);
         console.log('Firebase Analytics initialized successfully');
       } else {
         console.log('Firebase Analytics is not supported in this environment');
@@ -291,7 +314,7 @@ const initializeAnalytics = async () => {
 
 // Initialize analytics if Firebase is available
 try {
-  if (app) {
+  if (firebaseApp) {
     initializeAnalytics().catch(error => {
       console.log('Failed to initialize analytics:', error);
     });
