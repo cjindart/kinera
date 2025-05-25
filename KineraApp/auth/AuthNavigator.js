@@ -1,7 +1,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, Text } from "react-native";
-import SimpleLoginScreen from "./SimpleLoginScreen";
+import LoginScreen from "./LoginScreen";
 import DiagnosticScreen from "./DiagnosticScreen";
 import RegistrationScreen from "./RegistrationScreen";
 import OnboardingNavigator from "./onboarding";
