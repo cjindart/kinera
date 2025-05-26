@@ -56,37 +56,64 @@ let firebaseAuth = null;
 let firebaseDb = null;
 let firebaseStorage = null;
 
-// Initialize Firebase only when needed
+// Initialize Firebase immediately at module load to prevent "no-app" errors
+try {
+  console.log('🔥 Initializing Firebase at module load...');
+  
+  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    firebaseApp = initializeApp(firebaseConfig);
+    console.log('✅ Firebase app initialized at module load');
+  } else {
+    console.warn('⚠️ Firebase config incomplete, delaying initialization');
+  }
+} catch (error) {
+  console.warn('⚠️ Failed to initialize Firebase at module load:', error.message);
+  // Don't throw - we'll try again later
+}
+
+// Initialize Firebase services when needed
 export const initializeFirebaseIfNeeded = () => {
-  if (firebaseApp) {
+  if (firebaseApp && firebaseAuth && firebaseDb && firebaseStorage) {
     return { app: firebaseApp, auth: firebaseAuth, db: firebaseDb, storage: firebaseStorage };
   }
 
   try {
-    console.log('🔥 Initializing Firebase...');
-    
-    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-      throw new Error('Firebase configuration is incomplete');
+    // Initialize app if not already done
+    if (!firebaseApp) {
+      console.log('🔥 Initializing Firebase app...');
+      
+      if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+        throw new Error('Firebase configuration is incomplete');
+      }
+      
+      firebaseApp = initializeApp(firebaseConfig);
+      console.log('✅ Firebase app initialized');
     }
-    
-    firebaseApp = initializeApp(firebaseConfig);
-    console.log('✅ Firebase app initialized');
 
-    if (Platform.OS === 'web') {
-      firebaseAuth = getAuth(firebaseApp);
-      setPersistence(firebaseAuth, browserLocalPersistence);
-    } else {
-      firebaseAuth = initializeAuth(firebaseApp, {
-        persistence: browserLocalPersistence
-      });
+    // Initialize auth if not already done
+    if (!firebaseAuth) {
+      if (Platform.OS === 'web') {
+        firebaseAuth = getAuth(firebaseApp);
+        setPersistence(firebaseAuth, browserLocalPersistence);
+      } else {
+        firebaseAuth = initializeAuth(firebaseApp, {
+          persistence: browserLocalPersistence
+        });
+      }
+      console.log('✅ Firebase auth initialized');
     }
-    console.log('✅ Firebase auth initialized');
 
-    firebaseDb = getFirestore(firebaseApp);
-    console.log('✅ Firestore initialized');
+    // Initialize db if not already done
+    if (!firebaseDb) {
+      firebaseDb = getFirestore(firebaseApp);
+      console.log('✅ Firestore initialized');
+    }
 
-    firebaseStorage = getStorage(firebaseApp);
-    console.log('✅ Firebase storage initialized');
+    // Initialize storage if not already done
+    if (!firebaseStorage) {
+      firebaseStorage = getStorage(firebaseApp);
+      console.log('✅ Firebase storage initialized');
+    }
 
     console.log('✅ Firebase initialization complete');
     
