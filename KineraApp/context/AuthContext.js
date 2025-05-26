@@ -2,13 +2,6 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import User from '../models/User';
-import { 
-  signInWithPhoneNumber, 
-  PhoneAuthProvider, 
-  signOut,
-  signInWithCredential 
-} from 'firebase/auth';
-import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db, isDevelopmentMode } from '../utils/firebase';
 import { findUserByPhone, migrateUserData } from '../utils/firestoreSetup';
 import { 
@@ -171,6 +164,9 @@ export function AuthProvider({ children }) {
       }
       
       console.log(`Attempting to fetch user data from Firestore for ID: ${userId}`);
+      
+      // Get Firebase firestore functions dynamically
+      const { doc, getDoc } = require('firebase/firestore');
       
       // Try to get user from Firestore
       const userDoc = await getDoc(doc(db, 'users', userId));
@@ -394,11 +390,8 @@ export function AuthProvider({ children }) {
           throw new Error('Firebase auth not initialized');
         }
         
-        // Check if auth has signInWithPhoneNumber method
-        if (!auth.signInWithPhoneNumber) {
-          console.error('Firebase auth.signInWithPhoneNumber method not available');
-          throw new Error('Phone authentication not available');
-        }
+        // Get Firebase auth function dynamically
+        const { signInWithPhoneNumber } = require('firebase/auth');
         
         // Send verification code using Firebase
         const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone);
@@ -603,9 +596,12 @@ export function AuthProvider({ children }) {
       try {
         console.log('Creating phone credential with verification ID:', effectiveVerificationId);
         
-        // Make sure auth and PhoneAuthProvider are available
-        if (!auth || !PhoneAuthProvider) {
-          throw new Error('Firebase auth or PhoneAuthProvider not initialized');
+        // Get Firebase auth functions dynamically
+        const { PhoneAuthProvider, signInWithCredential } = require('firebase/auth');
+        
+        // Make sure auth is available
+        if (!auth) {
+          throw new Error('Firebase auth not initialized');
         }
         
         // Create credential
@@ -907,9 +903,11 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       // Sign out from Firebase if not in development mode
-      if (!isDevelopmentMode() && auth.currentUser) {
+      if (!isDevelopmentMode()) {
+        // Get Firebase auth function dynamically
+        const { signOut } = require('firebase/auth');
         await signOut(auth);
-      } else if (isDevelopmentMode()) {
+      } else {
         console.log('Development mode: Skipping Firebase signOut');
       }
       

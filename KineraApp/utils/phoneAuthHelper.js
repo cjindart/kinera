@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import { PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 
@@ -30,18 +29,21 @@ export function usePhoneAuth() {
       await AsyncStorage.setItem('originalPhoneNumber', phoneNumber);
       console.log('Saved original phone number to storage:', phoneNumber);
 
-      // Get Firebase auth dynamically to avoid immediate initialization
-      let auth;
+      // Get Firebase auth and PhoneAuthProvider dynamically to avoid immediate initialization
+      let auth, PhoneAuthProvider;
       try {
         const { auth: firebaseAuth } = require('./firebase');
+        const { PhoneAuthProvider: FirebasePhoneAuthProvider } = require('firebase/auth');
         auth = firebaseAuth;
+        PhoneAuthProvider = FirebasePhoneAuthProvider;
       } catch (error) {
         console.warn('Failed to get Firebase auth, falling back to test mode:', error);
         auth = null;
+        PhoneAuthProvider = null;
       }
 
       // Check if Firebase is initialized
-      if (!auth) {
+      if (!auth || !PhoneAuthProvider) {
         console.log('Firebase Auth not available, using test mode');
         const mockVerificationId = `fallback_${Date.now()}`;
         setVerificationId(mockVerificationId);
@@ -173,11 +175,14 @@ export function usePhoneAuth() {
       }
 
       // Regular Firebase verification
-      // Get Firebase auth dynamically
-      let auth;
+      // Get Firebase auth and functions dynamically
+      let auth, PhoneAuthProvider, signInWithCredential;
       try {
         const { auth: firebaseAuth } = require('./firebase');
+        const { PhoneAuthProvider: FirebasePhoneAuthProvider, signInWithCredential: FirebaseSignInWithCredential } = require('firebase/auth');
         auth = firebaseAuth;
+        PhoneAuthProvider = FirebasePhoneAuthProvider;
+        signInWithCredential = FirebaseSignInWithCredential;
       } catch (error) {
         console.warn('Failed to get Firebase auth during verification:', error);
         throw new Error('Firebase Auth not available');
