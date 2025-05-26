@@ -126,40 +126,54 @@ export const getFirebaseStorage = () => {
   return firebaseStorage;
 };
 
-// Backward compatible exports using getters - these will NOT trigger initialization on import
-let _authExport, _appExport, _dbExport, _storageExport;
+// Create lazy proxy objects that initialize Firebase only when properties are accessed
+let _auth, _app, _db, _storage;
 
-Object.defineProperty(exports, 'auth', {
-  get() {
-    if (!_authExport) _authExport = getFirebaseAuth();
-    return _authExport;
+// Export proxy objects that initialize on first property access
+export const auth = new Proxy({}, {
+  get(target, prop) {
+    if (!_auth) _auth = getFirebaseAuth();
+    return _auth[prop];
   },
-  enumerable: true
+  set(target, prop, value) {
+    if (!_auth) _auth = getFirebaseAuth();
+    _auth[prop] = value;
+    return true;
+  }
 });
 
-Object.defineProperty(exports, 'app', {
-  get() {
-    if (!_appExport) _appExport = getFirebaseApp();
-    return _appExport;
+export const app = new Proxy({}, {
+  get(target, prop) {
+    if (!_app) _app = getFirebaseApp();
+    return _app[prop];
   },
-  enumerable: true
+  set(target, prop, value) {
+    if (!_app) _app = getFirebaseApp();
+    _app[prop] = value;
+    return true;
+  }
 });
 
-Object.defineProperty(exports, 'db', {
-  get() {
-    if (!_dbExport) _dbExport = getFirebaseDb();
-    return _dbExport;
+export const db = new Proxy({}, {
+  get(target, prop) {
+    if (!_db) _db = getFirebaseDb();
+    return _db[prop];
   },
-  enumerable: true
+  set(target, prop, value) {
+    if (!_db) _db = getFirebaseDb();
+    _db[prop] = value;
+    return true;
+  }
 });
 
-Object.defineProperty(exports, 'storage', {
-  get() {
-    if (!_storageExport) _storageExport = getFirebaseStorage();
-    return _storageExport;
+export const storage = new Proxy({}, {
+  get(target, prop) {
+    if (!_storage) _storage = getFirebaseStorage();
+    return _storage[prop];
   },
-  enumerable: true
-});
-
-// Direct function exports
-export { getFirebaseAuth, getFirebaseApp, getFirebaseDb, getFirebaseStorage, initializeFirebaseIfNeeded }; 
+  set(target, prop, value) {
+    if (!_storage) _storage = getFirebaseStorage();
+    _storage[prop] = value;
+    return true;
+  }
+}); 
