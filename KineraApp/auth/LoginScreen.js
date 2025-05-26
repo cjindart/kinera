@@ -439,7 +439,7 @@ export default function LoginScreen({ navigation }) {
     <ImageBackground source={SUNSET_BG} style={styles.backgroundImage}>
       <SafeAreaView style={styles.container}>
         {/* Invisible reCAPTCHA component needed for Firebase Phone Auth */}
-        {/* <RecaptchaVerifier recaptchaVerifier={recaptchaVerifier} /> */}
+        <RecaptchaVerifier recaptchaVerifier={recaptchaVerifier} />
 
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
