@@ -1,7 +1,8 @@
-import * as React from 'react';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import * as React from "react";
+import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Alert, Platform } from "react-native";
+import { RecaptchaVerifier as WebRecaptchaVerifier } from "firebase/auth";
 
 /**
  * A hook to manage Firebase Phone Authentication in Expo
@@ -12,6 +13,27 @@ export function usePhoneAuth() {
   const [verificationId, setVerificationId] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
+
+  // Initialize reCAPTCHA verifier for web
+  React.useEffect(() => {
+    if (Platform.OS === "web" && !recaptchaVerifier.current) {
+      try {
+        const { auth } = require("./firebase");
+        recaptchaVerifier.current = new WebRecaptchaVerifier(
+          auth,
+          "recaptcha-container",
+          {
+            size: "invisible",
+            callback: () => {
+              console.log("reCAPTCHA verified");
+            },
+          }
+        );
+      } catch (error) {
+        console.error("Failed to initialize web reCAPTCHA:", error);
+      }
+    }
+  }, []);
 
   /**
    * Send verification code to phone number
@@ -24,86 +46,92 @@ export function usePhoneAuth() {
       setError(null);
 
       console.log(`Sending verification code to: ${phoneNumber}`);
-      
+
       // Store the original phone number for later use
-      await AsyncStorage.setItem('originalPhoneNumber', phoneNumber);
-      console.log('Saved original phone number to storage:', phoneNumber);
+      await AsyncStorage.setItem("originalPhoneNumber", phoneNumber);
+      console.log("Saved original phone number to storage:", phoneNumber);
 
       // Get Firebase auth and PhoneAuthProvider dynamically to avoid immediate initialization
       let auth, PhoneAuthProvider;
       try {
-        const { auth: firebaseAuth } = require('./firebase');
-        const { PhoneAuthProvider: FirebasePhoneAuthProvider } = require('firebase/auth');
+        const { auth: firebaseAuth } = require("./firebase");
+        const {
+          PhoneAuthProvider: FirebasePhoneAuthProvider,
+        } = require("firebase/auth");
         auth = firebaseAuth;
         PhoneAuthProvider = FirebasePhoneAuthProvider;
       } catch (error) {
-        console.warn('Failed to get Firebase auth, falling back to test mode:', error);
+        console.warn(
+          "Failed to get Firebase auth, falling back to test mode:",
+          error
+        );
         auth = null;
         PhoneAuthProvider = null;
       }
 
       // Check if Firebase is initialized
       if (!auth || !PhoneAuthProvider) {
-        console.log('Firebase Auth not available, using test mode');
+        console.log("Firebase Auth not available, using test mode");
         const mockVerificationId = `fallback_${Date.now()}`;
         setVerificationId(mockVerificationId);
         setLoading(false);
-        Alert.alert('Test Mode', 'Firebase not configured. Use code: 123456');
+        Alert.alert("Test Mode", "Firebase not configured. Use code: 123456");
         return true;
       }
 
       // Add test phone number support
-      const testPhoneNumbers = ['+15555555555'];
-      const originalPhoneNumber = phoneNumber;
-      const testPhoneNumber = originalPhoneNumber || '+15555555555';
-      if (testPhoneNumbers.includes(testPhoneNumber)) {
-        console.log('Test phone number detected, using simulated code');
+      const testPhoneNumbers = ["+15555555555"];
+      if (testPhoneNumbers.includes(phoneNumber)) {
+        console.log("Test phone number detected, using simulated code");
         // For testing purposes, use a fake verification ID
         const mockVerificationId = `test_${Date.now()}`;
         setVerificationId(mockVerificationId);
         setLoading(false);
-        
+
         // Show test message
-        Alert.alert('Test Mode', 'For testing, use code: 123456');
+        Alert.alert("Test Mode", "For testing, use code: 123456");
         return true;
       }
 
       // Check if recaptcha verifier is available
       if (!recaptchaVerifier.current) {
-        throw new Error('reCAPTCHA verifier is not initialized');
+        throw new Error("reCAPTCHA verifier is not initialized");
       }
 
       // Get captcha from verifier
       const captchaVerifier = recaptchaVerifier.current;
-      
+
       // Send verification code
       const provider = new PhoneAuthProvider(auth);
       const verificationId = await provider.verifyPhoneNumber(
-        testPhoneNumber,
+        phoneNumber,
         captchaVerifier
       );
 
-      console.log('Verification code sent successfully');
+      console.log("Verification code sent successfully");
       setVerificationId(verificationId);
       setLoading(false);
       return true;
     } catch (error) {
-      console.error('Error sending verification code:', error);
-      setError(error.message || 'Failed to send verification code');
-      
+      console.error("Error sending verification code:", error);
+      setError(error.message || "Failed to send verification code");
+
       // Fall back to test verification if Firebase fails
-      console.log('Falling back to test verification due to error');
+      console.log("Falling back to test verification due to error");
       const mockVerificationId = `fallback_${Date.now()}`;
       setVerificationId(mockVerificationId);
       setLoading(false);
-      
+
       // Log that we're preserving the original phone number
-      console.log('Preserving original phone number for fallback:', phoneNumber);
-      
+      console.log(
+        "Preserving original phone number for fallback:",
+        phoneNumber
+      );
+
       // Show fallback message
       Alert.alert(
-        'Verification Mode', 
-        'Using test verification due to Firebase configuration. Use code: 123456'
+        "Verification Mode",
+        "Using test verification due to Firebase configuration. Use code: 123456"
       );
       return true;
     }
@@ -119,58 +147,69 @@ export function usePhoneAuth() {
       setLoading(true);
       setError(null);
 
-      console.log('Confirming verification code...');
+      console.log("Confirming verification code...");
 
       if (!verificationId) {
-        throw new Error('No verification ID found. Please request a new code.');
+        throw new Error("No verification ID found. Please request a new code.");
       }
 
       // Handle test verification IDs
-      if (verificationId.startsWith('test_') || verificationId.startsWith('fallback_')) {
-        console.log('Using test verification mode');
-        
+      if (
+        verificationId.startsWith("test_") ||
+        verificationId.startsWith("fallback_")
+      ) {
+        console.log("Using test verification mode");
+
         // For test verification, only accept 123456
-        if (verificationCode === '123456') {
-          console.log('Test verification successful');
-          
+        if (verificationCode === "123456") {
+          console.log("Test verification successful");
+
           // Get the original phone number from AsyncStorage if available
           let originalPhoneNumber = null;
           try {
-            originalPhoneNumber = await AsyncStorage.getItem('originalPhoneNumber');
-            console.log('Retrieved original phone number from storage:', originalPhoneNumber);
+            originalPhoneNumber = await AsyncStorage.getItem(
+              "originalPhoneNumber"
+            );
+            console.log(
+              "Retrieved original phone number from storage:",
+              originalPhoneNumber
+            );
           } catch (err) {
-            console.warn('Failed to get original phone number from storage:', err);
+            console.warn(
+              "Failed to get original phone number from storage:",
+              err
+            );
           }
-          
+
           // Create a mock user result, using the original phone number if available
-          const userPhoneNumber = originalPhoneNumber || '+15555555555';
-          console.log('Using phone number for test user:', userPhoneNumber);
-          
-          const mockUser = { 
+          const userPhoneNumber = originalPhoneNumber || "+15555555555";
+          console.log("Using phone number for test user:", userPhoneNumber);
+
+          const mockUser = {
             uid: `test_${Date.now()}`,
             phoneNumber: userPhoneNumber,
-            metadata: { 
+            metadata: {
               creationTime: new Date().toISOString(),
-              lastSignInTime: new Date().toISOString() 
-            }
+              lastSignInTime: new Date().toISOString(),
+            },
           };
-          
+
           // Store test user as new user
-          await AsyncStorage.setItem('isNewUser', 'true');
-          
-          console.log('Simulated phone verification successful');
+          await AsyncStorage.setItem("isNewUser", "true");
+
+          console.log("Simulated phone verification successful");
           setLoading(false);
-          
+
           // Return simulated success
           return {
             success: true,
             user: mockUser,
             isNewUser: true,
-            phoneNumber: userPhoneNumber
+            phoneNumber: userPhoneNumber,
           };
         } else {
           setLoading(false);
-          throw new Error('Invalid test verification code. Please use 123456.');
+          throw new Error("Invalid test verification code. Please use 123456.");
         }
       }
 
@@ -178,14 +217,17 @@ export function usePhoneAuth() {
       // Get Firebase auth and functions dynamically
       let auth, PhoneAuthProvider, signInWithCredential;
       try {
-        const { auth: firebaseAuth } = require('./firebase');
-        const { PhoneAuthProvider: FirebasePhoneAuthProvider, signInWithCredential: FirebaseSignInWithCredential } = require('firebase/auth');
+        const { auth: firebaseAuth } = require("./firebase");
+        const {
+          PhoneAuthProvider: FirebasePhoneAuthProvider,
+          signInWithCredential: FirebaseSignInWithCredential,
+        } = require("firebase/auth");
         auth = firebaseAuth;
         PhoneAuthProvider = FirebasePhoneAuthProvider;
         signInWithCredential = FirebaseSignInWithCredential;
       } catch (error) {
-        console.warn('Failed to get Firebase auth during verification:', error);
-        throw new Error('Firebase Auth not available');
+        console.warn("Failed to get Firebase auth during verification:", error);
+        throw new Error("Firebase Auth not available");
       }
 
       // Create credential
@@ -196,21 +238,21 @@ export function usePhoneAuth() {
 
       // Sign in with credential
       const result = await signInWithCredential(auth, credential);
-      
+
       // Get user from result
       const user = result.user;
       const isNewUser = result._tokenResponse?.isNewUser;
 
       // Store isNewUser in AsyncStorage for consistent app behavior
       if (isNewUser) {
-        await AsyncStorage.setItem('isNewUser', 'true');
+        await AsyncStorage.setItem("isNewUser", "true");
       } else {
-        await AsyncStorage.setItem('isNewUser', 'false');
+        await AsyncStorage.setItem("isNewUser", "false");
       }
-      
-      console.log('Phone verification successful, isNewUser:', isNewUser);
+
+      console.log("Phone verification successful, isNewUser:", isNewUser);
       setLoading(false);
-      
+
       // Return auth result
       return {
         success: true,
@@ -219,8 +261,8 @@ export function usePhoneAuth() {
         phoneNumber: user.phoneNumber,
       };
     } catch (error) {
-      console.error('Error confirming verification code:', error);
-      setError(error.message || 'Failed to confirm verification code');
+      console.error("Error confirming verification code:", error);
+      setError(error.message || "Failed to confirm verification code");
       setLoading(false);
       return { success: false, error: error.message };
     }
@@ -248,34 +290,16 @@ export function usePhoneAuth() {
 /**
  * Recaptcha component for Firebase Phone Auth
  * @param {Object} props Component props
- * @returns {React.Component} Recaptcha component
  */
 export function RecaptchaVerifier({ recaptchaVerifier }) {
-  // Get Firebase config only when component is rendered
-  const getFirebaseConfig = () => {
-    try {
-      // Dynamic import to avoid immediate Firebase initialization
-      const { firebaseConfig: config } = require('./firebase');
-      return config;
-    } catch (error) {
-      console.warn('Failed to get Firebase config, using fallback:', error);
-      // Return a minimal fallback config
-      return {
-        apiKey: "AIzaSyAZQb0O_xtQkI4lwv7jPmkz7jIGhbBGWoM",
-        authDomain: "vouch-e7830.firebaseapp.com",
-        projectId: "vouch-e7830",
-        storageBucket: "vouch-e7830.appspot.com",
-        messagingSenderId: "517599462809",
-        appId: "1:517599462809:web:cc63f6a61a4ee3bae2a37d"
-      };
-    }
-  };
+  if (Platform.OS === "web") {
+    return <div id="recaptcha-container" style={{ display: "none" }} />;
+  }
 
   return (
     <FirebaseRecaptchaVerifierModal
       ref={recaptchaVerifier}
       firebaseConfig={getFirebaseConfig()}
-      attemptInvisibleVerification={true}
     />
   );
-} 
+}
