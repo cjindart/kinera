@@ -46,11 +46,12 @@ export default function LoginScreen({ navigation }) {
 
   // Use the phoneAuth hook for Firebase Phone Authentication
   const {
-    recaptchaVerifier,
+    recaptchaVerifierRef,
     loading,
     error,
     sendVerificationCode,
     confirmVerificationCode,
+    handleTokenReceived,
   } = usePhoneAuth();
 
   // Display any errors from phone authentication
@@ -88,41 +89,42 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      // Format the phone number for Firebase (E.164 format)
       const formattedPhone = `+1${phoneNumber.replace(/\D/g, "")}`;
+      
+      // sendVerificationCode now attempts reCAPTCHA and returns a result object
+      const result = await sendVerificationCode(formattedPhone);
 
-      // Send verification code
-      const success = await sendVerificationCode(formattedPhone);
-
-      if (success) {
-        setIsVerifying(true);
+      if (result && result.success) {
+        console.log("LoginScreen: reCAPTCHA success, result from sendVerificationCode:", result);
+        // No longer need to set isVerifying to true to show code input.
+        // Directly use the result to proceed with login/signup logic.
+        await processAuthResult(result); 
+      } else {
+        // Error handling if sendVerificationCode (reCAPTCHA) itself failed
+        console.error("LoginScreen: sendVerificationCode (reCAPTCHA) failed or returned no success:", result);
+        Alert.alert("Verification Failed", result?.error || "Could not verify. Please try again.");
       }
     } catch (error) {
-      console.error("Error sending verification code:", error);
+      console.error("Error during sendVerificationCode call in LoginScreen:", error);
       Alert.alert(
         "Error",
-        "Failed to send verification code. Please try again."
+        "An unexpected error occurred during verification. Please try again."
       );
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (!verificationCode || verificationCode.length < 6) {
-      Alert.alert(
-        "Invalid Code",
-        "Please enter the 6-digit verification code."
-      );
-      return;
-    }
+  // This new function will contain the logic previously in handleVerifyCode
+  // It's called with the result from a successful sendVerificationCode (post-reCAPTCHA)
+  const processAuthResult = async (result) => {
+    // The 'result' object here comes directly from sendVerificationCode after reCAPTCHA
+    // It should contain: { success: true, user, isNewUser, phoneNumber }
+    
+    // setLoading(true); // sendVerificationCode already handles loading states
 
     try {
-      // Verify the code
-      const result = await confirmVerificationCode(verificationCode);
+        console.log("LoginScreen: Processing auth result (post-reCAPTCHA):", result);
 
-      if (result.success) {
-        console.log("LoginScreen: Verification successful, result:", result);
-
-        // Retrieve the original phone number if needed
+        // Retrieve the original phone number if needed (should be in result.phoneNumber)
         if (!result.phoneNumber) {
           try {
             const originalPhoneNumber = await AsyncStorage.getItem(
@@ -130,29 +132,26 @@ export default function LoginScreen({ navigation }) {
             );
             if (originalPhoneNumber) {
               console.log(
-                "Retrieved original phone number from storage:",
+                "Retrieved original phone number from storage (fallback):",
                 originalPhoneNumber
               );
               result.phoneNumber = originalPhoneNumber;
             }
           } catch (err) {
             console.warn(
-              "Failed to get original phone number from storage:",
+              "Failed to get original phone number from storage (fallback):",
               err
             );
           }
         }
+        
+        const currentMode = mode; 
+        console.log(`Current mode for processing: ${currentMode}`);
 
-        // IMPORTANT: Different behavior for login vs signup modes
-        const currentMode = mode; // 'login' or 'signup'
-        console.log(`Current mode: ${currentMode}`);
-
-        // For signup, always force onboarding regardless of Firebase result
         if (currentMode === "signup") {
           console.log("Signup mode - forcing onboarding flow");
           await AsyncStorage.setItem("isNewUser", "true");
 
-          // Register user with isNewUser flag set to true
           if (auth.register) {
             await auth.register({
               id: result.user.uid,
@@ -161,8 +160,6 @@ export default function LoginScreen({ navigation }) {
               isAuthenticated: true,
             });
           }
-
-          // Always go to onboarding for signup
           navigation.reset({
             index: 0,
             routes: [
@@ -175,36 +172,24 @@ export default function LoginScreen({ navigation }) {
           return;
         }
 
-        // For login mode (existing user), go directly to Main
         if (currentMode === "login") {
           console.log("Login mode - Ensuring user is marked as existing user");
-
-          // Set the isNewUser flag to false explicitly for login mode
           await AsyncStorage.setItem("isNewUser", "false");
-
-          // Look up the user by phone number in Firestore
-          console.log(`Looking up user by phone number: ${result.phoneNumber}`);
           let existingUser = null;
-
           try {
-            // Try to find the user by phone number first
             if (auth.findUserByPhone && result.phoneNumber) {
-              // Make sure phone number is properly formatted
-              const formattedPhone = result.phoneNumber.startsWith("+")
+              const formattedPhoneForSearch = result.phoneNumber.startsWith("+")
                 ? result.phoneNumber
                 : `+1${result.phoneNumber.replace(/\D/g, "")}`;
-
               console.log(
-                `Searching Firestore with formatted phone: ${formattedPhone}`
+                `Searching Firestore with formatted phone: ${formattedPhoneForSearch}`
               );
-              existingUser = await auth.findUserByPhone(formattedPhone);
+              existingUser = await auth.findUserByPhone(formattedPhoneForSearch);
               console.log(
                 "Phone lookup result:",
                 existingUser ? "User found" : "No user found"
               );
             }
-
-            // If no user found by phone, try by UID (fallback)
             if (!existingUser && auth.fetchUserData && result.user?.uid) {
               console.log("Fallback: Fetching user data by UID");
               existingUser = await auth.fetchUserData(result.user.uid);
@@ -213,24 +198,17 @@ export default function LoginScreen({ navigation }) {
             console.error("Error looking up existing user:", error);
           }
 
-          // Register user with the right ID and phone number
           if (auth.register) {
-            // If we have an existing user, use their ID to maintain the same record
             const userId = existingUser?.id || result.user.uid;
             console.log(`Using user ID for login registration: ${userId}`);
-
             await auth.register({
-              // Start with any existing data
               ...(existingUser || {}),
-              // Ensure these fields are set correctly
               id: userId,
               phoneNumber: result.phoneNumber,
               isNewUser: false,
               isAuthenticated: true,
             });
           }
-
-          // Navigate directly to the Main screen for login
           console.log("Login mode - Navigating directly to Main");
           navigation.reset({
             index: 0,
@@ -239,47 +217,31 @@ export default function LoginScreen({ navigation }) {
           return;
         }
 
-        // This is the fallback logic if mode is not explicitly set
-        // For login mode, check if the user has an existing profile
+        // Fallback logic if mode is not explicitly 'signup' or 'login' (should ideally not happen)
+        console.warn("Processing auth result in fallback mode path. Current mode:", currentMode);
         const userHasProfile =
           result.user &&
           result.user.profileData &&
           Object.keys(result.user.profileData || {}).length > 0;
-
-        // Get user document from Firestore directly to ensure latest data
         let userDocumentExists = false;
         try {
           if (auth.fetchUserData && result.user?.uid) {
             const userData = await auth.fetchUserData(result.user.uid);
             userDocumentExists = !!userData;
             console.log(
-              "User document exists in Firestore:",
+              "User document exists in Firestore (fallback path):",
               userDocumentExists
             );
           }
         } catch (error) {
-          console.error("Error checking user document:", error);
+          console.error("Error checking user document (fallback path):", error);
         }
-
-        // Log what we found
-        console.log("User check details:", {
-          mode: currentMode,
-          hasProfile: userHasProfile,
-          userDocExists: userDocumentExists,
-          isNewUserFromFirebase: result.isNewUser,
-        });
-
-        // Determine if user should see onboarding based on all criteria
         const shouldShowOnboarding =
           result.isNewUser || (!userHasProfile && !userDocumentExists);
-
-        // Set the isNewUser flag in AsyncStorage
         await AsyncStorage.setItem(
           "isNewUser",
           shouldShowOnboarding ? "true" : "false"
         );
-
-        // Register user with the correct isNewUser flag
         if (auth.register) {
           await auth.register({
             id: result.user.uid,
@@ -288,39 +250,59 @@ export default function LoginScreen({ navigation }) {
             isAuthenticated: true,
           });
         }
-
-        // Navigate to the right destination
         if (shouldShowOnboarding) {
-          console.log(
-            "Login mode - User needs onboarding, redirecting to Registration"
-          );
           navigation.reset({
             index: 0,
             routes: [
               {
                 name: "Registration",
-                params: { forceOnboarding: true, comingFrom: "Login" },
+                params: { forceOnboarding: true, comingFrom: "Login_Fallback" },
               },
             ],
           });
         } else {
-          console.log("Login mode - User already has profile, going to Main");
           navigation.reset({
             index: 0,
             routes: [{ name: "Main" }],
           });
         }
+      // Original success part from handleVerifyCode is now integrated above
+    } catch (error) {
+      console.error("Error processing auth result (post-reCAPTCHA):", error);
+      Alert.alert("Error", "Failed to process your request after verification. Please try again.");
+    }
+    // setLoading(false); // Ensure loading state is managed by sendVerificationCode
+  };
+
+  // handleVerifyCode is now effectively replaced by processAuthResult, 
+  // called directly from handleSendCode. 
+  // We can remove handleVerifyCode or comment it out.
+  /*
+  const handleVerifyCode = async () => {
+    if (!verificationCode || verificationCode.length < 6) {
+      Alert.alert(
+        "Invalid Code",
+        "Please enter the 6-digit verification code."
+      );
+      return;
+    }
+    try {
+      // This confirmVerificationCode is the deprecated one from the helper
+      const result = await confirmVerificationCode(verificationCode);
+      if (result.success) {
+        await processAuthResult(result); // Reuse the processing logic
       } else {
         Alert.alert(
-          "Invalid Code",
-          "The verification code you entered is invalid. Please try again."
+          "Invalid Action", // Changed from "Invalid Code"
+          result.error || "Could not complete the process. Please try again."
         );
       }
     } catch (error) {
-      console.error("Error verifying code:", error);
-      Alert.alert("Error", "Failed to verify code. Please try again.");
+      console.error("Error in (now deprecated) handleVerifyCode:", error);
+      Alert.alert("Error", "Failed to complete process. Please try again.");
     }
   };
+  */
 
   const navigateToSignup = () => {
     setMode("signup");
@@ -368,7 +350,8 @@ export default function LoginScreen({ navigation }) {
   // Phone number input screen (both login and signup)
   const renderPhoneScreen = () => (
     <View style={styles.contentContainer}>
-      {isVerifying ? (
+      {/* {isVerifying ? ( // This entire block for code verification is no longer needed */}
+      {/* COMMENTING OUT THE VERIFICATION CODE INPUT UI
         <>
           <TouchableOpacity style={styles.backButton} onPress={goBack}>
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
@@ -388,7 +371,7 @@ export default function LoginScreen({ navigation }) {
           />
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={handleVerifyCode}
+            onPress={handleVerifyCode} // This would call the deprecated version
             disabled={loading}
           >
             {loading ? (
@@ -398,7 +381,8 @@ export default function LoginScreen({ navigation }) {
             )}
           </TouchableOpacity>
         </>
-      ) : (
+      ) : ( */}
+        {/* This is the phone number input part, which remains */}
         <>
           <TouchableOpacity style={styles.backButton} onPress={goBack}>
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
@@ -421,7 +405,7 @@ export default function LoginScreen({ navigation }) {
           />
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={handleSendCode}
+            onPress={handleSendCode} // This now triggers reCAPTCHA then processAuthResult
             disabled={loading}
           >
             {loading ? (
@@ -431,7 +415,7 @@ export default function LoginScreen({ navigation }) {
             )}
           </TouchableOpacity>
         </>
-      )}
+      {/* )} */}
     </View>
   );
 
@@ -440,7 +424,10 @@ export default function LoginScreen({ navigation }) {
       <SafeAreaView style={styles.container}>
         {/* Only render reCAPTCHA component when needed for phone auth */}
         {mode !== "initial" && (
-          <RecaptchaVerifier recaptchaVerifier={recaptchaVerifier} />
+          <RecaptchaVerifier 
+            recaptchaVerifier={recaptchaVerifierRef} // For native
+            // onTokenReceived={handleTokenReceived} // onTokenReceived is no longer used by phoneAuthHelper
+          />
         )}
 
         <KeyboardAvoidingView

@@ -1,305 +1,124 @@
 import * as React from "react";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+// import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha"; // Temporarily unused
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert, Platform } from "react-native";
-import { RecaptchaVerifier as WebRecaptchaVerifier } from "firebase/auth";
+// All Firebase imports for reCAPTCHA/auth temporarily unused if we bypass checks
+// import { RecaptchaVerifier as FirebaseRecaptchaVerifier, getAuth } from "firebase/auth";
+// import { getApp } from 'firebase/app'; 
+// import { initFirebase, firebaseConfig } from "./firebase"; 
 
 /**
  * A hook to manage Firebase Phone Authentication in Expo
  * @returns {Object} Phone auth utilities
  */
 export function usePhoneAuth() {
-  const recaptchaVerifier = React.useRef(null);
-  const [verificationId, setVerificationId] = React.useState(null);
+  // initFirebase(); // Temporarily skip if all Firebase interaction is off
+  
+  // Refs are not actively used if reCAPTCHA is bypassed
+  // const recaptchaVerifierRef = React.useRef(null); 
+  // const webRecaptchaVerifierInstance = React.useRef(null); 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
 
-  // Initialize reCAPTCHA verifier for web
-  React.useEffect(() => {
-    if (Platform.OS === "web" && !recaptchaVerifier.current) {
-      try {
-        const { auth } = require("./firebase");
-        recaptchaVerifier.current = new WebRecaptchaVerifier(
-          auth,
-          "recaptcha-container",
-          {
-            size: "invisible",
-            callback: () => {
-              console.log("reCAPTCHA verified");
-            },
-          }
-        );
-      } catch (error) {
-        console.error("Failed to initialize web reCAPTCHA:", error);
-      }
-    }
-  }, []);
-
   /**
-   * Send verification code to phone number
-   * @param {string} phoneNumber The phone number to verify (in E.164 format)
-   * @returns {Promise<boolean>} Success flag
+   * TEMPORARILY MODIFIED: Bypasses all reCAPTCHA and Firebase auth.
+   * Immediately simulates a successful phone number submission.
    */
   const sendVerificationCode = async (phoneNumber) => {
+    setLoading(true);
+    setError(null);
+    console.log(`[TEMP BYPASS] Pretending to process phone: ${phoneNumber}`);
+
     try {
-      setLoading(true);
-      setError(null);
-
-      console.log(`Sending verification code to: ${phoneNumber}`);
-
-      // Store the original phone number for later use
       await AsyncStorage.setItem("originalPhoneNumber", phoneNumber);
-      console.log("Saved original phone number to storage:", phoneNumber);
+      console.log("[TEMP BYPASS] Saved original phone number to storage:", phoneNumber);
 
-      // Get Firebase auth and PhoneAuthProvider dynamically to avoid immediate initialization
-      let auth, PhoneAuthProvider;
-      try {
-        const { auth: firebaseAuth } = require("./firebase");
-        const {
-          PhoneAuthProvider: FirebasePhoneAuthProvider,
-        } = require("firebase/auth");
-        auth = firebaseAuth;
-        PhoneAuthProvider = FirebasePhoneAuthProvider;
-      } catch (error) {
-        console.warn(
-          "Failed to get Firebase auth, falling back to test mode:",
-          error
-        );
-        auth = null;
-        PhoneAuthProvider = null;
-      }
+      // Simulate immediate success without any reCAPTCHA or Firebase auth
+      const mockUser = {
+        uid: `temp_bypass_user_${Date.now()}`,
+        phoneNumber: phoneNumber,
+        metadata: {
+          creationTime: new Date().toISOString(),
+          lastSignInTime: new Date().toISOString(),
+        },
+      };
+      
+      // Simulate new user flag, adjust if needed for testing login vs signup
+      await AsyncStorage.setItem("isNewUser", "true"); 
 
-      // Check if Firebase is initialized
-      if (!auth || !PhoneAuthProvider) {
-        console.log("Firebase Auth not available, using test mode");
-        const mockVerificationId = `fallback_${Date.now()}`;
-        setVerificationId(mockVerificationId);
-        setLoading(false);
-        Alert.alert("Test Mode", "Firebase not configured. Use code: 123456");
-        return true;
-      }
-
-      // Add test phone number support
-      const testPhoneNumbers = ["+15555555555"];
-      if (testPhoneNumbers.includes(phoneNumber)) {
-        console.log("Test phone number detected, using simulated code");
-        // For testing purposes, use a fake verification ID
-        const mockVerificationId = `test_${Date.now()}`;
-        setVerificationId(mockVerificationId);
-        setLoading(false);
-
-        // Show test message
-        Alert.alert("Test Mode", "For testing, use code: 123456");
-        return true;
-      }
-
-      // Check if recaptcha verifier is available
-      if (!recaptchaVerifier.current) {
-        throw new Error("reCAPTCHA verifier is not initialized");
-      }
-
-      // Get captcha from verifier
-      const captchaVerifier = recaptchaVerifier.current;
-
-      // Send verification code
-      const provider = new PhoneAuthProvider(auth);
-      const verificationId = await provider.verifyPhoneNumber(
-        phoneNumber,
-        captchaVerifier
-      );
-
-      console.log("Verification code sent successfully");
-      setVerificationId(verificationId);
+      console.log("[TEMP BYPASS] Simulated success for phone:", phoneNumber);
       setLoading(false);
-      return true;
-    } catch (error) {
-      console.error("Error sending verification code:", error);
-      setError(error.message || "Failed to send verification code");
+      return {
+        success: true,
+        user: mockUser,
+        isNewUser: true, // Adjust for testing login (false) vs signup (true)
+        phoneNumber: phoneNumber,
+      };
 
-      // Fall back to test verification if Firebase fails
-      console.log("Falling back to test verification due to error");
-      const mockVerificationId = `fallback_${Date.now()}`;
-      setVerificationId(mockVerificationId);
+    } catch (e) {
+      console.error("[TEMP BYPASS] Error during AsyncStorage or mock user creation:", e);
+      setError(e.message || "An unexpected error occurred during bypass.");
       setLoading(false);
-
-      // Log that we're preserving the original phone number
-      console.log(
-        "Preserving original phone number for fallback:",
-        phoneNumber
-      );
-
-      // Show fallback message
-      Alert.alert(
-        "Verification Mode",
-        "Using test verification due to Firebase configuration. Use code: 123456"
-      );
-      return true;
+      return { success: false, error: e.message || "Unexpected bypass error" };
     }
   };
 
-  /**
-   * Verify the SMS code
-   * @param {string} verificationCode The 6-digit verification code
-   * @returns {Promise<Object>} Auth result with user data
-   */
-  const confirmVerificationCode = async (verificationCode) => {
+  // confirmVerificationCode remains deprecated and largely a passthrough
+  const confirmVerificationCode = async (verificationCode_IGNORED) => {
+    console.warn("[TEMP BYPASS] confirmVerificationCode is deprecated.");
+    setLoading(true);
+    let originalPhoneNumber = null;
     try {
-      setLoading(true);
-      setError(null);
-
-      console.log("Confirming verification code...");
-
-      if (!verificationId) {
-        throw new Error("No verification ID found. Please request a new code.");
-      }
-
-      // Handle test verification IDs
-      if (
-        verificationId.startsWith("test_") ||
-        verificationId.startsWith("fallback_")
-      ) {
-        console.log("Using test verification mode");
-
-        // For test verification, only accept 123456
-        if (verificationCode === "123456") {
-          console.log("Test verification successful");
-
-          // Get the original phone number from AsyncStorage if available
-          let originalPhoneNumber = null;
-          try {
-            originalPhoneNumber = await AsyncStorage.getItem(
-              "originalPhoneNumber"
-            );
-            console.log(
-              "Retrieved original phone number from storage:",
-              originalPhoneNumber
-            );
-          } catch (err) {
-            console.warn(
-              "Failed to get original phone number from storage:",
-              err
-            );
-          }
-
-          // Create a mock user result, using the original phone number if available
-          const userPhoneNumber = originalPhoneNumber || "+15555555555";
-          console.log("Using phone number for test user:", userPhoneNumber);
-
-          const mockUser = {
-            uid: `test_${Date.now()}`,
-            phoneNumber: userPhoneNumber,
-            metadata: {
-              creationTime: new Date().toISOString(),
-              lastSignInTime: new Date().toISOString(),
-            },
-          };
-
-          // Store test user as new user
-          await AsyncStorage.setItem("isNewUser", "true");
-
-          console.log("Simulated phone verification successful");
-          setLoading(false);
-
-          // Return simulated success
-          return {
-            success: true,
-            user: mockUser,
-            isNewUser: true,
-            phoneNumber: userPhoneNumber,
-          };
-        } else {
-          setLoading(false);
-          throw new Error("Invalid test verification code. Please use 123456.");
-        }
-      }
-
-      // Regular Firebase verification
-      // Get Firebase auth and functions dynamically
-      let auth, PhoneAuthProvider, signInWithCredential;
-      try {
-        const { auth: firebaseAuth } = require("./firebase");
-        const {
-          PhoneAuthProvider: FirebasePhoneAuthProvider,
-          signInWithCredential: FirebaseSignInWithCredential,
-        } = require("firebase/auth");
-        auth = firebaseAuth;
-        PhoneAuthProvider = FirebasePhoneAuthProvider;
-        signInWithCredential = FirebaseSignInWithCredential;
-      } catch (error) {
-        console.warn("Failed to get Firebase auth during verification:", error);
-        throw new Error("Firebase Auth not available");
-      }
-
-      // Create credential
-      const credential = PhoneAuthProvider.credential(
-        verificationId,
-        verificationCode
-      );
-
-      // Sign in with credential
-      const result = await signInWithCredential(auth, credential);
-
-      // Get user from result
-      const user = result.user;
-      const isNewUser = result._tokenResponse?.isNewUser;
-
-      // Store isNewUser in AsyncStorage for consistent app behavior
-      if (isNewUser) {
-        await AsyncStorage.setItem("isNewUser", "true");
-      } else {
-        await AsyncStorage.setItem("isNewUser", "false");
-      }
-
-      console.log("Phone verification successful, isNewUser:", isNewUser);
+      originalPhoneNumber = await AsyncStorage.getItem("originalPhoneNumber");
+      if (!originalPhoneNumber) throw new Error("Original phone number not found.");
+      
+      const mockUser = {
+        uid: `temp_bypass_confirm_${Date.now()}`,
+        phoneNumber: originalPhoneNumber,
+        metadata: {
+            creationTime: new Date().toISOString(),
+            lastSignInTime: new Date().toISOString(),
+        },
+      };
+      await AsyncStorage.setItem("isNewUser", "true");
       setLoading(false);
-
-      // Return auth result
       return {
         success: true,
-        user,
-        isNewUser,
-        phoneNumber: user.phoneNumber,
+        user: mockUser,
+        isNewUser: true, 
+        phoneNumber: originalPhoneNumber
       };
     } catch (error) {
-      console.error("Error confirming verification code:", error);
-      setError(error.message || "Failed to confirm verification code");
+      console.error("[TEMP BYPASS] Error in deprecated confirmVerificationCode:", error);
+      setError(error.message || "Failed to confirm (simulated)");
       setLoading(false);
       return { success: false, error: error.message };
     }
   };
 
-  /**
-   * Reset the verification state
-   */
   const resetVerification = () => {
-    setVerificationId(null);
     setError(null);
+    // No webRecaptchaVerifierInstance to clear in bypass mode
+    console.log("[TEMP BYPASS] resetVerification called.");
   };
 
   return {
-    recaptchaVerifier,
-    verificationId,
+    // recaptchaVerifierRef, // Not used in bypass mode
     loading,
     error,
     sendVerificationCode,
-    confirmVerificationCode,
+    confirmVerificationCode, 
     resetVerification,
   };
 }
 
 /**
- * Recaptcha component for Firebase Phone Auth
- * @param {Object} props Component props
+ * TEMPORARILY MODIFIED: RecaptchaComponent does nothing when bypassed.
  */
-export function RecaptchaVerifier({ recaptchaVerifier }) {
-  if (Platform.OS === "web") {
-    return <div id="recaptcha-container" style={{ display: "none" }} />;
-  }
-
-  return (
-    <FirebaseRecaptchaVerifierModal
-      ref={recaptchaVerifier}
-      firebaseConfig={getFirebaseConfig()}
-    />
-  );
+export function RecaptchaComponent({ recaptchaVerifier, onTokenReceived }) { 
+  console.log("[TEMP BYPASS] RecaptchaComponent rendered, but is inactive.");
+  // Render nothing, or a placeholder if it helps layout, but it won't be functional.
+  return null; 
 }
+
+export { RecaptchaComponent as RecaptchaVerifier };

@@ -1177,7 +1177,7 @@ export default function ProfileScreen({ route }) {
                 {typeof name === "string" ? name : "Profile"}
               </Text>
               <Text style={styles.roleText}>
-                You are a: {typeof userType === "string" ? userType : ""}
+                {typeof userType === "string" && userType ? `You are a: ${userType}` : ""}
               </Text>
             </View>
             <EditButton isEditing={isEditing} onToggleEdit={toggleEditMode} />
@@ -1532,7 +1532,7 @@ export default function ProfileScreen({ route }) {
         </View>
 
         {/* City display */}
-        {city && (
+        {city && city.trim() && (
           <View style={styles.cityContainer}>
             <View style={styles.cityIconContainer}>
               <Ionicons
@@ -1542,7 +1542,7 @@ export default function ProfileScreen({ route }) {
               />
             </View>
             <Text style={styles.cityText}>
-              {typeof city === "string" ? city : ""}
+              {typeof city === "string" && city ? city : "Add your city"}
             </Text>
           </View>
         )}
@@ -1801,9 +1801,7 @@ export default function ProfileScreen({ route }) {
                           .join(", ")}
                         {(friendInterests.length > 0
                           ? friendInterests.length
-                          : (mockFriend?.interests || []).length) > 2
-                          ? "..."
-                          : ""}
+                          : (mockFriend?.interests || []).length) > 2 && "..."}
                       </Text>
                     )}
                   </View>

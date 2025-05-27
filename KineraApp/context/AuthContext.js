@@ -80,6 +80,15 @@ export function AuthProvider({ children }) {
               name: localUser.name,
               isAuthenticated: localUser.isAuthenticated
             });
+            
+            // Check if this is a bypass user (temp_bypass_user)
+            if (localUser.id && localUser.id.includes('temp_bypass_user')) {
+              console.log('🔄 BYPASS MODE: Found temp bypass user, skipping Firebase auth listener');
+              safelySetUser(localUser);
+              setIsLoading(false);
+              return; // Skip Firebase auth state listener entirely
+            }
+            
             safelySetUser(localUser);
             setIsLoading(false);
             return;
@@ -88,7 +97,7 @@ export function AuthProvider({ children }) {
           }
         }
         
-        // Check if user is authenticated with Firebase
+        // Check if user is authenticated with Firebase (only if not in bypass mode)
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
           console.log('🔥 Firebase auth state changed:', { 
             hasFirebaseUser: !!firebaseUser,
@@ -114,12 +123,18 @@ export function AuthProvider({ children }) {
             console.log('🔄 No Firebase user - checking AsyncStorage fallback');
             const localUser = await User.load();
             if (localUser && localUser.isAuthenticated) {
-              console.log('✅ Found authenticated user in AsyncStorage fallback:', {
-                id: localUser.id,
-                name: localUser.name,
-                isAuthenticated: localUser.isAuthenticated
-              });
-              safelySetUser(localUser);
+              // Double-check if this is a bypass user before proceeding
+              if (localUser.id && localUser.id.includes('temp_bypass_user')) {
+                console.log('✅ BYPASS MODE: Found temp bypass user in fallback, preserving auth state');
+                safelySetUser(localUser);
+              } else {
+                console.log('✅ Found authenticated user in AsyncStorage fallback:', {
+                  id: localUser.id,
+                  name: localUser.name,
+                  isAuthenticated: localUser.isAuthenticated
+                });
+                safelySetUser(localUser);
+              }
             } else {
               console.log('❌ No authenticated user found in AsyncStorage fallback');
             }
