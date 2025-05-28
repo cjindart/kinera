@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
   const safelySetUser = (userData) => {
     if (!userData) {
       setUser(null);
-      return;
+      return Promise.resolve();
     }
 
     // Ensure friends array is properly formatted
@@ -63,6 +63,7 @@ export function AuthProvider({ children }) {
 
     // Set the sanitized user data
     setUser(userData);
+    return Promise.resolve();
   };
 
   // Load user data when the component mounts
@@ -1141,7 +1142,7 @@ export function AuthProvider({ children }) {
     verificationId,
     tempPhoneNumber,
     isLoggedIn: !!user && user.isAuthenticated === true,
-    setUser,
+    setUser: safelySetUser,
     sendVerificationCode,
     verifyCode,
     register,

@@ -94,9 +94,21 @@ export default function LoginScreen({ navigation }) {
         const userId = querySnapshot.docs[0].id;
         console.log(`Found user with ID: ${userId}`);
 
-        // Just set isAuthenticated to true
-        auth.setUser({ isAuthenticated: true });
-        console.log("User authenticated successfully");
+        // Create a complete user object with all necessary data
+        const user = {
+          ...userData,
+          id: userId,
+          phoneNumber: formattedPhone,
+          isAuthenticated: true,
+          updatedAt: new Date().toISOString(),
+        };
+
+        // Update auth context with complete user data and wait for it to complete
+        console.log("🔄 Setting auth state...");
+        await auth.setUser(user);
+        console.log("✅ Auth state synchronized");
+
+        console.log("User authenticated successfully with full profile data");
       } else {
         console.log("No user found with this phone number");
         // Navigate to registration

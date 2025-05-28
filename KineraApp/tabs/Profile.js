@@ -1092,23 +1092,23 @@ export default function ProfileScreen({ route }) {
   useEffect(() => {
     const syncUserData = async () => {
       try {
-        // Only sync if we don't have complete user data
-        if (!user?.profileData || !user?.friends) {
-          const userDoc = await getDoc(doc(db, "users", user.id));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setUser(userData); // update context/state
-            await AsyncStorage.setItem("userData", JSON.stringify(userData)); // update local storage
-          }
+        if (!user?.id) {
+          console.log("No user ID available for sync");
+          return;
+        }
+        const userDoc = await getDoc(doc(db, "users", user.id));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser(userData); // update context/state
+          await AsyncStorage.setItem("userData", JSON.stringify(userData)); // update local storage
         }
       } catch (error) {
         console.error("Error syncing user data:", error);
       }
     };
 
-    // Only run sync on initial mount
     syncUserData();
-  }, []); // Remove dependencies to prevent infinite loop
+  }, [user?.id, setUser]);
 
   // Fetch all users for switch user modal
   const fetchAllUsers = async () => {
