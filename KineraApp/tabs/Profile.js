@@ -1092,19 +1092,23 @@ export default function ProfileScreen({ route }) {
   useEffect(() => {
     const syncUserData = async () => {
       try {
-        const userDoc = await getDoc(doc(db, "users", user.id));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUser(userData); // update context/state
-          await AsyncStorage.setItem("userData", JSON.stringify(userData)); // update local storage
+        // Only sync if we don't have complete user data
+        if (!user?.profileData || !user?.friends) {
+          const userDoc = await getDoc(doc(db, "users", user.id));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setUser(userData); // update context/state
+            await AsyncStorage.setItem("userData", JSON.stringify(userData)); // update local storage
+          }
         }
       } catch (error) {
         console.error("Error syncing user data:", error);
       }
     };
 
+    // Only run sync on initial mount
     syncUserData();
-  }, [user.id, setUser]);
+  }, []); // Remove dependencies to prevent infinite loop
 
   // Fetch all users for switch user modal
   const fetchAllUsers = async () => {
@@ -1177,7 +1181,9 @@ export default function ProfileScreen({ route }) {
                 {typeof name === "string" ? name : "Profile"}
               </Text>
               <Text style={styles.roleText}>
-                {typeof userType === "string" && userType ? `You are a: ${userType}` : ""}
+                {typeof userType === "string" && userType
+                  ? `You are a: ${userType}`
+                  : ""}
               </Text>
             </View>
             <EditButton isEditing={isEditing} onToggleEdit={toggleEditMode} />
@@ -1227,11 +1233,14 @@ export default function ProfileScreen({ route }) {
                       style={styles.photoImage}
                     />
                   ) : (
-                    <Ionicons
-                      name="person"
-                      size={100}
-                      color={COLORS.mutedBlue}
-                    />
+                    <View style={styles.photoFrame}>
+                      <Ionicons
+                        name="person"
+                        size={100}
+                        color={COLORS.mutedBlue}
+                      />
+                      <Text style={styles.editPhotoText}>No Photo</Text>
+                    </View>
                   )}
                 </View>
               )}

@@ -1,16 +1,16 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Alert, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import User from '../models/User';
-import { auth, db, isDevelopmentMode } from '../utils/firebase';
-import { findUserByPhone, migrateUserData } from '../utils/firestoreSetup';
-import { 
-  testFirebaseConnection, 
-  testUserDataWrite, 
+import React, { createContext, useState, useEffect, useContext } from "react";
+import { Alert, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import User from "../models/User";
+import { auth, db, isDevelopmentMode } from "../utils/firebase";
+import { findUserByPhone, migrateUserData } from "../utils/firestoreSetup";
+import {
+  testFirebaseConnection,
+  testUserDataWrite,
   checkDuplicateUsers,
-  mergeDuplicateUsers 
-} from '../utils/firebaseDebug';
-import Constants from 'expo-constants';
+  mergeDuplicateUsers,
+} from "../utils/firebaseDebug";
+import Constants from "expo-constants";
 
 // Create the context
 const AuthContext = createContext(null);
@@ -31,34 +31,36 @@ export function AuthProvider({ children }) {
       setUser(null);
       return;
     }
-    
+
     // Ensure friends array is properly formatted
     if (userData.friends) {
       userData.friends = userData.friends.map((friend, index) => {
-        if (typeof friend === 'string') {
+        if (typeof friend === "string") {
           return {
             id: `friend_${index}`,
             name: friend,
-            avatar: null
+            avatar: null,
           };
         }
-        if (typeof friend === 'object' && friend !== null) {
+        if (typeof friend === "object" && friend !== null) {
           return {
             id: friend.id || `friend_${index}`,
-            name: typeof friend.name === 'string' ? friend.name : 'Unknown',
+            name: typeof friend.name === "string" ? friend.name : "Unknown",
             avatar: friend.avatar || null,
             interests: Array.isArray(friend.interests) ? friend.interests : [],
-            dateActivities: Array.isArray(friend.dateActivities) ? friend.dateActivities : []
+            dateActivities: Array.isArray(friend.dateActivities)
+              ? friend.dateActivities
+              : [],
           };
         }
         return {
           id: `friend_${index}`,
-          name: 'Unknown',
-          avatar: null
+          name: "Unknown",
+          avatar: null,
         };
       });
     }
-    
+
     // Set the sanitized user data
     setUser(userData);
   };
@@ -68,50 +70,52 @@ export function AuthProvider({ children }) {
     const loadUser = async () => {
       try {
         setIsLoading(true);
-        console.log('🔄 AuthContext: Starting user load process...');
-        
+        console.log("🔄 AuthContext: Starting user load process...");
+
         // On web, prioritize AsyncStorage first since Firebase auth might be problematic
-        if (Platform.OS === 'web') {
-          console.log('📱 Web platform detected - checking AsyncStorage first');
+        if (Platform.OS === "web") {
+          console.log("📱 Web platform detected - checking AsyncStorage first");
           const localUser = await User.load();
           if (localUser && localUser.isAuthenticated) {
-            console.log('✅ Found authenticated user in AsyncStorage:', {
+            console.log("✅ Found authenticated user in AsyncStorage:", {
               id: localUser.id,
               name: localUser.name,
-              isAuthenticated: localUser.isAuthenticated
+              isAuthenticated: localUser.isAuthenticated,
             });
-            
+
             // Check if this is a bypass user (temp_bypass_user)
-            if (localUser.id && localUser.id.includes('temp_bypass_user')) {
-              console.log('🔄 BYPASS MODE: Found temp bypass user, skipping Firebase auth listener');
+            if (localUser.id && localUser.id.includes("temp_bypass_user")) {
+              console.log(
+                "🔄 BYPASS MODE: Found temp bypass user, skipping Firebase auth listener"
+              );
               safelySetUser(localUser);
               setIsLoading(false);
               return; // Skip Firebase auth state listener entirely
             }
-            
+
             safelySetUser(localUser);
             setIsLoading(false);
             return;
           } else {
-            console.log('❌ No authenticated user found in AsyncStorage');
+            console.log("❌ No authenticated user found in AsyncStorage");
           }
         }
-        
+
         // Check if user is authenticated with Firebase (only if not in bypass mode)
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-          console.log('🔥 Firebase auth state changed:', { 
+          console.log("🔥 Firebase auth state changed:", {
             hasFirebaseUser: !!firebaseUser,
-            uid: firebaseUser?.uid 
+            uid: firebaseUser?.uid,
           });
-          
+
           if (firebaseUser) {
             // User is signed in, get user data from Firestore
             const userData = await fetchUserData(firebaseUser.uid);
             if (userData) {
-              console.log('✅ Loaded user from Firestore');
+              console.log("✅ Loaded user from Firestore");
               safelySetUser(userData);
               setIsNewUser(!!userData.newUser);
-              
+
               // Clear the newUser flag after we've used it
               if (userData.newUser) {
                 delete userData.newUser;
@@ -120,44 +124,51 @@ export function AuthProvider({ children }) {
             }
           } else {
             // Fallback to AsyncStorage if Firebase auth isn't working
-            console.log('🔄 No Firebase user - checking AsyncStorage fallback');
+            console.log("🔄 No Firebase user - checking AsyncStorage fallback");
             const localUser = await User.load();
             if (localUser && localUser.isAuthenticated) {
               // Double-check if this is a bypass user before proceeding
-              if (localUser.id && localUser.id.includes('temp_bypass_user')) {
-                console.log('✅ BYPASS MODE: Found temp bypass user in fallback, preserving auth state');
+              if (localUser.id && localUser.id.includes("temp_bypass_user")) {
+                console.log(
+                  "✅ BYPASS MODE: Found temp bypass user in fallback, preserving auth state"
+                );
                 safelySetUser(localUser);
               } else {
-                console.log('✅ Found authenticated user in AsyncStorage fallback:', {
-                  id: localUser.id,
-                  name: localUser.name,
-                  isAuthenticated: localUser.isAuthenticated
-                });
+                console.log(
+                  "✅ Found authenticated user in AsyncStorage fallback:",
+                  {
+                    id: localUser.id,
+                    name: localUser.name,
+                    isAuthenticated: localUser.isAuthenticated,
+                  }
+                );
                 safelySetUser(localUser);
               }
             } else {
-              console.log('❌ No authenticated user found in AsyncStorage fallback');
+              console.log(
+                "❌ No authenticated user found in AsyncStorage fallback"
+              );
             }
           }
-          
+
           setIsLoading(false);
         });
-        
+
         return () => unsubscribe();
       } catch (error) {
-        console.error('💥 Error loading user data:', error);
-        
+        console.error("💥 Error loading user data:", error);
+
         // Fallback to AsyncStorage if there's an error
         try {
           const localUser = await User.load();
           if (localUser && localUser.isAuthenticated) {
-            console.log('✅ Emergency fallback: Found user in AsyncStorage');
+            console.log("✅ Emergency fallback: Found user in AsyncStorage");
             safelySetUser(localUser);
           }
         } catch (innerError) {
-          console.error('💥 Error loading from AsyncStorage:', innerError);
+          console.error("💥 Error loading from AsyncStorage:", innerError);
         }
-        
+
         setIsLoading(false);
       }
     };
@@ -174,46 +185,52 @@ export function AuthProvider({ children }) {
     try {
       // Skip Firestore queries in development mode
       if (isDevelopmentMode()) {
-        console.log('Development mode: Skipping Firestore fetch');
+        console.log("Development mode: Skipping Firestore fetch");
         return null;
       }
-      
-      console.log(`Attempting to fetch user data from Firestore for ID: ${userId}`);
-      
+
+      console.log(
+        `Attempting to fetch user data from Firestore for ID: ${userId}`
+      );
+
       // Get Firebase firestore functions dynamically
-      const { doc, getDoc } = require('firebase/firestore');
-      
+      const { doc, getDoc } = require("firebase/firestore");
+
       // Try to get user from Firestore
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      
+      const userDoc = await getDoc(doc(db, "users", userId));
+
       if (userDoc.exists()) {
         // User exists in Firestore
         const userData = userDoc.data();
-        console.log(`User data found in Firestore: ${JSON.stringify({
-          hasName: !!userData.name,
-          hasProfileData: !!userData.profileData,
-          profileFields: userData.profileData ? Object.keys(userData.profileData).length : 0,
-          dataTimestamp: userData.updatedAt || 'unknown'
-        })}`);
-        
+        console.log(
+          `User data found in Firestore: ${JSON.stringify({
+            hasName: !!userData.name,
+            hasProfileData: !!userData.profileData,
+            profileFields: userData.profileData
+              ? Object.keys(userData.profileData).length
+              : 0,
+            dataTimestamp: userData.updatedAt || "unknown",
+          })}`
+        );
+
         const userInstance = new User({
           ...userData,
           id: userId,
-          isAuthenticated: true
+          isAuthenticated: true,
         });
-        
+
         // Save to AsyncStorage for local access
         await userInstance.save();
-        console.log('User data from Firestore saved to AsyncStorage');
-        
+        console.log("User data from Firestore saved to AsyncStorage");
+
         return userInstance;
       } else {
         console.log(`No user document found in Firestore with ID: ${userId}`);
       }
-      
+
       return null;
     } catch (error) {
-      console.error('Error fetching user data from Firestore:', error);
+      console.error("Error fetching user data from Firestore:", error);
       return null;
     }
   };
@@ -225,137 +242,67 @@ export function AuthProvider({ children }) {
    */
   const handleAuthResult = async (authResult) => {
     try {
-      const { user: firebaseUser, isNewUser: isNew, phoneNumber } = authResult;
-      
-      // Store temporary phone number
-      setTempPhoneNumber(phoneNumber);
-      
-      // In development mode, we simulate success even without a Firebase user
-      if (isDevelopmentMode()) {
-        console.log('Development mode: Simulating successful authentication');
-        setIsNewUser(true);
-        return { success: true, isNewUser: true };
-      }
-      
-      // Return early if no firebase user (failed auth) in production mode
+      const { user: firebaseUser, phoneNumber } = authResult;
+
+      // Return early if no firebase user (failed auth)
       if (!firebaseUser) {
+        console.log("No Firebase user found in auth result");
         return { success: false };
       }
-      
+
       const firebaseUid = firebaseUser.uid;
       console.log("Firebase Auth successful, UID:", firebaseUid);
-      
-      // Ensure the phone number is properly formatted
+
+      // Format phone number if provided
       let formattedPhoneNumber = phoneNumber;
       if (phoneNumber) {
-        // Normalize and format the phone number
-        const normalizedPhone = phoneNumber.replace(/\D/g, '');
-        formattedPhoneNumber = phoneNumber.startsWith('+') ? 
-          phoneNumber : 
-          `+1${normalizedPhone}`;
-        
-        console.log("Original phone:", phoneNumber);
-        console.log("Formatted phone for queries:", formattedPhoneNumber);
+        formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+        console.log("Formatted phone:", formattedPhoneNumber);
       }
-      
-      // Check if there are duplicate users with this phone number
-      console.log("Checking for duplicate users with phone number:", formattedPhoneNumber);
-      
-      // First, check for duplicates
-      const duplicateCheck = await checkDuplicateUsers(formattedPhoneNumber);
-      console.log("Duplicate check results:", JSON.stringify(duplicateCheck));
-      
-      // If we have duplicates, merge them into the Firebase UID account
-      if (duplicateCheck.hasDuplicates) {
-        console.log("Merging duplicate users...");
-        const mergeResult = await mergeDuplicateUsers(formattedPhoneNumber, firebaseUid);
-        console.log("Merge result:", JSON.stringify(mergeResult));
-        
-        if (mergeResult.success) {
-          // Use the merged user data
-          const mergedUser = new User({
-            ...mergeResult.mergedUserData,
-            isAuthenticated: true
-          });
-          
-          await mergedUser.save();
-          safelySetUser(mergedUser);
-          setIsNewUser(false);
-          await AsyncStorage.setItem('isNewUser', 'false');
-          return { success: true, isNewUser: false };
-        }
-      }
-      
-      // Continue with regular flow - first check by Firebase UID
-      const userByUid = await fetchUserData(firebaseUid);
-      if (userByUid) {
-        console.log("User found by Firebase UID");
-        safelySetUser(userByUid);
+
+      // Get user data from Firestore
+      const userData = await fetchUserData(firebaseUid);
+
+      if (userData) {
+        // User exists - update with auth data
+        const updatedUser = new User({
+          ...userData,
+          id: firebaseUid,
+          phoneNumber: formattedPhoneNumber,
+          isAuthenticated: true,
+          updatedAt: new Date().toISOString(),
+        });
+
+        // Save updated user data
+        await updatedUser.save();
+        safelySetUser(updatedUser);
         setIsNewUser(false);
-        await AsyncStorage.setItem('isNewUser', 'false');
+        await AsyncStorage.setItem("isNewUser", "false");
+
+        console.log("Existing user authenticated successfully");
         return { success: true, isNewUser: false };
-      }
-      
-      // If not found by UID, check by phone number
-      if (formattedPhoneNumber) {
-        console.log("No user found by UID, checking by phone number:", formattedPhoneNumber);
-        const userByPhone = await findUserByPhone(formattedPhoneNumber);
-        if (userByPhone) {
-          console.log("User found by phone number, ID:", userByPhone.id);
-          
-          // If we need to migrate from a local ID to Firebase UID
-          if (userByPhone.id !== firebaseUid) {
-            console.log("Migrating user from local ID to Firebase UID");
-            
-            // Try to migrate the data
-            const migrationSuccess = await migrateUserData(userByPhone.id, firebaseUid);
-            
-            if (migrationSuccess) {
-              console.log("Migration successful");
-            } else {
-              console.warn("Migration failed, will create updated user object");
-            }
-            
-            // Create updated user with Firebase UID
-            const updatedUser = new User({
-              ...userByPhone,
-              id: firebaseUid,
-              previousId: userByPhone.id,
-              isAuthenticated: true,
-              updatedAt: new Date().toISOString()
-            });
-            
-            // Save the updated user data
-            await updatedUser.save();
-            safelySetUser(updatedUser);
-            setIsNewUser(false);
-            await AsyncStorage.setItem('isNewUser', 'false');
-            return { success: true, isNewUser: false };
-          } else {
-            // User already has the correct Firebase UID
-            const existingUser = new User({
-              ...userByPhone,
-              isAuthenticated: true
-            });
-            
-            await existingUser.save();
-            safelySetUser(existingUser);
-            setIsNewUser(false);
-            await AsyncStorage.setItem('isNewUser', 'false');
-            return { success: true, isNewUser: false };
-          }
-        }
       } else {
-        console.log("No phone number available to search for existing user");
+        // New user - create with auth data
+        const newUser = new User({
+          id: firebaseUid,
+          phoneNumber: formattedPhoneNumber,
+          isAuthenticated: true,
+          newUser: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+
+        // Save new user data
+        await newUser.save();
+        safelySetUser(newUser);
+        setIsNewUser(true);
+        await AsyncStorage.setItem("isNewUser", "true");
+
+        console.log("New user created and authenticated");
+        return { success: true, isNewUser: true };
       }
-      
-      // If it's a new user or we couldn't find user data
-      console.log("No existing user found, will create new user");
-      setIsNewUser(true);
-      await AsyncStorage.setItem('isNewUser', 'true');
-      return { success: true, isNewUser: true };
     } catch (error) {
-      console.error('Error handling auth result:', error);
+      console.error("Error handling auth result:", error);
       return { success: false, error: error.message };
     }
   };
@@ -366,107 +313,142 @@ export function AuthProvider({ children }) {
    * @param {string} mode Optional - 'signup' or 'login' to indicate the intent
    * @returns {Promise<string>} Verification ID
    */
-  const sendVerificationCode = async (phoneNumber, mode = 'login') => {
+  const sendVerificationCode = async (phoneNumber, mode = "login") => {
     try {
       // Format phone number to E.164 format
       const formattedPhone = formatPhoneNumber(phoneNumber);
       setTempPhoneNumber(formattedPhone);
-      
-      console.log(`Sending verification code to ${formattedPhone}, mode: ${mode}`);
-      
+
+      console.log(
+        `Sending verification code to ${formattedPhone}, mode: ${mode}`
+      );
+
       // In development mode, simulate sending a verification code
       if (isDevelopmentMode()) {
-        console.log(`Development mode: Simulating verification for ${formattedPhone}`);
+        console.log(
+          `Development mode: Simulating verification for ${formattedPhone}`
+        );
         Alert.alert("Test Mode", "Use verification code: 123456");
-        
+
         // Generate a mock verification ID
         const mockVerificationId = `verify_${Date.now()}`;
         setVerificationId(mockVerificationId);
-        
+
         return mockVerificationId;
       }
-      
+
       // For test phone numbers, use a simpler approach
-      const testPhoneNumbers = ['+17206336712', '+15555555555'];
+      const testPhoneNumbers = ["+17206336712", "+15555555555"];
       if (testPhoneNumbers.includes(formattedPhone)) {
-        console.log('Test phone number detected, using simulated code');
-        Alert.alert('Verification Code', 'For testing, use code: 123456');
+        console.log("Test phone number detected, using simulated code");
+        Alert.alert("Verification Code", "For testing, use code: 123456");
         const mockId = `direct_${Date.now()}`;
         setVerificationId(mockId);
         return mockId;
       }
-      
+
       // For production use Firebase phone authentication
       try {
-        console.log(`Firebase Phone Auth: Sending verification code to ${formattedPhone}`);
-        
+        console.log(
+          `Firebase Phone Auth: Sending verification code to ${formattedPhone}`
+        );
+
         // Make sure auth is initialized
         if (!auth) {
-          throw new Error('Firebase auth not initialized');
+          throw new Error("Firebase auth not initialized");
         }
-        
+
         // Get Firebase auth function dynamically
-        const { signInWithPhoneNumber } = require('firebase/auth');
-        
+        const { signInWithPhoneNumber } = require("firebase/auth");
+
         // Send verification code using Firebase
-        const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone);
-        
+        const confirmationResult = await signInWithPhoneNumber(
+          auth,
+          formattedPhone
+        );
+
         if (!confirmationResult || !confirmationResult.verificationId) {
-          throw new Error('Failed to get verification ID from Firebase');
+          throw new Error("Failed to get verification ID from Firebase");
         }
-        
-        console.log('Firebase verification code sent successfully');
-        Alert.alert('Verification Code Sent', 'A verification code has been sent to your phone.');
-        
+
+        console.log("Firebase verification code sent successfully");
+        Alert.alert(
+          "Verification Code Sent",
+          "A verification code has been sent to your phone."
+        );
+
         // Store the verification ID
         const authVerificationId = confirmationResult.verificationId;
         setVerificationId(authVerificationId);
-        
-        console.log('Verification ID stored:', authVerificationId);
+
+        console.log("Verification ID stored:", authVerificationId);
         return authVerificationId;
       } catch (firebaseError) {
-        console.error('Firebase phone auth error:', firebaseError);
-        
+        console.error("Firebase phone auth error:", firebaseError);
+
         // Fall back to direct registration if Firebase auth fails
-        console.log('Firebase auth failed, falling back to direct registration');
-        console.warn('To fix this error, ensure Firebase Phone Auth is properly configured in the Firebase Console');
-        
+        console.log(
+          "Firebase auth failed, falling back to direct registration"
+        );
+        console.warn(
+          "To fix this error, ensure Firebase Phone Auth is properly configured in the Firebase Console"
+        );
+
         // Detailed error handling for common issues
-        if (firebaseError.code === 'auth/invalid-phone-number') {
-          Alert.alert('Invalid Phone Number', 'Please enter a valid phone number in the format +1XXXXXXXXXX.');
+        if (firebaseError.code === "auth/invalid-phone-number") {
+          Alert.alert(
+            "Invalid Phone Number",
+            "Please enter a valid phone number in the format +1XXXXXXXXXX."
+          );
           throw firebaseError;
-        } else if (firebaseError.code === 'auth/quota-exceeded') {
-          Alert.alert('Too Many Attempts', 'Too many verification attempts from this device. Try again later.');
+        } else if (firebaseError.code === "auth/quota-exceeded") {
+          Alert.alert(
+            "Too Many Attempts",
+            "Too many verification attempts from this device. Try again later."
+          );
           throw firebaseError;
-        } else if (firebaseError.code === 'auth/missing-verification-code') {
-          Alert.alert('Error', 'Please enter the verification code sent to your phone.');
+        } else if (firebaseError.code === "auth/missing-verification-code") {
+          Alert.alert(
+            "Error",
+            "Please enter the verification code sent to your phone."
+          );
           throw firebaseError;
-        } else if (firebaseError.code === 'auth/captcha-check-failed') {
-          Alert.alert('Error', 'CAPTCHA verification failed. Please try again.');
+        } else if (firebaseError.code === "auth/captcha-check-failed") {
+          Alert.alert(
+            "Error",
+            "CAPTCHA verification failed. Please try again."
+          );
           throw firebaseError;
-        } else if (firebaseError.code === 'auth/argument-error') {
-          console.error('Firebase auth argument error. This usually indicates a configuration issue.');
+        } else if (firebaseError.code === "auth/argument-error") {
+          console.error(
+            "Firebase auth argument error. This usually indicates a configuration issue."
+          );
           // Continue with fallback
         }
-        
+
         // Use direct registration as fallback
-        const registrationResult = await registerWithoutVerification(formattedPhone);
-        
+        const registrationResult = await registerWithoutVerification(
+          formattedPhone
+        );
+
         if (registrationResult.success) {
           const directVerificationId = `direct_${Date.now()}`;
           setVerificationId(directVerificationId);
           return directVerificationId;
         } else {
-          Alert.alert('Error', 'Failed to send verification code. Please try again later.');
-          throw new Error(registrationResult.error || 'Registration failed');
+          Alert.alert(
+            "Error",
+            "Failed to send verification code. Please try again later."
+          );
+          throw new Error(registrationResult.error || "Registration failed");
         }
       }
     } catch (error) {
-      console.error('Error sending verification code:', error);
+      console.error("Error sending verification code:", error);
       throw error;
     }
   };
-  
+
   /**
    * Helper function to handle web-based authentication
    * @param {string} phoneNumber Formatted phone number
@@ -475,48 +457,48 @@ export function AuthProvider({ children }) {
   const handleWebAuth = async (phoneNumber) => {
     try {
       // Fall back to web browser authentication
-      console.log('Using web browser authentication flow');
-      const { openAuthDomain } = require('../utils/authRedirect');
-      
-      const result = await openAuthDomain('phoneAuth', {
+      console.log("Using web browser authentication flow");
+      const { openAuthDomain } = require("../utils/authRedirect");
+
+      const result = await openAuthDomain("phoneAuth", {
         phoneNumber: phoneNumber,
-        redirectUri: Constants.linkingUri
+        redirectUri: Constants.linkingUri,
       });
-      
+
       if (result.success) {
-        console.log('Phone verification handled through authorized domain');
-        
+        console.log("Phone verification handled through authorized domain");
+
         // Generate a verification ID to track this session
         const authVerificationId = `auth_${Date.now()}`;
         setVerificationId(authVerificationId);
-        
-        if (result.data && result.data.phoneVerified === 'true') {
-          console.log('Phone verified through web flow');
+
+        if (result.data && result.data.phoneVerified === "true") {
+          console.log("Phone verified through web flow");
           // Handle automatically verified phone
-          
+
           // Get the UID from authentication
           const firebaseUid = result.data.uid;
-          
+
           if (firebaseUid) {
             // Process the authenticated result
             await handleAuthResult({
               user: { uid: firebaseUid },
               isNewUser: false, // We'll check for this in handleAuthResult
-              phoneNumber: phoneNumber
+              phoneNumber: phoneNumber,
             });
           }
         }
-        
+
         return authVerificationId;
       } else if (result.canceled) {
-        console.log('User canceled phone verification');
-        throw new Error('Phone verification canceled');
+        console.log("User canceled phone verification");
+        throw new Error("Phone verification canceled");
       } else {
-        console.error('Error during phone verification:', result.error);
-        throw new Error(result.error || 'Failed to verify phone');
+        console.error("Error during phone verification:", result.error);
+        throw new Error(result.error || "Failed to verify phone");
       }
     } catch (error) {
-      console.error('Web auth error:', error);
+      console.error("Web auth error:", error);
       throw error;
     }
   };
@@ -531,25 +513,30 @@ export function AuthProvider({ children }) {
     try {
       // Use provided verification ID or fallback to context state
       const effectiveVerificationId = verificationIdParam || verificationId;
-      console.log(`Verifying code with verification ID: ${effectiveVerificationId}`);
-      
+      console.log(
+        `Verifying code with verification ID: ${effectiveVerificationId}`
+      );
+
       // Handle development mode
       if (isDevelopmentMode()) {
-        console.log("Development mode: Simulating verification with code:", code);
-        
+        console.log(
+          "Development mode: Simulating verification with code:",
+          code
+        );
+
         // For development testing, accept any 6-digit code
         if (code.length === 6) {
           // Simulate successful verification
           if (code === "123456") {
             console.log("Development mode: Test verification successful");
-            
+
             // Create mock authentication result
             const mockResult = {
               user: { uid: `dev_${Date.now()}` },
               isNewUser: true,
-              phoneNumber: tempPhoneNumber || "+1234567890"
+              phoneNumber: tempPhoneNumber || "+1234567890",
             };
-            
+
             // Process the mock auth result
             const authResult = await handleAuthResult(mockResult);
             return { ...authResult };
@@ -562,109 +549,142 @@ export function AuthProvider({ children }) {
           return { success: false, error: "Invalid code format" };
         }
       }
-      
+
       // Handle direct verification IDs (from direct registration)
-      if (effectiveVerificationId && effectiveVerificationId.startsWith('direct_')) {
-        console.log('Using direct verification mode');
-        
+      if (
+        effectiveVerificationId &&
+        effectiveVerificationId.startsWith("direct_")
+      ) {
+        console.log("Using direct verification mode");
+
         // For direct verification, accept any 6-digit code
         if (code.length === 6) {
-          console.log('Direct verification successful');
-          
+          console.log("Direct verification successful");
+
           // If we have a phone number, check if the user already exists
           if (tempPhoneNumber) {
             try {
               const existingUser = await findUserByPhone(tempPhoneNumber);
               if (existingUser) {
-                console.log('Found existing user with this phone number, marking as returning user');
+                console.log(
+                  "Found existing user with this phone number, marking as returning user"
+                );
                 setIsNewUser(false);
-                await AsyncStorage.setItem('isNewUser', 'false');
+                await AsyncStorage.setItem("isNewUser", "false");
                 return { success: true, isNewUser: false };
               }
             } catch (err) {
-              console.log('Error checking for existing user:', err);
+              console.log("Error checking for existing user:", err);
               // Continue as new user
             }
           }
-          
+
           // Force isNewUser to be true for direct registrations (new users)
-          console.log('Direct registration - new user');
+          console.log("Direct registration - new user");
           setIsNewUser(true);
-          await AsyncStorage.setItem('isNewUser', 'true');
-          
-          return { 
-            success: true, 
-            isNewUser: true
+          await AsyncStorage.setItem("isNewUser", "true");
+
+          return {
+            success: true,
+            isNewUser: true,
           };
         } else {
-          console.error('Invalid verification code format');
-          return { success: false, error: 'Please enter a 6-digit verification code' };
+          console.error("Invalid verification code format");
+          return {
+            success: false,
+            error: "Please enter a 6-digit verification code",
+          };
         }
       }
-      
+
       // Standard Firebase phone verification using credential
       if (!effectiveVerificationId) {
         console.error("No verification ID found for verification attempt");
         return { success: false, error: "No verification ID found" };
       }
-      
+
       try {
-        console.log('Creating phone credential with verification ID:', effectiveVerificationId);
-        
+        console.log(
+          "Creating phone credential with verification ID:",
+          effectiveVerificationId
+        );
+
         // Get Firebase auth functions dynamically
-        const { PhoneAuthProvider, signInWithCredential } = require('firebase/auth');
-        
+        const {
+          PhoneAuthProvider,
+          signInWithCredential,
+        } = require("firebase/auth");
+
         // Make sure auth is available
         if (!auth) {
-          throw new Error('Firebase auth not initialized');
+          throw new Error("Firebase auth not initialized");
         }
-        
+
         // Create credential
-        const credential = PhoneAuthProvider.credential(effectiveVerificationId, code);
-        
+        const credential = PhoneAuthProvider.credential(
+          effectiveVerificationId,
+          code
+        );
+
         // Sign in with credential
-        console.log('Signing in with phone credential');
+        console.log("Signing in with phone credential");
         const authResult = await signInWithCredential(auth, credential);
-        
+
         console.log("Phone verification successful");
-        
+
         // Get user data and check if this is a new or existing user
         const result = await handleAuthResult({
           user: authResult.user,
           isNewUser: authResult._tokenResponse?.isNewUser,
-          phoneNumber: tempPhoneNumber || authResult.user.phoneNumber
+          phoneNumber: tempPhoneNumber || authResult.user.phoneNumber,
         });
-        
+
         // Ensure isNewUser is properly set based on handleAuthResult
         if (result.isNewUser) {
-          console.log('Setting isNewUser=true for new Firebase authenticated user');
+          console.log(
+            "Setting isNewUser=true for new Firebase authenticated user"
+          );
           setIsNewUser(true);
-          await AsyncStorage.setItem('isNewUser', 'true');
+          await AsyncStorage.setItem("isNewUser", "true");
         } else {
-          console.log('Setting isNewUser=false for existing Firebase authenticated user');
+          console.log(
+            "Setting isNewUser=false for existing Firebase authenticated user"
+          );
           setIsNewUser(false);
-          await AsyncStorage.setItem('isNewUser', 'false');
+          await AsyncStorage.setItem("isNewUser", "false");
         }
-        
+
         return result;
       } catch (credentialError) {
-        console.error('Credential verification error:', credentialError);
-        
+        console.error("Credential verification error:", credentialError);
+
         // Handle specific error cases
-        if (credentialError.code === 'auth/invalid-verification-code') {
-          Alert.alert('Invalid Code', 'The verification code you entered is invalid. Please try again.');
-        } else if (credentialError.code === 'auth/code-expired') {
-          Alert.alert('Code Expired', 'The verification code has expired. Please request a new one.');
-        } else if (credentialError.code === 'auth/invalid-verification-id') {
-          Alert.alert('Session Expired', 'Your verification session has expired. Please restart the process.');
+        if (credentialError.code === "auth/invalid-verification-code") {
+          Alert.alert(
+            "Invalid Code",
+            "The verification code you entered is invalid. Please try again."
+          );
+        } else if (credentialError.code === "auth/code-expired") {
+          Alert.alert(
+            "Code Expired",
+            "The verification code has expired. Please request a new one."
+          );
+        } else if (credentialError.code === "auth/invalid-verification-id") {
+          Alert.alert(
+            "Session Expired",
+            "Your verification session has expired. Please restart the process."
+          );
         } else {
-          Alert.alert('Verification Failed', 'Failed to verify your phone number. Please try again.');
+          Alert.alert(
+            "Verification Failed",
+            "Failed to verify your phone number. Please try again."
+          );
         }
-        
-        return { success: false, error: 'Invalid verification code' };
+
+        return { success: false, error: "Invalid verification code" };
       }
     } catch (error) {
-      console.error('Error verifying code:', error);
+      console.error("Error verifying code:", error);
       return { success: false, error: error.message };
     }
   };
@@ -676,29 +696,31 @@ export function AuthProvider({ children }) {
    */
   const register = async (userData) => {
     try {
-      console.log('Registering user:', JSON.stringify(userData, null, 2));
-      
+      console.log("Registering user:", JSON.stringify(userData, null, 2));
+
       // Clean up phone number if provided
       if (userData.phoneNumber) {
         userData.phoneNumber = formatPhoneNumber(userData.phoneNumber);
       }
-      
+
       // Get Firebase ID if available
       let userId = userData.id;
       if (!userId && auth.currentUser) {
         userId = auth.currentUser.uid;
         console.log("Using Firebase auth UID:", userId);
       }
-      
+
       // If still no ID and not in development mode, generate a fallback ID
       if (!userId && !isDevelopmentMode()) {
-        userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        userId = `user_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(2, 9)}`;
         console.log("Generated fallback ID:", userId);
       }
-      
+
       // Handle isNewUser flag
       const isUserNew = userData.isNewUser === true; // Explicitly check for true
-      
+
       // Create user instance with the ID
       const newUser = new User({
         ...userData,
@@ -707,68 +729,71 @@ export function AuthProvider({ children }) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
-      
+
       // Set the newUser flag explicitly from the input parameter
       if (isUserNew) {
         newUser.newUser = true;
-        console.log('Setting user as NEW USER in registration');
+        console.log("Setting user as NEW USER in registration");
       } else {
-        console.log('Setting user as RETURNING USER in registration');
+        console.log("Setting user as RETURNING USER in registration");
       }
-      
+
       // Log the final user object that will be saved
       console.log("Final user object being saved:", {
         id: newUser.id,
         name: newUser.name,
         isNewUser: !!newUser.newUser,
         hasPhoneNumber: !!newUser.phoneNumber,
-        profileDataFields: Object.keys(newUser.profileData || {}).length
+        profileDataFields: Object.keys(newUser.profileData || {}).length,
       });
-      
+
       // Save user data to AsyncStorage and Firestore
       const saveResult = await newUser.save();
-      console.log('Firestore save result:', saveResult ? 'Success' : 'Failed');
-      
+      console.log("Firestore save result:", saveResult ? "Success" : "Failed");
+
       // Initialize Firestore collections
       if (isUserNew) {
         try {
           // Fetch all users or use an empty array if fetch fails
           let allUsers = [];
           try {
-            const { fetchAllUsers } = require('../services/userService');
-            allUsers = await fetchAllUsers() || [];
+            const { fetchAllUsers } = require("../services/userService");
+            allUsers = (await fetchAllUsers()) || [];
             console.log(`Fetched ${allUsers.length} users for initialization`);
           } catch (fetchError) {
-            console.warn('Error fetching users for initialization:', fetchError);
+            console.warn(
+              "Error fetching users for initialization:",
+              fetchError
+            );
             // Continue with empty array
           }
-          
+
           // Initialize with the fetched users
           await newUser.initialize(allUsers);
         } catch (initError) {
-          console.error('Error initializing user:', initError);
+          console.error("Error initializing user:", initError);
           // Don't throw, the user is already saved
         }
       }
-      
+
       // Update auth context
       safelySetUser(newUser);
       setIsNewUser(isUserNew);
-      
+
       // Update AsyncStorage for isNewUser flag
-      await AsyncStorage.setItem('isNewUser', isUserNew ? 'true' : 'false');
-      
+      await AsyncStorage.setItem("isNewUser", isUserNew ? "true" : "false");
+
       // Debugging the state after setting
-      console.log('Layout render - Auth state:', {
+      console.log("Layout render - Auth state:", {
         hasUser: !!newUser,
         isAuthenticated: newUser.isAuthenticated,
         isLoading: false,
-        isNewUser: isUserNew
+        isNewUser: isUserNew,
       });
-      
+
       return true;
     } catch (error) {
-      console.error('Error registering user:', error);
+      console.error("Error registering user:", error);
       return false;
     }
   };
@@ -781,9 +806,9 @@ export function AuthProvider({ children }) {
   const updateProfile = async (profileData) => {
     try {
       console.log("Starting profile update process...");
-      
+
       let userToUpdate = null;
-      
+
       // Get user instance to update (from context or AsyncStorage if needed)
       if (user) {
         userToUpdate = new User({ ...user });
@@ -797,7 +822,7 @@ export function AuthProvider({ children }) {
           return false;
         }
       }
-      
+
       // Ensure user has an ID
       if (!userToUpdate.id) {
         // If Firebase auth is available, use the UID
@@ -806,107 +831,134 @@ export function AuthProvider({ children }) {
           console.log("Set missing ID from Firebase auth:", userToUpdate.id);
         } else {
           // Generate a fallback ID if needed
-          userToUpdate.id = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-          console.log("Generated fallback ID for profile update:", userToUpdate.id);
+          userToUpdate.id = `user_${Date.now()}_${Math.random()
+            .toString(36)
+            .substring(2, 9)}`;
+          console.log(
+            "Generated fallback ID for profile update:",
+            userToUpdate.id
+          );
         }
       }
-      
+
       console.log("Updating profile for user:", userToUpdate.id);
-      
+
       // Update basic user fields
       if (profileData.name) userToUpdate.name = profileData.name;
       if (profileData.userType) userToUpdate.userType = profileData.userType;
-      if (profileData.stanfordEmail) userToUpdate.stanfordEmail = profileData.stanfordEmail;
-      if (profileData.isStanfordVerified !== undefined) userToUpdate.isStanfordVerified = profileData.isStanfordVerified;
-      
+      if (profileData.stanfordEmail)
+        userToUpdate.stanfordEmail = profileData.stanfordEmail;
+      if (profileData.isStanfordVerified !== undefined)
+        userToUpdate.isStanfordVerified = profileData.isStanfordVerified;
+
       // Ensure profileData object exists
       userToUpdate.profileData = userToUpdate.profileData || {};
-      
+
       // Update profile data - prioritize structured data
       if (profileData.profileData) {
         // Merge with existing profileData
         userToUpdate.profileData = {
           ...userToUpdate.profileData,
-          ...profileData.profileData
+          ...profileData.profileData,
         };
       } else {
         // Handle individual fields - all profile fields should go into profileData
-        if (profileData.age !== undefined) userToUpdate.profileData.age = profileData.age;
-        if (profileData.gender !== undefined) userToUpdate.profileData.gender = profileData.gender;
-        if (profileData.height !== undefined) userToUpdate.profileData.height = profileData.height;
-        if (profileData.year !== undefined) userToUpdate.profileData.year = profileData.year;
-        if (profileData.interests !== undefined) userToUpdate.profileData.interests = profileData.interests;
-        if (profileData.dateActivities !== undefined) userToUpdate.profileData.dateActivities = profileData.dateActivities;
-        if (profileData.photos !== undefined) userToUpdate.profileData.photos = profileData.photos;
-        if (profileData.activities !== undefined) userToUpdate.profileData.dateActivities = profileData.activities;
+        if (profileData.age !== undefined)
+          userToUpdate.profileData.age = profileData.age;
+        if (profileData.gender !== undefined)
+          userToUpdate.profileData.gender = profileData.gender;
+        if (profileData.height !== undefined)
+          userToUpdate.profileData.height = profileData.height;
+        if (profileData.year !== undefined)
+          userToUpdate.profileData.year = profileData.year;
+        if (profileData.interests !== undefined)
+          userToUpdate.profileData.interests = profileData.interests;
+        if (profileData.dateActivities !== undefined)
+          userToUpdate.profileData.dateActivities = profileData.dateActivities;
+        if (profileData.photos !== undefined)
+          userToUpdate.profileData.photos = profileData.photos;
+        if (profileData.activities !== undefined)
+          userToUpdate.profileData.dateActivities = profileData.activities;
       }
-      
+
       // Handle friends separately to ensure they're saved in the right place
       if (profileData.friends) {
         // Ensure friends are properly formatted
         const sanitizedFriends = profileData.friends.map((friend, index) => {
-          if (typeof friend === 'string') {
+          if (typeof friend === "string") {
             return {
-              id: `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
+              id: `friend_${Date.now()}_${index}_${Math.floor(
+                Math.random() * 10000
+              )}`,
               name: friend,
-              avatar: null
+              avatar: null,
             };
           }
-          if (typeof friend === 'object' && friend !== null) {
+          if (typeof friend === "object" && friend !== null) {
             return {
-              id: friend.id || `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
-              name: typeof friend.name === 'string' ? friend.name : 'Unknown',
+              id:
+                friend.id ||
+                `friend_${Date.now()}_${index}_${Math.floor(
+                  Math.random() * 10000
+                )}`,
+              name: typeof friend.name === "string" ? friend.name : "Unknown",
               avatar: friend.avatar || null,
-              interests: Array.isArray(friend.interests) ? friend.interests : [],
-              dateActivities: Array.isArray(friend.dateActivities) ? friend.dateActivities : []
+              interests: Array.isArray(friend.interests)
+                ? friend.interests
+                : [],
+              dateActivities: Array.isArray(friend.dateActivities)
+                ? friend.dateActivities
+                : [],
             };
           }
           return {
-            id: `friend_${Date.now()}_${index}_${Math.floor(Math.random() * 10000)}`,
-            name: 'Unknown',
-            avatar: null
+            id: `friend_${Date.now()}_${index}_${Math.floor(
+              Math.random() * 10000
+            )}`,
+            name: "Unknown",
+            avatar: null,
           };
         });
-        
+
         userToUpdate.friends = sanitizedFriends;
         // Also add to profileData to ensure it's accessible in both places
         userToUpdate.profileData.friends = sanitizedFriends;
       }
-      
+
       // Update timestamps
       userToUpdate.updatedAt = new Date().toISOString();
       userToUpdate.profileData.updatedAt = new Date().toISOString();
-      
+
       // Set authentication flag if it's a new user
       if (profileData.isNewUser) {
         userToUpdate.isAuthenticated = true;
       }
-      
+
       // Log final user object for debugging
       console.log("Final user object before saving:", {
         id: userToUpdate.id,
         name: userToUpdate.name,
         hasProfileData: !!userToUpdate.profileData,
         profileDataFields: Object.keys(userToUpdate.profileData || {}).length,
-        friendsCount: (userToUpdate.friends || []).length
+        friendsCount: (userToUpdate.friends || []).length,
       });
-      
+
       // Save user data (this will handle both AsyncStorage and Firestore)
       console.log("Saving updated profile...");
       const saveResult = await userToUpdate.save();
-      
+
       if (!saveResult && !isDevelopmentMode()) {
         console.warn("Failed to save user data to Firestore");
       } else {
         console.log("Profile saved successfully");
       }
-      
+
       // Update the user in state
       safelySetUser(userToUpdate);
-      
+
       return true;
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error("Error updating profile:", error);
       return false;
     }
   };
@@ -920,18 +972,18 @@ export function AuthProvider({ children }) {
       // Sign out from Firebase if not in development mode
       if (!isDevelopmentMode()) {
         // Get Firebase auth function dynamically
-        const { signOut } = require('firebase/auth');
+        const { signOut } = require("firebase/auth");
         await signOut(auth);
       } else {
-        console.log('Development mode: Skipping Firebase signOut');
+        console.log("Development mode: Skipping Firebase signOut");
       }
-      
+
       // Clear local storage
       await User.logout();
       safelySetUser(null);
       return true;
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error("Error logging out:", error);
       return false;
     }
   };
@@ -943,18 +995,18 @@ export function AuthProvider({ children }) {
    */
   const formatPhoneNumber = (phoneNumber) => {
     // Remove all non-numeric characters
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    
+    const cleaned = phoneNumber.replace(/\D/g, "");
+
     // Ensure it's a US number (add +1)
     if (cleaned.length === 10) {
       return `+1${cleaned}`;
     }
-    
+
     // If it already has a country code
     if (cleaned.length > 10) {
       return `+${cleaned}`;
     }
-    
+
     return cleaned;
   };
 
@@ -969,16 +1021,17 @@ export function AuthProvider({ children }) {
       if (localIp) {
         return localIp;
       }
-      
+
       // Try to extract from hostUri
-      const hostUri = Constants.expoConfig?.extra?.hostUri || Constants.expoConfig?.hostUri;
-      if (hostUri && hostUri.includes('10.27.145.110')) {
-        return '10.27.145.110';
+      const hostUri =
+        Constants.expoConfig?.extra?.hostUri || Constants.expoConfig?.hostUri;
+      if (hostUri && hostUri.includes("10.27.145.110")) {
+        return "10.27.145.110";
       }
-      
+
       return null;
     } catch (error) {
-      console.error('Error getting local IP:', error);
+      console.error("Error getting local IP:", error);
       return null;
     }
   };
@@ -993,41 +1046,49 @@ export function AuthProvider({ children }) {
     try {
       console.log("Production mode: Registering without phone verification");
       setIsLoading(true);
-      
+
       // Format the phone number
       const formattedPhone = formatPhoneNumber(phoneNumber);
       setTempPhoneNumber(formattedPhone);
-      
+
       console.log(`Formatted phone for registration: ${formattedPhone}`);
       console.log(`Searching for existing user with phone: ${formattedPhone}`);
-      
+
       // Check if a user with this phone number already exists
       try {
         const existingUser = await findUserByPhone(formattedPhone);
-        console.log("Phone lookup result:", existingUser ? 
-          `User found - ID: ${existingUser.id}, Name: ${existingUser.name || 'unnamed'}` : 
-          "No user found");
-        
+        console.log(
+          "Phone lookup result:",
+          existingUser
+            ? `User found - ID: ${existingUser.id}, Name: ${
+                existingUser.name || "unnamed"
+              }`
+            : "No user found"
+        );
+
         if (existingUser) {
-          console.log("Found existing user with this phone number:", existingUser.id);
-          
+          console.log(
+            "Found existing user with this phone number:",
+            existingUser.id
+          );
+
           // Update the existing user
           const updatedUser = new User({
             ...existingUser,
             isAuthenticated: true,
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
           });
-          
+
           // Save user data
           await updatedUser.save();
-          
+
           // Update state
           safelySetUser(updatedUser);
-          // For direct registration, we should set existingUser to isNewUser=false 
+          // For direct registration, we should set existingUser to isNewUser=false
           setIsNewUser(false);
-          await AsyncStorage.setItem('isNewUser', 'false');
+          await AsyncStorage.setItem("isNewUser", "false");
           setIsLoading(false);
-          
+
           console.log("Using existing user account, isNewUser=false");
           return { success: true, isNewUser: false, existingUser: true };
         }
@@ -1035,14 +1096,14 @@ export function AuthProvider({ children }) {
         console.error("Error checking for existing user:", findError);
         // Continue with new user creation
       }
-      
+
       // Generate a unique ID for the user (using timestamp + random string)
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 10);
       const userId = `user_${timestamp}_${randomStr}`;
-      
+
       console.log("Generated user ID:", userId);
-      
+
       // Create a new user instance
       const newUser = new User({
         id: userId,
@@ -1050,19 +1111,19 @@ export function AuthProvider({ children }) {
         isAuthenticated: true,
         newUser: true,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
-      
+
       // Save to AsyncStorage and Firestore
       await newUser.save();
-      
+
       // Update state
       safelySetUser(newUser);
       // For new users, set isNewUser=true (explicitly)
       setIsNewUser(true);
-      await AsyncStorage.setItem('isNewUser', 'true');
+      await AsyncStorage.setItem("isNewUser", "true");
       setIsLoading(false);
-      
+
       console.log("Created new user, isNewUser=true");
       return { success: true, isNewUser: true, existingUser: false };
     } catch (error) {
@@ -1103,14 +1164,14 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
 
   // Add fetchUserData to the auth context for direct access
   return {
     ...context,
-    fetchUserData: context.fetchUserData
+    fetchUserData: context.fetchUserData,
   };
 }
 
-export default AuthContext; 
+export default AuthContext;
