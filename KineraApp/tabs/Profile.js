@@ -1259,6 +1259,23 @@ export default function ProfileScreen({ route }) {
     }
   };
 
+  // Function to delete a photo
+  const deletePhoto = (index) => {
+    console.log("🗑️ deletePhoto called for index:", index);
+    
+    if (index === 0) {
+      console.log("🗑️ Deleting main photo");
+      setMainPhoto(null);
+    } else {
+      console.log("🗑️ Deleting additional photo at index:", index - 1);
+      const newPhotos = [...additionalPhotos];
+      newPhotos.splice(index - 1, 1);
+      setAdditionalPhotos(newPhotos);
+    }
+    
+    console.log("✅ Photo deletion completed");
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Welcome Message Overlay - only shown if showWelcome is true and we've checked storage */}
@@ -1349,6 +1366,23 @@ export default function ProfileScreen({ route }) {
                       )}
                     </View>
                   </WebImagePicker>
+                  
+                  {/* Delete button - only show if there's a photo */}
+                  {mainPhoto && (
+                    <TouchableOpacity
+                      style={styles.deletePhotoButton}
+                      onPress={() => {
+                        console.log("🗑️ Main photo delete button pressed");
+                        deletePhoto(0);
+                      }}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={24}
+                        color="red"
+                      />
+                    </TouchableOpacity>
+                  )}
                 </>
               ) : (
                 <>
@@ -1379,30 +1413,49 @@ export default function ProfileScreen({ route }) {
               <View key={`additional-photo-${index}`} style={styles.photoCard}>
                 {
                   isEditing ? (
-                    <WebImagePicker onImageSelected={(uri) => {
-                      console.log(`📸 Additional photo ${index + 1} WebImagePicker callback triggered`);
-                      handleImageSelection(uri, index + 1);
-                    }}>
-                      <View style={styles.photoFrame}>
-                        {photo ? (
-                          <Image
-                            source={{ uri: photo }}
-                            style={styles.photoImage}
-                          />
-                        ) : (
-                          <View style={styles.editPhotoPlaceholder}>
-                            <Ionicons
-                              name="add-circle"
-                              size={50}
-                              color={COLORS.primaryNavy}
+                    <>
+                      <WebImagePicker onImageSelected={(uri) => {
+                        console.log(`📸 Additional photo ${index + 1} WebImagePicker callback triggered`);
+                        handleImageSelection(uri, index + 1);
+                      }}>
+                        <View style={styles.photoFrame}>
+                          {photo ? (
+                            <Image
+                              source={{ uri: photo }}
+                              style={styles.photoImage}
                             />
-                            <Text style={styles.editPhotoText}>
-                              Add Photo {index + 1}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </WebImagePicker>
+                          ) : (
+                            <View style={styles.editPhotoPlaceholder}>
+                              <Ionicons
+                                name="add-circle"
+                                size={50}
+                                color={COLORS.primaryNavy}
+                              />
+                              <Text style={styles.editPhotoText}>
+                                Add Photo {index + 1}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </WebImagePicker>
+                      
+                      {/* Delete button - only show if there's a photo */}
+                      {photo && (
+                        <TouchableOpacity
+                          style={styles.deletePhotoButton}
+                          onPress={() => {
+                            console.log(`🗑️ Additional photo ${index + 1} delete button pressed`);
+                            deletePhoto(index + 1);
+                          }}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={24}
+                            color="red"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </>
                   ) : photo ? (
                     <View style={styles.photoFrame}>
                       <Image
@@ -2847,5 +2900,18 @@ const styles = StyleSheet.create({
     color: "red",
     fontSize: 14,
     marginTop: 5,
+  },
+  deletePhotoButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "white",
+    borderRadius: 15,
+    padding: 5,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
 });
