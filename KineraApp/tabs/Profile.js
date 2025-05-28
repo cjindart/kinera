@@ -72,7 +72,6 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
     Animated.timing(translateY, {
       toValue: 3, // Reduced from 4 to match the new size
       duration: 100,
-      useNativeDriver: true,
     }).start();
   };
 
@@ -80,7 +79,6 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
     Animated.timing(translateY, {
       toValue: 0,
       duration: 100,
-      useNativeDriver: true,
     }).start();
 
     // Toggle edit mode when button is released
@@ -118,7 +116,6 @@ const LogoutButton = ({ onLogout }) => {
     Animated.timing(translateY, {
       toValue: 3,
       duration: 100,
-      useNativeDriver: true,
     }).start();
   };
 
@@ -126,7 +123,6 @@ const LogoutButton = ({ onLogout }) => {
     Animated.timing(translateY, {
       toValue: 0,
       duration: 100,
-      useNativeDriver: true,
     }).start();
 
     // Call logout function when button is released
@@ -151,6 +147,79 @@ const LogoutButton = ({ onLogout }) => {
         </Pressable>
       </Animated.View>
     </View>
+  );
+};
+
+// Web-compatible Image Picker Component
+const WebImagePicker = ({ onImageSelected, children }) => {
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = (event) => {
+    console.log("📸 WebImagePicker: File select event triggered", event);
+    console.log("📸 WebImagePicker: Files available:", event.target.files);
+    
+    const file = event.target.files[0];
+    console.log("📸 WebImagePicker: Selected file:", file);
+    
+    if (file && file.type.startsWith('image/')) {
+      console.log("📸 WebImagePicker: Valid image file detected, type:", file.type);
+      console.log("📸 WebImagePicker: File size:", file.size, "bytes");
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        console.log("📸 WebImagePicker: FileReader loaded successfully");
+        console.log("📸 WebImagePicker: Data URL length:", e.target.result.length);
+        console.log("📸 WebImagePicker: Calling onImageSelected callback");
+        onImageSelected(e.target.result);
+      };
+      reader.onerror = (e) => {
+        console.error("❌ WebImagePicker: FileReader error:", e);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      console.warn("⚠️ WebImagePicker: Invalid file selected or no file");
+      if (file) {
+        console.warn("⚠️ WebImagePicker: File type:", file.type);
+      }
+    }
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
+    console.log("📸 WebImagePicker: Input value reset");
+  };
+
+  const openFilePicker = () => {
+    console.log("📸 WebImagePicker: openFilePicker called");
+    console.log("📸 WebImagePicker: fileInputRef.current:", fileInputRef.current);
+    
+    if (fileInputRef.current) {
+      console.log("📸 WebImagePicker: Triggering file input click");
+      fileInputRef.current.click();
+    } else {
+      console.error("❌ WebImagePicker: fileInputRef.current is null!");
+    }
+  };
+
+  console.log("📸 WebImagePicker: Component rendering");
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
+      <TouchableOpacity 
+        onPress={() => {
+          console.log("📸 WebImagePicker: TouchableOpacity pressed!");
+          openFilePicker();
+        }}
+        style={{ width: '100%', height: '100%' }}
+      >
+        {children}
+      </TouchableOpacity>
+    </>
   );
 };
 
@@ -199,6 +268,23 @@ export default function ProfileScreen({ route }) {
   // Add new state for switch user modal
   const [showSwitchUserModal, setShowSwitchUserModal] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
+
+  // Add state for custom input modals
+  const [showAgeModal, setShowAgeModal] = useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showHeightModal, setShowHeightModal] = useState(false);
+  const [showYearModal, setShowYearModal] = useState(false);
+  const [showUserTypeModal, setShowUserTypeModal] = useState(false);
+  const [tempHeightInput, setTempHeightInput] = useState("");
+  const [tempAgeInput, setTempAgeInput] = useState("");
+
+  // Add refs for text inputs
+  const interestInputRef = useRef(null);
+  const activityInputRef = useRef(null);
+
+  // Add state for showing duplicate messages
+  const [showDuplicateInterest, setShowDuplicateInterest] = useState(false);
+  const [showDuplicateActivity, setShowDuplicateActivity] = useState(false);
 
   // Load user data when component mounts
   useEffect(() => {
@@ -443,12 +529,10 @@ export default function ProfileScreen({ route }) {
       Animated.timing(welcomeOpacity, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: true,
       }),
       Animated.timing(welcomeTranslateY, {
         toValue: 0,
         duration: 800,
-        useNativeDriver: true,
       }),
     ]).start();
   };
@@ -460,12 +544,10 @@ export default function ProfileScreen({ route }) {
       Animated.timing(welcomeOpacity, {
         toValue: 0,
         duration: 500,
-        useNativeDriver: true,
       }),
       Animated.timing(welcomeTranslateY, {
         toValue: -50,
         duration: 500,
-        useNativeDriver: true,
       }),
     ]).start(async () => {
       setShowWelcome(false);
@@ -609,8 +691,11 @@ export default function ProfileScreen({ route }) {
     if (!interests.includes(newInterestText.trim())) {
       setInterests([...interests, newInterestText.trim()]);
       setNewInterestText("");
+      setShowDuplicateInterest(false);
     } else {
-      Alert.alert("Duplicate", "This interest already exists!");
+      setShowDuplicateInterest(true);
+      // Hide the message after 3 seconds
+      setTimeout(() => setShowDuplicateInterest(false), 3000);
     }
   };
 
@@ -621,8 +706,11 @@ export default function ProfileScreen({ route }) {
     if (!dateActivities.includes(newActivityText.trim())) {
       setDateActivities([...dateActivities, newActivityText.trim()]);
       setNewActivityText("");
+      setShowDuplicateActivity(false);
     } else {
-      Alert.alert("Duplicate", "This activity already exists!");
+      setShowDuplicateActivity(true);
+      // Hide the message after 3 seconds
+      setTimeout(() => setShowDuplicateActivity(false), 3000);
     }
   };
 
@@ -652,6 +740,38 @@ export default function ProfileScreen({ route }) {
     } catch (error) {
       console.error("Error uploading image:", error);
       throw error;
+    }
+  };
+
+  // Simplified image picker for web compatibility
+  const handleImageSelection = async (imageUri, index = 0) => {
+    console.log("🖼️ handleImageSelection called with:", { imageUri: imageUri.substring(0, 50) + "...", index });
+    
+    try {
+      // For demo purposes, use the data URL directly first
+      console.log("🖼️ Setting image directly (skipping Firebase upload for now)");
+      
+      if (index === 0) {
+        console.log("🖼️ Setting main photo");
+        setMainPhoto(imageUri);
+      } else {
+        console.log("🖼️ Setting additional photo at index:", index - 1);
+        const newPhotos = [...additionalPhotos];
+        if (index - 1 === additionalPhotos.length) {
+          newPhotos.push(imageUri);
+        } else {
+          newPhotos[index - 1] = imageUri;
+        }
+        setAdditionalPhotos(newPhotos);
+      }
+      
+      console.log("✅ Image selection completed successfully");
+      
+      // TODO: Later we can add Firebase upload here
+      // const firebaseUrl = await uploadImageToFirebase(imageUri);
+      
+    } catch (error) {
+      console.error("❌ Error handling image selection:", error);
     }
   };
 
@@ -1139,6 +1259,23 @@ export default function ProfileScreen({ route }) {
     }
   };
 
+  // Function to delete a photo
+  const deletePhoto = (index) => {
+    console.log("🗑️ deletePhoto called for index:", index);
+    
+    if (index === 0) {
+      console.log("🗑️ Deleting main photo");
+      setMainPhoto(null);
+    } else {
+      console.log("🗑️ Deleting additional photo at index:", index - 1);
+      const newPhotos = [...additionalPhotos];
+      newPhotos.splice(index - 1, 1);
+      setAdditionalPhotos(newPhotos);
+    }
+    
+    console.log("✅ Photo deletion completed");
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Welcome Message Overlay - only shown if showWelcome is true and we've checked storage */}
@@ -1203,46 +1340,71 @@ export default function ProfileScreen({ route }) {
             {/* Main profile photo */}
             <View style={styles.photoCard}>
               {isEditing ? (
-                <TouchableOpacity
-                  style={styles.photoFrame}
-                  onPress={() => showImagePickerOptions(0)}
-                >
-                  {mainPhoto ? (
-                    <Image
-                      source={{ uri: mainPhoto }}
-                      style={styles.photoImage}
-                    />
-                  ) : (
-                    <View style={styles.editPhotoPlaceholder}>
-                      <Ionicons
-                        name="camera"
-                        size={50}
-                        color={COLORS.primaryNavy}
-                      />
-                      <Text style={styles.editPhotoText}>
-                        Add Profile Photo
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.photoFrame}>
-                  {mainPhoto ? (
-                    <Image
-                      source={{ uri: mainPhoto }}
-                      style={styles.photoImage}
-                    />
-                  ) : (
+                <>
+                  {console.log("📸 Main photo section rendering in EDIT mode")}
+                  <WebImagePicker onImageSelected={(uri) => {
+                    console.log("📸 Main photo WebImagePicker callback triggered");
+                    handleImageSelection(uri, 0);
+                  }}>
                     <View style={styles.photoFrame}>
-                      <Ionicons
-                        name="person"
-                        size={100}
-                        color={COLORS.mutedBlue}
-                      />
-                      <Text style={styles.editPhotoText}>No Photo</Text>
+                      {mainPhoto ? (
+                        <Image
+                          source={{ uri: mainPhoto }}
+                          style={styles.photoImage}
+                        />
+                      ) : (
+                        <View style={styles.editPhotoPlaceholder}>
+                          <Ionicons
+                            name="camera"
+                            size={50}
+                            color={COLORS.primaryNavy}
+                          />
+                          <Text style={styles.editPhotoText}>
+                            Add Profile Photo
+                          </Text>
+                        </View>
+                      )}
                     </View>
+                  </WebImagePicker>
+                  
+                  {/* Delete button - only show if there's a photo */}
+                  {mainPhoto && (
+                    <TouchableOpacity
+                      style={styles.deletePhotoButton}
+                      onPress={() => {
+                        console.log("🗑️ Main photo delete button pressed");
+                        deletePhoto(0);
+                      }}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={24}
+                        color="red"
+                      />
+                    </TouchableOpacity>
                   )}
-                </View>
+                </>
+              ) : (
+                <>
+                  {console.log("📸 Main photo section rendering in VIEW mode")}
+                  <View style={styles.photoFrame}>
+                    {mainPhoto ? (
+                      <Image
+                        source={{ uri: mainPhoto }}
+                        style={styles.photoImage}
+                      />
+                    ) : (
+                      <View style={styles.photoFrame}>
+                        <Ionicons
+                          name="person"
+                          size={100}
+                          color={COLORS.mutedBlue}
+                        />
+                        <Text style={styles.editPhotoText}>No Photo</Text>
+                      </View>
+                    )}
+                  </View>
+                </>
               )}
             </View>
 
@@ -1251,28 +1413,49 @@ export default function ProfileScreen({ route }) {
               <View key={`additional-photo-${index}`} style={styles.photoCard}>
                 {
                   isEditing ? (
-                    <TouchableOpacity
-                      style={styles.photoFrame}
-                      onPress={() => showImagePickerOptions(index + 1)}
-                    >
-                      {photo ? (
-                        <Image
-                          source={{ uri: photo }}
-                          style={styles.photoImage}
-                        />
-                      ) : (
-                        <View style={styles.editPhotoPlaceholder}>
-                          <Ionicons
-                            name="add-circle"
-                            size={50}
-                            color={COLORS.primaryNavy}
-                          />
-                          <Text style={styles.editPhotoText}>
-                            Add Photo {index + 1}
-                          </Text>
+                    <>
+                      <WebImagePicker onImageSelected={(uri) => {
+                        console.log(`📸 Additional photo ${index + 1} WebImagePicker callback triggered`);
+                        handleImageSelection(uri, index + 1);
+                      }}>
+                        <View style={styles.photoFrame}>
+                          {photo ? (
+                            <Image
+                              source={{ uri: photo }}
+                              style={styles.photoImage}
+                            />
+                          ) : (
+                            <View style={styles.editPhotoPlaceholder}>
+                              <Ionicons
+                                name="add-circle"
+                                size={50}
+                                color={COLORS.primaryNavy}
+                              />
+                              <Text style={styles.editPhotoText}>
+                                Add Photo {index + 1}
+                              </Text>
+                            </View>
+                          )}
                         </View>
+                      </WebImagePicker>
+                      
+                      {/* Delete button - only show if there's a photo */}
+                      {photo && (
+                        <TouchableOpacity
+                          style={styles.deletePhotoButton}
+                          onPress={() => {
+                            console.log(`🗑️ Additional photo ${index + 1} delete button pressed`);
+                            deletePhoto(index + 1);
+                          }}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={24}
+                            color="red"
+                          />
+                        </TouchableOpacity>
                       )}
-                    </TouchableOpacity>
+                    </>
                   ) : photo ? (
                     <View style={styles.photoFrame}>
                       <Image
@@ -1290,23 +1473,23 @@ export default function ProfileScreen({ route }) {
               mainPhoto &&
               additionalPhotos.length < MAX_PHOTOS - 1 && (
                 <View key="add-photo-container" style={styles.photoCard}>
-                  <TouchableOpacity
-                    style={styles.photoFrame}
-                    onPress={() =>
-                      showImagePickerOptions(additionalPhotos.length + 1)
-                    }
-                  >
-                    <View style={styles.editPhotoPlaceholder}>
-                      <Ionicons
-                        name="add-circle"
-                        size={50}
-                        color={COLORS.primaryNavy}
-                      />
-                      <Text style={styles.editPhotoText}>
-                        Add Photo {additionalPhotos.length + 1}
-                      </Text>
+                  <WebImagePicker onImageSelected={(uri) => {
+                    console.log(`📸 Add photo container WebImagePicker callback triggered for index ${additionalPhotos.length + 1}`);
+                    handleImageSelection(uri, additionalPhotos.length + 1);
+                  }}>
+                    <View style={styles.photoFrame}>
+                      <View style={styles.editPhotoPlaceholder}>
+                        <Ionicons
+                          name="add-circle"
+                          size={50}
+                          color={COLORS.primaryNavy}
+                        />
+                        <Text style={styles.editPhotoText}>
+                          Add Photo {additionalPhotos.length + 1}
+                        </Text>
+                      </View>
                     </View>
-                  </TouchableOpacity>
+                  </WebImagePicker>
                 </View>
               )}
           </ScrollView>
@@ -1357,31 +1540,7 @@ export default function ProfileScreen({ route }) {
             style={styles.summaryBlock}
             onPress={() => {
               if (isEditing) {
-                Alert.prompt(
-                  "Edit Age",
-                  "Enter your age:",
-                  [
-                    {
-                      text: "Cancel",
-                      style: "cancel",
-                    },
-                    {
-                      text: "Save",
-                      onPress: (newAge) => {
-                        if (newAge && !isNaN(newAge)) {
-                          setAge(newAge);
-                        } else {
-                          Alert.alert(
-                            "Invalid Input",
-                            "Please enter a valid age"
-                          );
-                        }
-                      },
-                    },
-                  ],
-                  "plain-text",
-                  age
-                );
+                setShowAgeModal(true);
               }
             }}
           >
@@ -1393,7 +1552,7 @@ export default function ProfileScreen({ route }) {
               />
             </View>
             <Text style={styles.summaryText}>
-              {typeof age === "string" || typeof age === "number" ? age : "-"}
+              {(typeof age === "string" || typeof age === "number") && age ? age : "N/A"}
             </Text>
           </TouchableOpacity>
 
@@ -1401,41 +1560,7 @@ export default function ProfileScreen({ route }) {
             style={styles.summaryBlock}
             onPress={() => {
               if (isEditing) {
-                Alert.alert("Edit Gender", "Select your gender:", [
-                  {
-                    text: "Male",
-                    onPress: () => setGender("Male"),
-                  },
-                  {
-                    text: "Female",
-                    onPress: () => setGender("Female"),
-                  },
-                  {
-                    text: "Input another gender",
-                    onPress: () =>
-                      Alert.prompt(
-                        "Input Gender",
-                        "Enter your gender:",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel",
-                          },
-                          {
-                            text: "Save",
-                            onPress: (newGender) => {
-                              setGender(newGender);
-                            },
-                          },
-                        ],
-                        "plain-text"
-                      ),
-                  },
-                  {
-                    text: "Cancel",
-                    style: "cancel",
-                  },
-                ]);
+                setShowGenderModal(true);
               }
             }}
           >
@@ -1447,7 +1572,7 @@ export default function ProfileScreen({ route }) {
               />
             </View>
             <Text style={styles.summaryText}>
-              {typeof gender === "string" ? gender : "-"}
+              {typeof gender === "string" && gender ? gender : "N/A"}
             </Text>
           </TouchableOpacity>
 
@@ -1455,26 +1580,8 @@ export default function ProfileScreen({ route }) {
             style={styles.summaryBlock}
             onPress={() => {
               if (isEditing) {
-                Alert.prompt(
-                  "Edit Height",
-                  "Enter your height (e.g., 5'7):",
-                  [
-                    {
-                      text: "Cancel",
-                      style: "cancel",
-                    },
-                    {
-                      text: "Save",
-                      onPress: (newHeight) => {
-                        if (newHeight) {
-                          setHeight(newHeight);
-                        }
-                      },
-                    },
-                  ],
-                  "plain-text",
-                  height
-                );
+                setTempHeightInput(height);
+                setShowHeightModal(true);
               }
             }}
           >
@@ -1486,7 +1593,7 @@ export default function ProfileScreen({ route }) {
               />
             </View>
             <Text style={styles.summaryText}>
-              {typeof height === "string" ? height : "-"}
+              {typeof height === "string" && height ? height : "N/A"}
             </Text>
           </TouchableOpacity>
 
@@ -1494,36 +1601,7 @@ export default function ProfileScreen({ route }) {
             style={styles.summaryBlock}
             onPress={() => {
               if (isEditing) {
-                Alert.alert("Edit Year", "Select your year:", [
-                  {
-                    text: "Freshman",
-                    onPress: () => setYear("Freshman"),
-                  },
-                  {
-                    text: "Sophomore",
-                    onPress: () => setYear("Sophomore"),
-                  },
-                  {
-                    text: "Junior",
-                    onPress: () => setYear("Junior"),
-                  },
-                  {
-                    text: "Senior",
-                    onPress: () => setYear("Senior"),
-                  },
-                  {
-                    text: "Grad-Student",
-                    onPress: () => setYear("Grad-Student"),
-                  },
-                  {
-                    text: "Post-Grad",
-                    onPress: () => setYear("Post-Grad"),
-                  },
-                  {
-                    text: "Cancel",
-                    style: "cancel",
-                  },
-                ]);
+                setShowYearModal(true);
               }
             }}
           >
@@ -1535,7 +1613,7 @@ export default function ProfileScreen({ route }) {
               />
             </View>
             <Text style={styles.summaryText}>
-              {typeof year === "string" ? year : "-"}
+              {typeof year === "string" && year ? year : "N/A"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1561,28 +1639,7 @@ export default function ProfileScreen({ route }) {
           <TouchableOpacity
             style={styles.daterSwiperButton}
             onPress={() => {
-              Alert.alert(
-                "Edit Dater or eSwiper Status",
-                "Choose your user experience!",
-                [
-                  {
-                    text: "Dater only",
-                    onPress: () => setUserType("Dater"),
-                  },
-                  {
-                    text: "Match Maker only",
-                    onPress: () => setUserType("Match Maker"),
-                  },
-                  {
-                    text: "Dater & Match Maker",
-                    onPress: () => setUserType("Dater & Match Maker"),
-                  },
-                  {
-                    text: "Cancel",
-                    style: "cancel",
-                  },
-                ]
-              );
+              setShowUserTypeModal(true);
             }}
           >
             <Text style={styles.daterSwiperButtonText}>
@@ -1602,7 +1659,8 @@ export default function ProfileScreen({ route }) {
                   if (newInterestText.trim() !== "") {
                     addNewInterest();
                   } else {
-                    Alert.alert("Please enter an interest in the field below");
+                    // Focus the input field to guide user
+                    interestInputRef.current?.focus();
                   }
                 }}
               >
@@ -1619,7 +1677,13 @@ export default function ProfileScreen({ route }) {
                 value={newInterestText}
                 onChangeText={setNewInterestText}
                 onSubmitEditing={addNewInterest}
+                ref={interestInputRef}
               />
+              {showDuplicateInterest && (
+                <Text style={styles.duplicateMessage}>
+                  This interest already exists!
+                </Text>
+              )}
             </View>
           )}
 
@@ -1664,7 +1728,8 @@ export default function ProfileScreen({ route }) {
                   if (newActivityText.trim() !== "") {
                     addNewActivity();
                   } else {
-                    Alert.alert("Please enter an activity in the field below");
+                    // Focus the input field to guide user
+                    activityInputRef.current?.focus();
                   }
                 }}
               >
@@ -1681,7 +1746,13 @@ export default function ProfileScreen({ route }) {
                 value={newActivityText}
                 onChangeText={setNewActivityText}
                 onSubmitEditing={addNewActivity}
+                ref={activityInputRef}
               />
+              {showDuplicateActivity && (
+                <Text style={styles.duplicateMessage}>
+                  This activity already exists!
+                </Text>
+              )}
             </View>
           )}
 
@@ -1810,7 +1881,9 @@ export default function ProfileScreen({ route }) {
                           .join(", ")}
                         {(friendInterests.length > 0
                           ? friendInterests.length
-                          : (mockFriend?.interests || []).length) > 2 && "..."}
+                          : (mockFriend?.interests || []).length) > 2 && (
+                          <Text>...</Text>
+                        )}
                       </Text>
                     )}
                   </View>
@@ -1999,6 +2072,218 @@ export default function ProfileScreen({ route }) {
             </View>
           </View>
         </Modal>
+
+        {/* Custom Input Modals */}
+        
+        {/* Age Selection Modal */}
+        <Modal
+          visible={showAgeModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowAgeModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Enter Your Age</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowAgeModal(false)}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
+                </TouchableOpacity>
+              </View>
+              
+              <TextInput
+                style={styles.heightInput}
+                placeholder="Enter your age (e.g., 21)"
+                value={tempAgeInput}
+                onChangeText={setTempAgeInput}
+                keyboardType="numeric"
+                autoFocus={true}
+                maxLength={2}
+              />
+              
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setTempAgeInput("");
+                    setShowAgeModal(false);
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={() => {
+                    if (tempAgeInput && parseInt(tempAgeInput) >= 18 && parseInt(tempAgeInput) <= 99) {
+                      setAge(tempAgeInput);
+                      setTempAgeInput("");
+                      setShowAgeModal(false);
+                    }
+                  }}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Gender Selection Modal */}
+        <Modal
+          visible={showGenderModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowGenderModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Gender</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowGenderModal(false)}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
+                </TouchableOpacity>
+              </View>
+              
+              {["Male", "Female", "Non-binary", "Other", "Prefer not to say"].map((genderOption) => (
+                <TouchableOpacity
+                  key={genderOption}
+                  style={styles.optionButton}
+                  onPress={() => {
+                    setGender(genderOption);
+                    setShowGenderModal(false);
+                  }}
+                >
+                  <Text style={styles.optionText}>{genderOption}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Height Input Modal */}
+        <Modal
+          visible={showHeightModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowHeightModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Enter Height</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowHeightModal(false)}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
+                </TouchableOpacity>
+              </View>
+              
+              <TextInput
+                style={styles.heightInput}
+                placeholder="e.g., 5'7, 170cm"
+                value={tempHeightInput}
+                onChangeText={setTempHeightInput}
+                autoFocus={true}
+              />
+              
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setShowHeightModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={() => {
+                    setHeight(tempHeightInput);
+                    setShowHeightModal(false);
+                  }}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Year Selection Modal */}
+        <Modal
+          visible={showYearModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowYearModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Year</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowYearModal(false)}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
+                </TouchableOpacity>
+              </View>
+              
+              {["Freshman", "Sophomore", "Junior", "Senior", "Grad Student", "Post-Grad"].map((yearOption) => (
+                <TouchableOpacity
+                  key={yearOption}
+                  style={styles.optionButton}
+                  onPress={() => {
+                    setYear(yearOption);
+                    setShowYearModal(false);
+                  }}
+                >
+                  <Text style={styles.optionText}>{yearOption}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Modal>
+
+        {/* User Type Selection Modal */}
+        <Modal
+          visible={showUserTypeModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowUserTypeModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Choose User Experience</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowUserTypeModal(false)}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
+                </TouchableOpacity>
+              </View>
+              
+              {["Dater", "Match Maker", "Dater & Match Maker"].map((typeOption) => (
+                <TouchableOpacity
+                  key={typeOption}
+                  style={styles.optionButton}
+                  onPress={() => {
+                    setUserType(typeOption);
+                    setShowUserTypeModal(false);
+                  }}
+                >
+                  <Text style={styles.optionText}>{typeOption}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Modal>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -2557,5 +2842,76 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "600",
+  },
+
+  // Custom Input Modals
+  optionButton: {
+    padding: 15,
+    borderWidth: 1,
+    borderColor: COLORS.primaryNavy,
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: "white",
+  },
+  optionText: {
+    fontSize: 16,
+    color: COLORS.primaryNavy,
+    textAlign: "center",
+  },
+  heightInput: {
+    borderWidth: 1,
+    borderColor: COLORS.primaryNavy,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    fontSize: 16,
+    backgroundColor: "white",
+  },
+  modalButtonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: COLORS.paleBlue,
+    borderWidth: 1,
+    borderColor: COLORS.primaryNavy,
+  },
+  saveButton: {
+    backgroundColor: COLORS.accentOrange,
+  },
+  cancelButtonText: {
+    color: COLORS.primaryNavy,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  saveButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  duplicateMessage: {
+    color: "red",
+    fontSize: 14,
+    marginTop: 5,
+  },
+  deletePhotoButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "white",
+    borderRadius: 15,
+    padding: 5,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
 });
