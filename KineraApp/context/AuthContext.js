@@ -738,7 +738,8 @@ export function AuthProvider({ children }) {
    */
   const register = async (userData) => {
     try {
-      console.log("Registering user:", JSON.stringify(userData, null, 2));
+      console.log("🚀 AuthContext: Starting registration process...");
+      console.log("📝 Registering user:", JSON.stringify(userData, null, 2));
 
       // Clean up phone number if provided
       if (userData.phoneNumber) {
@@ -749,7 +750,7 @@ export function AuthProvider({ children }) {
       let userId = userData.id;
       if (!userId && auth.currentUser) {
         userId = auth.currentUser.uid;
-        console.log("Using Firebase auth UID:", userId);
+        console.log("🔑 Using Firebase auth UID:", userId);
       }
 
       // If still no ID and not in development mode, generate a fallback ID
@@ -757,7 +758,7 @@ export function AuthProvider({ children }) {
         userId = `user_${Date.now()}_${Math.random()
           .toString(36)
           .substring(2, 9)}`;
-        console.log("Generated fallback ID:", userId);
+        console.log("🆔 Generated fallback ID:", userId);
       }
 
       // Handle isNewUser flag
@@ -775,13 +776,13 @@ export function AuthProvider({ children }) {
       // Set the newUser flag explicitly from the input parameter
       if (isUserNew) {
         newUser.newUser = true;
-        console.log("Setting user as NEW USER in registration");
+        console.log("👤 Setting user as NEW USER in registration");
       } else {
-        console.log("Setting user as RETURNING USER in registration");
+        console.log("👤 Setting user as RETURNING USER in registration");
       }
 
       // Log the final user object that will be saved
-      console.log("Final user object being saved:", {
+      console.log("💾 Final user object being saved:", {
         id: newUser.id,
         name: newUser.name,
         isNewUser: !!newUser.newUser,
@@ -791,7 +792,10 @@ export function AuthProvider({ children }) {
 
       // Save user data to AsyncStorage and Firestore
       const saveResult = await newUser.save();
-      console.log("Firestore save result:", saveResult ? "Success" : "Failed");
+      console.log(
+        "💾 Firestore save result:",
+        saveResult ? "Success" : "Failed"
+      );
 
       // Initialize Firestore collections
       if (isUserNew) {
@@ -801,10 +805,12 @@ export function AuthProvider({ children }) {
           try {
             const { fetchAllUsers } = require("../services/userService");
             allUsers = (await fetchAllUsers()) || [];
-            console.log(`Fetched ${allUsers.length} users for initialization`);
+            console.log(
+              `📊 Fetched ${allUsers.length} users for initialization`
+            );
           } catch (fetchError) {
             console.warn(
-              "Error fetching users for initialization:",
+              "⚠️ Error fetching users for initialization:",
               fetchError
             );
             // Continue with empty array
@@ -813,29 +819,31 @@ export function AuthProvider({ children }) {
           // Initialize with the fetched users
           await newUser.initialize(allUsers);
         } catch (initError) {
-          console.error("Error initializing user:", initError);
+          console.error("💥 Error initializing user:", initError);
           // Don't throw, the user is already saved
         }
       }
 
       // Update auth context
-      safelySetUser(newUser);
+      console.log("🔄 Updating auth context with new user...");
+      await safelySetUser(newUser);
       setIsNewUser(isUserNew);
 
       // Update AsyncStorage for isNewUser flag
       await AsyncStorage.setItem("isNewUser", isUserNew ? "true" : "false");
 
       // Debugging the state after setting
-      console.log("Layout render - Auth state:", {
+      console.log("📊 Layout render - Auth state:", {
         hasUser: !!newUser,
         isAuthenticated: newUser.isAuthenticated,
         isLoading: false,
         isNewUser: isUserNew,
       });
 
+      console.log("✅ Registration process completed successfully");
       return true;
     } catch (error) {
-      console.error("Error registering user:", error);
+      console.error("💥 Error registering user:", error);
       return false;
     }
   };

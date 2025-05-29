@@ -52,11 +52,12 @@ export default function RegistrationScreen({ navigation, route }) {
     }
     setLoading(true);
     try {
+      console.log("🚀 Starting registration process...");
       // Save to AsyncStorage
       await AsyncStorage.setItem("stanfordEmail", stanfordEmail);
       // Check if we received forceOnboarding from parameters
       const forceOnboarding = true;
-      console.log("Registration with forceOnboarding:", forceOnboarding);
+      console.log("📝 Registration with forceOnboarding:", forceOnboarding);
       // Register the new user
       const success = await register({
         name,
@@ -66,12 +67,16 @@ export default function RegistrationScreen({ navigation, route }) {
       });
 
       if (success) {
+        console.log("✅ Registration successful");
         // Store isNewUser in AsyncStorage to persist across app restarts
         await AsyncStorage.setItem("isNewUser", "true");
 
-        console.log(
-          "Registration successful, starting onboarding flow from basicInfo"
-        );
+        console.log("🔄 Attempting to navigate to Onboarding screen...");
+        console.log("🔍 Auth state at registration completion:", {
+          isNewUser: true,
+          forceOnboarding: true,
+          comingFrom: "Registration",
+        });
 
         // Use reset instead of navigate to clear the stack and force onboarding
         navigation.reset({
@@ -86,14 +91,16 @@ export default function RegistrationScreen({ navigation, route }) {
             },
           ],
         });
+        console.log("🎯 Navigation reset called with Onboarding screen");
       } else {
+        console.log("❌ Registration failed");
         Alert.alert(
           "Registration Failed",
           "There was a problem creating your account. Please try again."
         );
       }
     } catch (error) {
-      console.error("Error registering user:", error);
+      console.error("💥 Error registering user:", error);
       Alert.alert("Error", "There was a problem creating your account.");
     } finally {
       setLoading(false);

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CommonActions } from "@react-navigation/native";
 
 // Import only the screens we need for simplified flow
 import BasicInfoScreen from "./basicInfo";
@@ -23,13 +24,28 @@ export default function OnboardingNavigator({ navigation, route }) {
   const { user, isNewUser: contextIsNewUser } = useAuth();
   const [isNewUser, setIsNewUser] = useState(true);
 
+  console.log("🎯 OnboardingNavigator rendered with params:", route?.params);
+
   // Simplified check for onboarding status
   useEffect(() => {
+    console.log("🔄 OnboardingNavigator useEffect triggered with:", {
+      hasUser: !!user,
+      contextIsNewUser,
+      routeParams: route?.params,
+    });
+
     const checkOnboardingStatus = async () => {
       try {
-        console.log(
-          "OnboardingNavigator: Checking if user should see onboarding..."
-        );
+        console.log("🔍 OnboardingNavigator: checkOnboardingStatus called...");
+        console.log("📝 Route params:", route?.params);
+
+        // If forceOnboarding is true, always show onboarding
+        if (route?.params?.forceOnboarding) {
+          console.log(
+            "✅ OnboardingNavigator: forceOnboarding is true, showing onboarding"
+          );
+          return;
+        }
 
         // Only skip onboarding if user has completed all required steps
         const onboardingComplete = await AsyncStorage.getItem(
@@ -39,42 +55,63 @@ export default function OnboardingNavigator({ navigation, route }) {
         const hasGender = user?.profileData?.gender;
         const hasSexuality = user?.profileData?.sexuality;
 
+        console.log("📊 Onboarding status check:", {
+          onboardingComplete,
+          hasUserType,
+          hasGender,
+          hasSexuality,
+          forceOnboarding: route?.params?.forceOnboarding,
+        });
+
+        // If forceOnboarding is true or user hasn't completed all steps, stay in onboarding
         if (
-          onboardingComplete === "true" &&
-          hasUserType &&
-          hasGender &&
-          hasSexuality
+          route?.params?.forceOnboarding ||
+          !onboardingComplete ||
+          !hasUserType ||
+          !hasGender ||
+          !hasSexuality
         ) {
           console.log(
-            "OnboardingNavigator: User has completed all required steps, going to Profile"
+            "⏳ OnboardingNavigator: User has not completed all steps or forceOnboarding is true, staying in onboarding"
           );
-          navigation.reset({
-            index: 0,
-            routes: [
-              {
-                name: "Main",
-                params: {
-                  screen: "Profile",
-                  params: {
-                    showWelcome: true,
-                    isNewUser: true,
-                  },
-                },
-              },
-            ],
-          });
           return;
         }
 
-        // If not completed all steps, ensure we're in onboarding
-        if (!route?.params?.forceOnboarding) {
-          console.log(
-            "OnboardingNavigator: User has not completed all steps, staying in onboarding"
-          );
-        }
+        // Only navigate to Profile if all conditions are met
+        console.log(
+          "🎉 OnboardingNavigator: User has completed all required steps, going to Profile"
+        );
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              {
+                name: "Root",
+                state: {
+                  routes: [
+                    {
+                      name: "Main",
+                      state: {
+                        routes: [
+                          {
+                            name: "ProfileTab",
+                            params: {
+                              showWelcome: true,
+                              isNewUser: false,
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          })
+        );
       } catch (error) {
         console.error(
-          "OnboardingNavigator: Error checking onboarding status:",
+          "💥 OnboardingNavigator: Error checking onboarding status:",
           error
         );
       }
@@ -86,7 +123,7 @@ export default function OnboardingNavigator({ navigation, route }) {
   // Simplified navigator with only the essential screens
   return (
     <OnboardingStack.Navigator
-      initialRouteName="basicInfo"
+      initialRouteName="userType"
       screenOptions={{
         headerShown: false,
         gestureEnabled: false, // Prevent swipe back

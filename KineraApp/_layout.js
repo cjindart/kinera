@@ -12,6 +12,7 @@ import CandidateProfile from "./tabs/CandidateProfile";
 import SelectLiaison from "./tabs/SelectLiaison";
 import MatchCompare from "./tabs/MatchCompare";
 import AuthNavigator from "./auth/AuthNavigator";
+import OnboardingNavigator from "./auth/onboarding";
 import { useAuth } from "./context/AuthContext";
 
 // Create stack navigators for each tab to allow for nested navigation
@@ -162,6 +163,10 @@ export default function Layout() {
 
   // Determine if user is logged in
   const isLoggedIn = !!user && user.isAuthenticated === true;
+  console.log("is new usr and is logged in", {
+    isLoggedIn: isLoggedIn,
+    isNewUser: isNewUser,
+  });
 
   console.log("🔄 Layout render - Auth state:", {
     hasUser: !!user,
@@ -185,7 +190,7 @@ export default function Layout() {
 
   console.log(
     `🏗️ Layout: Rendering NavigationContainer with ${
-      isLoggedIn ? "Main" : "Auth"
+      isLoggedIn ? (isNewUser ? "Onboarding" : "Main") : "Auth"
     } screen`
   );
 
@@ -193,14 +198,23 @@ export default function Layout() {
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isLoggedIn ? (
-          // User is logged in - show main app
-          <RootStack.Screen
-            name="Main"
-            component={TabNavigator}
-            options={{ gestureEnabled: false }} // Prevent swipe back to auth
-          />
+          isNewUser ? (
+            // User is logged in but new - show onboarding
+            <RootStack.Screen
+              name="Onboarding"
+              component={OnboardingNavigator}
+              options={{ gestureEnabled: false }}
+            />
+          ) : (
+            // User is logged in and not new - show main app
+            <RootStack.Screen
+              name="Main"
+              component={TabNavigator}
+              options={{ gestureEnabled: false }}
+            />
+          )
         ) : (
-          // User is not logged in - show auth flow
+          // User is not logged in - show auth screens
           <RootStack.Screen name="Auth" component={AuthNavigator} />
         )}
       </RootStack.Navigator>
