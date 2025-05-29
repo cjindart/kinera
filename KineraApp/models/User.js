@@ -75,6 +75,7 @@ class User {
         hasName: !!userData.name,
         hasPhoneNumber: !!userData.phoneNumber || !!userData.phone,
         hasProfileData: !!userData.profileData,
+        isAuthenticated: userData.isAuthenticated,
         profileDataKeys: userData.profileData
           ? Object.keys(userData.profileData)
           : [],
@@ -86,7 +87,7 @@ class User {
     this.name = userData.name || null;
     this.phoneNumber = userData.phoneNumber || userData.phone || null;
     this.userType = userData.userType || null;
-    this.isAuthenticated = userData.isAuthenticated || false;
+    this.isAuthenticated = userData.isAuthenticated === true; // Force boolean
     this.updatedAt = userData.updatedAt || new Date().toISOString();
     this.createdAt = userData.createdAt || new Date().toISOString();
 
@@ -271,6 +272,7 @@ class User {
       userType: this.userType,
       stanfordEmail: this.stanfordEmail,
       isStanfordVerified: this.isStanfordVerified,
+      isAuthenticated: this.isAuthenticated,
       profileData: this.profileData,
       sexuality: this.sexuality,
       friends: this.friends,

@@ -157,18 +157,24 @@ const WebImagePicker = ({ onImageSelected, children }) => {
   const handleFileSelect = (event) => {
     console.log("📸 WebImagePicker: File select event triggered", event);
     console.log("📸 WebImagePicker: Files available:", event.target.files);
-    
+
     const file = event.target.files[0];
     console.log("📸 WebImagePicker: Selected file:", file);
-    
-    if (file && file.type.startsWith('image/')) {
-      console.log("📸 WebImagePicker: Valid image file detected, type:", file.type);
+
+    if (file && file.type.startsWith("image/")) {
+      console.log(
+        "📸 WebImagePicker: Valid image file detected, type:",
+        file.type
+      );
       console.log("📸 WebImagePicker: File size:", file.size, "bytes");
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
         console.log("📸 WebImagePicker: FileReader loaded successfully");
-        console.log("📸 WebImagePicker: Data URL length:", e.target.result.length);
+        console.log(
+          "📸 WebImagePicker: Data URL length:",
+          e.target.result.length
+        );
         console.log("📸 WebImagePicker: Calling onImageSelected callback");
         onImageSelected(e.target.result);
       };
@@ -183,14 +189,17 @@ const WebImagePicker = ({ onImageSelected, children }) => {
       }
     }
     // Reset the input so the same file can be selected again
-    event.target.value = '';
+    event.target.value = "";
     console.log("📸 WebImagePicker: Input value reset");
   };
 
   const openFilePicker = () => {
     console.log("📸 WebImagePicker: openFilePicker called");
-    console.log("📸 WebImagePicker: fileInputRef.current:", fileInputRef.current);
-    
+    console.log(
+      "📸 WebImagePicker: fileInputRef.current:",
+      fileInputRef.current
+    );
+
     if (fileInputRef.current) {
       console.log("📸 WebImagePicker: Triggering file input click");
       fileInputRef.current.click();
@@ -208,14 +217,14 @@ const WebImagePicker = ({ onImageSelected, children }) => {
         type="file"
         accept="image/*"
         onChange={handleFileSelect}
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
       />
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => {
           console.log("📸 WebImagePicker: TouchableOpacity pressed!");
           openFilePicker();
         }}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: "100%", height: "100%" }}
       >
         {children}
       </TouchableOpacity>
@@ -288,173 +297,136 @@ export default function ProfileScreen({ route }) {
 
   // Load user data when component mounts
   useEffect(() => {
-    if (user) {
-      console.log(
-        "Loading user profile data:",
-        JSON.stringify(
-          {
-            name: user.name,
-            userType: user.userType,
-            profileDataExists: !!user.profileData,
-            profileData: user.profileData
-              ? {
-                  age: user.profileData.age,
-                  gender: user.profileData.gender,
-                  height: user.profileData.height,
-                  year: user.profileData.year,
-                  interestsCount: user.profileData.interests?.length || 0,
-                  activitiesCount: user.profileData.dateActivities?.length || 0,
-                  photosCount: user.profileData.photos?.length || 0,
-                }
-              : null,
-            friendsCount: user.friends?.length || 0,
-            friends: user.friends || [],
-            standAloneFields: {
-              age: user.age,
-              gender: user.gender,
-              height: user.height,
-            },
-          },
-          null,
-          2
-        )
-      );
+    const loadAndSyncUserData = async () => {
+      if (!user?.id) {
+        console.log("No user ID available for sync");
+        return;
+      }
 
-      // Basic info
-      setName(typeof user.name === "string" ? user.name : "");
-      setUserType(typeof user.userType === "string" ? user.userType : "");
+      try {
+        // First sync with Firestore
+        const userDoc = await getDoc(doc(db, "users", user.id));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
 
-      // Profile data from profileData object
-      if (user.profileData) {
-        // Convert age to string for TextInput
-        setAge(
-          typeof user.profileData.age === "number"
-            ? user.profileData.age.toString()
-            : typeof user.profileData.age === "string"
-            ? user.profileData.age
-            : ""
-        );
-        setGender(
-          typeof user.profileData.gender === "string"
-            ? user.profileData.gender
-            : ""
-        );
-        setHeight(
-          typeof user.profileData.height === "string"
-            ? user.profileData.height
-            : ""
-        );
-        setYear(
-          typeof user.profileData.year === "string"
-            ? user.profileData.year
-            : typeof user.profileData.classYear === "string"
-            ? user.profileData.classYear
-            : ""
-        );
+          // Only update if data has actually changed and we don't have profile data
+          if (!user.profileData && userData.profileData) {
+            console.log("Loading initial profile data from Firestore");
+            await setUser(userData);
+            await AsyncStorage.setItem("userData", JSON.stringify(userData));
+          }
+        }
 
-        setCity(
-          typeof user.profileData.city === "string" ? user.profileData.city : ""
-        );
-
-        // Interests and activities
-        const userInterests = Array.isArray(user.profileData.interests)
-          ? user.profileData.interests
-          : [];
-        setInterests(userInterests);
-
-        const userActivities = Array.isArray(user.profileData.dateActivities)
-          ? user.profileData.dateActivities
-          : Array.isArray(user.profileData.activities)
-          ? user.profileData.activities
-          : [];
-        setDateActivities(userActivities);
-
-        // Load photos
-        if (
-          user.profileData.photos &&
-          Array.isArray(user.profileData.photos) &&
-          user.profileData.photos.length > 0
-        ) {
-          setMainPhoto(
-            typeof user.profileData.photos[0] === "string"
-              ? user.profileData.photos[0]
-              : null
+        // Then update local state
+        if (user) {
+          console.log(
+            "Loading user profile data:",
+            JSON.stringify(
+              {
+                name: user.name,
+                userType: user.userType,
+                profileDataExists: !!user.profileData,
+                profileData: user.profileData
+                  ? {
+                      age: user.profileData.age,
+                      gender: user.profileData.gender,
+                      height: user.profileData.height,
+                      year: user.profileData.year,
+                      interestsCount: user.profileData.interests?.length || 0,
+                      activitiesCount:
+                        user.profileData.dateActivities?.length || 0,
+                      photosCount: user.profileData.photos?.length || 0,
+                    }
+                  : null,
+                friendsCount: user.friends?.length || 0,
+              },
+              null,
+              2
+            )
           );
-          setAdditionalPhotos(
-            user.profileData.photos
-              .slice(1)
-              .filter((photo) => typeof photo === "string")
-          );
+
+          // Basic info
+          setName(typeof user.name === "string" ? user.name : "");
+          setUserType(typeof user.userType === "string" ? user.userType : "");
+
+          // Profile data from profileData object
+          if (user.profileData) {
+            setAge(
+              typeof user.profileData.age === "number"
+                ? user.profileData.age.toString()
+                : typeof user.profileData.age === "string"
+                ? user.profileData.age
+                : ""
+            );
+            setGender(
+              typeof user.profileData.gender === "string"
+                ? user.profileData.gender
+                : ""
+            );
+            setHeight(
+              typeof user.profileData.height === "string"
+                ? user.profileData.height
+                : ""
+            );
+            setYear(
+              typeof user.profileData.year === "string"
+                ? user.profileData.year
+                : typeof user.profileData.classYear === "string"
+                ? user.profileData.classYear
+                : ""
+            );
+            setCity(
+              typeof user.profileData.city === "string"
+                ? user.profileData.city
+                : ""
+            );
+
+            // Interests and activities
+            const userInterests = Array.isArray(user.profileData.interests)
+              ? user.profileData.interests
+              : [];
+            setInterests(userInterests);
+
+            const userActivities = Array.isArray(
+              user.profileData.dateActivities
+            )
+              ? user.profileData.dateActivities
+              : Array.isArray(user.profileData.activities)
+              ? user.profileData.activities
+              : [];
+            setDateActivities(userActivities);
+
+            // Load photos
+            if (
+              user.profileData.photos &&
+              Array.isArray(user.profileData.photos) &&
+              user.profileData.photos.length > 0
+            ) {
+              setMainPhoto(
+                typeof user.profileData.photos[0] === "string"
+                  ? user.profileData.photos[0]
+                  : null
+              );
+              setAdditionalPhotos(
+                user.profileData.photos
+                  .slice(1)
+                  .filter((photo) => typeof photo === "string")
+              );
+            }
+
+            // Set default selected interest
+            if (userInterests.length > 0) {
+              setSelectedInterests([userInterests[0]]);
+            }
+          }
         }
-
-        // Set default selected interest
-        if (userInterests.length > 0) {
-          setSelectedInterests([userInterests[0]]);
-        }
+      } catch (error) {
+        console.error("Error loading/syncing user data:", error);
       }
+    };
 
-      // Direct properties (in case they're not in profileData)
-      if (!user.profileData?.age && user.age) {
-        setAge(
-          typeof user.age === "number"
-            ? user.age.toString()
-            : typeof user.age === "string"
-            ? user.age
-            : ""
-        );
-      }
-
-      if (!user.profileData?.gender && user.gender) {
-        setGender(typeof user.gender === "string" ? user.gender : "");
-      }
-
-      if (!user.profileData?.height && user.height) {
-        setHeight(typeof user.height === "string" ? user.height : "");
-      }
-
-      if (
-        !user.profileData?.year &&
-        !user.profileData?.classYear &&
-        user.classYear
-      ) {
-        setYear(typeof user.classYear === "string" ? user.classYear : "");
-      }
-
-      if (!user.profileData?.interests && user.interests) {
-        const validInterests = Array.isArray(user.interests)
-          ? user.interests
-          : [];
-        setInterests(validInterests);
-        if (validInterests.length > 0) {
-          setSelectedInterests([validInterests[0]]);
-        }
-      }
-
-      if (
-        !user.profileData?.dateActivities &&
-        !user.profileData?.activities &&
-        user.activities
-      ) {
-        setDateActivities(
-          Array.isArray(user.activities) ? user.activities : []
-        );
-      }
-
-      if (
-        !user.profileData?.photos &&
-        user.photos &&
-        Array.isArray(user.photos) &&
-        user.photos.length > 0
-      ) {
-        setMainPhoto(
-          typeof user.photos[0] === "string" ? user.photos[0] : null
-        );
-        setAdditionalPhotos(
-          user.photos.slice(1).filter((photo) => typeof photo === "string")
-        );
-      }
-    }
-  }, [user]);
+    loadAndSyncUserData();
+  }, []); // Empty dependency array - only run once on mount
 
   // Request camera and media library permissions on component mount
   useEffect(() => {
@@ -745,12 +717,17 @@ export default function ProfileScreen({ route }) {
 
   // Simplified image picker for web compatibility
   const handleImageSelection = async (imageUri, index = 0) => {
-    console.log("🖼️ handleImageSelection called with:", { imageUri: imageUri.substring(0, 50) + "...", index });
-    
+    console.log("🖼️ handleImageSelection called with:", {
+      imageUri: imageUri.substring(0, 50) + "...",
+      index,
+    });
+
     try {
       // For demo purposes, use the data URL directly first
-      console.log("🖼️ Setting image directly (skipping Firebase upload for now)");
-      
+      console.log(
+        "🖼️ Setting image directly (skipping Firebase upload for now)"
+      );
+
       if (index === 0) {
         console.log("🖼️ Setting main photo");
         setMainPhoto(imageUri);
@@ -764,12 +741,11 @@ export default function ProfileScreen({ route }) {
         }
         setAdditionalPhotos(newPhotos);
       }
-      
+
       console.log("✅ Image selection completed successfully");
-      
+
       // TODO: Later we can add Firebase upload here
       // const firebaseUrl = await uploadImageToFirebase(imageUri);
-      
     } catch (error) {
       console.error("❌ Error handling image selection:", error);
     }
@@ -1208,28 +1184,6 @@ export default function ProfileScreen({ route }) {
     fetchFriendData();
   }, [user?.friends]);
 
-  // On app start or after login
-  useEffect(() => {
-    const syncUserData = async () => {
-      try {
-        if (!user?.id) {
-          console.log("No user ID available for sync");
-          return;
-        }
-        const userDoc = await getDoc(doc(db, "users", user.id));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUser(userData); // update context/state
-          await AsyncStorage.setItem("userData", JSON.stringify(userData)); // update local storage
-        }
-      } catch (error) {
-        console.error("Error syncing user data:", error);
-      }
-    };
-
-    syncUserData();
-  }, [user?.id, setUser]);
-
   // Fetch all users for switch user modal
   const fetchAllUsers = async () => {
     try {
@@ -1262,7 +1216,7 @@ export default function ProfileScreen({ route }) {
   // Function to delete a photo
   const deletePhoto = (index) => {
     console.log("🗑️ deletePhoto called for index:", index);
-    
+
     if (index === 0) {
       console.log("🗑️ Deleting main photo");
       setMainPhoto(null);
@@ -1272,7 +1226,7 @@ export default function ProfileScreen({ route }) {
       newPhotos.splice(index - 1, 1);
       setAdditionalPhotos(newPhotos);
     }
-    
+
     console.log("✅ Photo deletion completed");
   };
 
@@ -1342,10 +1296,14 @@ export default function ProfileScreen({ route }) {
               {isEditing ? (
                 <>
                   {console.log("📸 Main photo section rendering in EDIT mode")}
-                  <WebImagePicker onImageSelected={(uri) => {
-                    console.log("📸 Main photo WebImagePicker callback triggered");
-                    handleImageSelection(uri, 0);
-                  }}>
+                  <WebImagePicker
+                    onImageSelected={(uri) => {
+                      console.log(
+                        "📸 Main photo WebImagePicker callback triggered"
+                      );
+                      handleImageSelection(uri, 0);
+                    }}
+                  >
                     <View style={styles.photoFrame}>
                       {mainPhoto ? (
                         <Image
@@ -1366,7 +1324,7 @@ export default function ProfileScreen({ route }) {
                       )}
                     </View>
                   </WebImagePicker>
-                  
+
                   {/* Delete button - only show if there's a photo */}
                   {mainPhoto && (
                     <TouchableOpacity
@@ -1376,11 +1334,7 @@ export default function ProfileScreen({ route }) {
                         deletePhoto(0);
                       }}
                     >
-                      <Ionicons
-                        name="close-circle"
-                        size={24}
-                        color="red"
-                      />
+                      <Ionicons name="close-circle" size={24} color="red" />
                     </TouchableOpacity>
                   )}
                 </>
@@ -1414,10 +1368,16 @@ export default function ProfileScreen({ route }) {
                 {
                   isEditing ? (
                     <>
-                      <WebImagePicker onImageSelected={(uri) => {
-                        console.log(`📸 Additional photo ${index + 1} WebImagePicker callback triggered`);
-                        handleImageSelection(uri, index + 1);
-                      }}>
+                      <WebImagePicker
+                        onImageSelected={(uri) => {
+                          console.log(
+                            `📸 Additional photo ${
+                              index + 1
+                            } WebImagePicker callback triggered`
+                          );
+                          handleImageSelection(uri, index + 1);
+                        }}
+                      >
                         <View style={styles.photoFrame}>
                           {photo ? (
                             <Image
@@ -1438,21 +1398,21 @@ export default function ProfileScreen({ route }) {
                           )}
                         </View>
                       </WebImagePicker>
-                      
+
                       {/* Delete button - only show if there's a photo */}
                       {photo && (
                         <TouchableOpacity
                           style={styles.deletePhotoButton}
                           onPress={() => {
-                            console.log(`🗑️ Additional photo ${index + 1} delete button pressed`);
+                            console.log(
+                              `🗑️ Additional photo ${
+                                index + 1
+                              } delete button pressed`
+                            );
                             deletePhoto(index + 1);
                           }}
                         >
-                          <Ionicons
-                            name="close-circle"
-                            size={24}
-                            color="red"
-                          />
+                          <Ionicons name="close-circle" size={24} color="red" />
                         </TouchableOpacity>
                       )}
                     </>
@@ -1473,10 +1433,16 @@ export default function ProfileScreen({ route }) {
               mainPhoto &&
               additionalPhotos.length < MAX_PHOTOS - 1 && (
                 <View key="add-photo-container" style={styles.photoCard}>
-                  <WebImagePicker onImageSelected={(uri) => {
-                    console.log(`📸 Add photo container WebImagePicker callback triggered for index ${additionalPhotos.length + 1}`);
-                    handleImageSelection(uri, additionalPhotos.length + 1);
-                  }}>
+                  <WebImagePicker
+                    onImageSelected={(uri) => {
+                      console.log(
+                        `📸 Add photo container WebImagePicker callback triggered for index ${
+                          additionalPhotos.length + 1
+                        }`
+                      );
+                      handleImageSelection(uri, additionalPhotos.length + 1);
+                    }}
+                  >
                     <View style={styles.photoFrame}>
                       <View style={styles.editPhotoPlaceholder}>
                         <Ionicons
@@ -1552,7 +1518,9 @@ export default function ProfileScreen({ route }) {
               />
             </View>
             <Text style={styles.summaryText}>
-              {(typeof age === "string" || typeof age === "number") && age ? age : "N/A"}
+              {(typeof age === "string" || typeof age === "number") && age
+                ? age
+                : "N/A"}
             </Text>
           </TouchableOpacity>
 
@@ -2074,7 +2042,7 @@ export default function ProfileScreen({ route }) {
         </Modal>
 
         {/* Custom Input Modals */}
-        
+
         {/* Age Selection Modal */}
         <Modal
           visible={showAgeModal}
@@ -2093,7 +2061,7 @@ export default function ProfileScreen({ route }) {
                   <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
                 </TouchableOpacity>
               </View>
-              
+
               <TextInput
                 style={styles.heightInput}
                 placeholder="Enter your age (e.g., 21)"
@@ -2103,7 +2071,7 @@ export default function ProfileScreen({ route }) {
                 autoFocus={true}
                 maxLength={2}
               />
-              
+
               <View style={styles.modalButtonRow}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.cancelButton]}
@@ -2117,7 +2085,11 @@ export default function ProfileScreen({ route }) {
                 <TouchableOpacity
                   style={[styles.modalButton, styles.saveButton]}
                   onPress={() => {
-                    if (tempAgeInput && parseInt(tempAgeInput) >= 18 && parseInt(tempAgeInput) <= 99) {
+                    if (
+                      tempAgeInput &&
+                      parseInt(tempAgeInput) >= 18 &&
+                      parseInt(tempAgeInput) <= 99
+                    ) {
                       setAge(tempAgeInput);
                       setTempAgeInput("");
                       setShowAgeModal(false);
@@ -2149,8 +2121,14 @@ export default function ProfileScreen({ route }) {
                   <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
                 </TouchableOpacity>
               </View>
-              
-              {["Male", "Female", "Non-binary", "Other", "Prefer not to say"].map((genderOption) => (
+
+              {[
+                "Male",
+                "Female",
+                "Non-binary",
+                "Other",
+                "Prefer not to say",
+              ].map((genderOption) => (
                 <TouchableOpacity
                   key={genderOption}
                   style={styles.optionButton}
@@ -2184,7 +2162,7 @@ export default function ProfileScreen({ route }) {
                   <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
                 </TouchableOpacity>
               </View>
-              
+
               <TextInput
                 style={styles.heightInput}
                 placeholder="e.g., 5'7, 170cm"
@@ -2192,7 +2170,7 @@ export default function ProfileScreen({ route }) {
                 onChangeText={setTempHeightInput}
                 autoFocus={true}
               />
-              
+
               <View style={styles.modalButtonRow}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.cancelButton]}
@@ -2232,8 +2210,15 @@ export default function ProfileScreen({ route }) {
                   <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
                 </TouchableOpacity>
               </View>
-              
-              {["Freshman", "Sophomore", "Junior", "Senior", "Grad Student", "Post-Grad"].map((yearOption) => (
+
+              {[
+                "Freshman",
+                "Sophomore",
+                "Junior",
+                "Senior",
+                "Grad Student",
+                "Post-Grad",
+              ].map((yearOption) => (
                 <TouchableOpacity
                   key={yearOption}
                   style={styles.optionButton}
@@ -2267,23 +2252,24 @@ export default function ProfileScreen({ route }) {
                   <Ionicons name="close" size={24} color={COLORS.primaryNavy} />
                 </TouchableOpacity>
               </View>
-              
-              {["Dater", "Match Maker", "Dater & Match Maker"].map((typeOption) => (
-                <TouchableOpacity
-                  key={typeOption}
-                  style={styles.optionButton}
-                  onPress={() => {
-                    setUserType(typeOption);
-                    setShowUserTypeModal(false);
-                  }}
-                >
-                  <Text style={styles.optionText}>{typeOption}</Text>
-                </TouchableOpacity>
-              ))}
+
+              {["Dater", "Match Maker", "Dater & Match Maker"].map(
+                (typeOption) => (
+                  <TouchableOpacity
+                    key={typeOption}
+                    style={styles.optionButton}
+                    onPress={() => {
+                      setUserType(typeOption);
+                      setShowUserTypeModal(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>{typeOption}</Text>
+                  </TouchableOpacity>
+                )
+              )}
             </View>
           </View>
         </Modal>
-
       </ScrollView>
     </SafeAreaView>
   );

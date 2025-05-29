@@ -55,7 +55,7 @@ export default function RegistrationScreen({ navigation, route }) {
       // Save to AsyncStorage
       await AsyncStorage.setItem("stanfordEmail", stanfordEmail);
       // Check if we received forceOnboarding from parameters
-      const forceOnboarding = route?.params?.forceOnboarding || false;
+      const forceOnboarding = true;
       console.log("Registration with forceOnboarding:", forceOnboarding);
       // Register the new user
       const success = await register({
@@ -70,7 +70,7 @@ export default function RegistrationScreen({ navigation, route }) {
         await AsyncStorage.setItem("isNewUser", "true");
 
         console.log(
-          "Registration successful, navigating directly to userType screen"
+          "Registration successful, starting onboarding flow from basicInfo"
         );
 
         // Use reset instead of navigate to clear the stack and force onboarding
@@ -80,10 +80,8 @@ export default function RegistrationScreen({ navigation, route }) {
             {
               name: "Onboarding",
               params: {
-                screen: "userType", // Go directly to userType screen
                 forceOnboarding: true, // Always force onboarding
                 comingFrom: "Registration", // Add this to help identify the source
-                skipBasicInfo: true, // Add flag to indicate we're skipping basicInfo
               },
             },
           ],

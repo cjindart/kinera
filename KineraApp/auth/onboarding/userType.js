@@ -148,26 +148,11 @@ export default function Step3PurposeScreen({ navigation, route }) {
         );
       }
 
-      // Additional safety: Mark this navigation as done
-      await AsyncStorage.setItem("onboardingComplete", "true");
-
-      // Create animation parameters
-      const animationParams = {
-        showWelcome: true,
-        isNewUser: true,
-        fromOnboarding: true,
-      };
-
-      console.log(
-        "UserType: Passing animation parameters:",
-        JSON.stringify(animationParams)
-      );
-
       // Include a delay to ensure Firestore update completes
       setTimeout(() => {
-        // All users go to gender screen now
+        // Navigate to gender screen
         navigation.navigate("gender");
-      }, 300); // Short delay to ensure data is saved
+      }, 300);
     } catch (error) {
       console.error("Error saving user type:", error);
       Alert.alert("Error", "There was a problem saving your selection.");

@@ -31,10 +31,22 @@ export default function OnboardingNavigator({ navigation, route }) {
           "OnboardingNavigator: Checking if user should see onboarding..."
         );
 
-        // If user has userType and is not forced into onboarding, go to Profile
-        if (user && user.userType && !route?.params?.forceOnboarding) {
+        // Only skip onboarding if user has completed all required steps
+        const onboardingComplete = await AsyncStorage.getItem(
+          "onboardingComplete"
+        );
+        const hasUserType = user && user.userType;
+        const hasGender = user?.profileData?.gender;
+        const hasSexuality = user?.profileData?.sexuality;
+
+        if (
+          onboardingComplete === "true" &&
+          hasUserType &&
+          hasGender &&
+          hasSexuality
+        ) {
           console.log(
-            "OnboardingNavigator: User already has userType, going to Profile"
+            "OnboardingNavigator: User has completed all required steps, going to Profile"
           );
           navigation.reset({
             index: 0,
@@ -54,11 +66,11 @@ export default function OnboardingNavigator({ navigation, route }) {
           return;
         }
 
-        if (!isNewUser && !route?.params?.forceOnboarding) {
+        // If not completed all steps, ensure we're in onboarding
+        if (!route?.params?.forceOnboarding) {
           console.log(
-            "OnboardingNavigator: User is not new, redirecting to Main"
+            "OnboardingNavigator: User has not completed all steps, staying in onboarding"
           );
-          navigation.replace("Main");
         }
       } catch (error) {
         console.error(

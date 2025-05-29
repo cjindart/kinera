@@ -27,42 +27,64 @@ export function AuthProvider({ children }) {
 
   // Helper function to safely set user data and ensure it's properly serialized
   const safelySetUser = (userData) => {
+    console.log("🔄 AuthContext: safelySetUser called with:", {
+      hasUserData: !!userData,
+      isAuthenticated: userData?.isAuthenticated,
+      id: userData?.id,
+      timestamp: userData?.updatedAt,
+    });
+
     if (!userData) {
       setUser(null);
       return Promise.resolve();
     }
 
+    // Ensure isAuthenticated is set
+    const sanitizedUserData = {
+      ...userData,
+      isAuthenticated: userData.isAuthenticated === true, // Force boolean
+    };
+
     // Ensure friends array is properly formatted
-    if (userData.friends) {
-      userData.friends = userData.friends.map((friend, index) => {
-        if (typeof friend === "string") {
+    if (sanitizedUserData.friends) {
+      sanitizedUserData.friends = sanitizedUserData.friends.map(
+        (friend, index) => {
+          if (typeof friend === "string") {
+            return {
+              id: `friend_${index}`,
+              name: friend,
+              avatar: null,
+            };
+          }
+          if (typeof friend === "object" && friend !== null) {
+            return {
+              id: friend.id || `friend_${index}`,
+              name: typeof friend.name === "string" ? friend.name : "Unknown",
+              avatar: friend.avatar || null,
+              interests: Array.isArray(friend.interests)
+                ? friend.interests
+                : [],
+              dateActivities: Array.isArray(friend.dateActivities)
+                ? friend.dateActivities
+                : [],
+            };
+          }
           return {
             id: `friend_${index}`,
-            name: friend,
+            name: "Unknown",
             avatar: null,
           };
         }
-        if (typeof friend === "object" && friend !== null) {
-          return {
-            id: friend.id || `friend_${index}`,
-            name: typeof friend.name === "string" ? friend.name : "Unknown",
-            avatar: friend.avatar || null,
-            interests: Array.isArray(friend.interests) ? friend.interests : [],
-            dateActivities: Array.isArray(friend.dateActivities)
-              ? friend.dateActivities
-              : [],
-          };
-        }
-        return {
-          id: `friend_${index}`,
-          name: "Unknown",
-          avatar: null,
-        };
-      });
+      );
     }
 
     // Set the sanitized user data
-    setUser(userData);
+    setUser(sanitizedUserData);
+    console.log("✅ AuthContext: User state updated to:", {
+      id: sanitizedUserData.id,
+      isAuthenticated: sanitizedUserData.isAuthenticated,
+      timestamp: sanitizedUserData.updatedAt,
+    });
     return Promise.resolve();
   };
 
@@ -107,13 +129,27 @@ export function AuthProvider({ children }) {
           console.log("🔥 Firebase auth state changed:", {
             hasFirebaseUser: !!firebaseUser,
             uid: firebaseUser?.uid,
+            currentUserAuth: user?.isAuthenticated,
           });
+
+          // If we already have a user set manually, don't overwrite it
+          if (user && user.isAuthenticated) {
+            console.log(
+              "✅ User already set manually, skipping Firebase auth update"
+            );
+            setIsLoading(false);
+            return;
+          }
 
           if (firebaseUser) {
             // User is signed in, get user data from Firestore
             const userData = await fetchUserData(firebaseUser.uid);
             if (userData) {
-              console.log("✅ Loaded user from Firestore");
+              console.log("✅ Loaded user from Firestore:", {
+                id: userData.id,
+                isAuthenticated: userData.isAuthenticated,
+                timestamp: userData.updatedAt,
+              });
               safelySetUser(userData);
               setIsNewUser(!!userData.newUser);
 
@@ -218,11 +254,16 @@ export function AuthProvider({ children }) {
           ...userData,
           id: userId,
           isAuthenticated: true,
+          updatedAt: new Date().toISOString(),
         });
 
         // Save to AsyncStorage for local access
         await userInstance.save();
-        console.log("User data from Firestore saved to AsyncStorage");
+        console.log("User data from Firestore saved to AsyncStorage:", {
+          id: userInstance.id,
+          isAuthenticated: userInstance.isAuthenticated,
+          timestamp: userInstance.updatedAt,
+        });
 
         return userInstance;
       } else {

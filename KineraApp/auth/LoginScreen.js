@@ -103,12 +103,17 @@ export default function LoginScreen({ navigation }) {
           updatedAt: new Date().toISOString(),
         };
 
-        // Update auth context with complete user data and wait for it to complete
-        console.log("🔄 Setting auth state...");
-        await auth.setUser(user);
-        console.log("✅ Auth state synchronized");
+        console.log("🔑 LoginScreen: Setting user with data:", {
+          id: user.id,
+          isAuthenticated: user.isAuthenticated,
+          hasProfileData: !!user.profileData,
+          timestamp: user.updatedAt,
+        });
 
-        console.log("User authenticated successfully with full profile data");
+        // Update auth context with complete user data and wait for it to complete
+        await auth.setUser(user);
+
+        console.log("✅ LoginScreen: User state set successfully");
       } else {
         console.log("No user found with this phone number");
         // Navigate to registration
