@@ -107,13 +107,24 @@ export default function LoginScreen({ navigation }) {
           id: user.id,
           isAuthenticated: user.isAuthenticated,
           hasProfileData: !!user.profileData,
+          phoneNumber: user.phoneNumber,
           timestamp: user.updatedAt,
         });
 
         // Update auth context with complete user data and wait for it to complete
         await auth.setUser(user);
 
-        console.log("✅ LoginScreen: User state set successfully");
+        // Create a User instance and save to ensure phone number is persisted
+        const User = require("../models/User").default;
+        const userInstance = new User(user);
+        await userInstance.save();
+        console.log("📱 LoginScreen: User data saved with phone number:", formattedPhone);
+
+        // IMPORTANT: Set isNewUser to false for existing users
+        // This ensures they go directly to the Profile screen instead of onboarding
+        await auth.updateIsNewUser(false);
+
+        console.log("✅ LoginScreen: User state set successfully, isNewUser set to false");
       } else {
         console.log("No user found with this phone number");
         // Navigate to registration

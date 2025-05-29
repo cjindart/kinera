@@ -22,7 +22,7 @@ const OPTIONS = [
 
 export default function SexualityScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
-  const { updateProfile } = useAuth();
+  const { updateProfile, updateIsNewUser } = useAuth();
   const { width, height } = Dimensions.get("window");
 
   const handleContinue = async () => {
@@ -41,26 +41,17 @@ export default function SexualityScreen({ navigation, route }) {
       // Mark onboarding as complete
       await AsyncStorage.setItem("onboardingComplete", "true");
 
-      // Create animation parameters
-      const animationParams = {
-        showWelcome: true,
-        isNewUser: true,
-        fromOnboarding: true,
-      };
+      // Update the user's isNewUser status to false using the AuthContext function
+      // This will trigger the _layout.js to re-render and show the main app
+      await updateIsNewUser(false);
 
-      // Navigate to Profile with animation parameters
-      navigation.reset({
-        index: 0,
-        routes: [
-          {
-            name: "Main",
-            params: {
-              screen: "ProfileTab",
-              params: animationParams,
-            },
-          },
-        ],
+      // Update the profile to mark the user as no longer new
+      await updateProfile({
+        newUser: false,
       });
+
+      console.log("✅ Onboarding completed successfully - user should transition to main app");
+
     } catch (error) {
       console.error("Error saving sexuality:", error);
       Alert.alert("Error", "There was a problem saving your selection.");

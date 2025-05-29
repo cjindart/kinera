@@ -37,6 +37,9 @@ export default function RegistrationScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [stanfordEmail, setStanfordEmail] = useState("");
 
+  // Extract phone number from route parameters
+  const phoneNumber = route?.params?.phoneNumber;
+
   // Handle registration with entered data
   const handleRegister = async () => {
     if (!name.trim()) {
@@ -53,6 +56,7 @@ export default function RegistrationScreen({ navigation, route }) {
     setLoading(true);
     try {
       console.log("🚀 Starting registration process...");
+      console.log("📱 Phone number from route params:", phoneNumber);
       // Save to AsyncStorage
       await AsyncStorage.setItem("stanfordEmail", stanfordEmail);
       // Check if we received forceOnboarding from parameters
@@ -63,6 +67,7 @@ export default function RegistrationScreen({ navigation, route }) {
         name,
         userType,
         stanfordEmail,
+        phoneNumber, // Include the phone number from route params
         isNewUser: true, // Explicitly set isNewUser flag to true
       });
 

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CommonActions } from "@react-navigation/native";
 
 // Import only the screens we need for simplified flow
 import BasicInfoScreen from "./basicInfo";
@@ -21,7 +20,7 @@ import StanfordEmailScreen from "./stanfordEmail";
 const OnboardingStack = createNativeStackNavigator();
 
 export default function OnboardingNavigator({ navigation, route }) {
-  const { user, isNewUser: contextIsNewUser } = useAuth();
+  const { user, isNewUser: contextIsNewUser, updateIsNewUser } = useAuth();
   const [isNewUser, setIsNewUser] = useState(true);
 
   console.log("🎯 OnboardingNavigator rendered with params:", route?.params);
@@ -81,34 +80,11 @@ export default function OnboardingNavigator({ navigation, route }) {
         console.log(
           "🎉 OnboardingNavigator: User has completed all required steps, going to Profile"
         );
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [
-              {
-                name: "Root",
-                state: {
-                  routes: [
-                    {
-                      name: "Main",
-                      state: {
-                        routes: [
-                          {
-                            name: "ProfileTab",
-                            params: {
-                              showWelcome: true,
-                              isNewUser: false,
-                            },
-                          },
-                        ],
-                      },
-                    },
-                  ],
-                },
-              },
-            ],
-          })
-        );
+        
+        // Instead of trying to navigate to non-existent routes, just update the user status
+        // and let _layout.js handle the transition to the main app
+        await updateIsNewUser(false);
+        console.log("✅ OnboardingNavigator: Updated isNewUser to false - _layout.js will handle transition");
       } catch (error) {
         console.error(
           "💥 OnboardingNavigator: Error checking onboarding status:",
@@ -118,7 +94,7 @@ export default function OnboardingNavigator({ navigation, route }) {
     };
 
     checkOnboardingStatus();
-  }, [navigation, route, contextIsNewUser, user]);
+  }, [navigation, route, contextIsNewUser, user, updateIsNewUser]);
 
   // Simplified navigator with only the essential screens
   return (

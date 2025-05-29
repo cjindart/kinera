@@ -117,6 +117,19 @@ export function AuthProvider({ children }) {
             }
 
             safelySetUser(localUser);
+            
+            // Check AsyncStorage for isNewUser flag, default to false for existing users
+            try {
+              const storedIsNewUser = await AsyncStorage.getItem("isNewUser");
+              const isNewUserValue = storedIsNewUser === "true";
+              console.log(`📱 Setting isNewUser from AsyncStorage: ${isNewUserValue}`);
+              setIsNewUser(isNewUserValue);
+            } catch (error) {
+              console.log("📱 No isNewUser flag found, defaulting to false for existing user");
+              setIsNewUser(false);
+              await AsyncStorage.setItem("isNewUser", "false");
+            }
+            
             setIsLoading(false);
             return;
           } else {
@@ -180,6 +193,18 @@ export function AuthProvider({ children }) {
                   }
                 );
                 safelySetUser(localUser);
+                
+                // Check AsyncStorage for isNewUser flag, default to false for existing users
+                try {
+                  const storedIsNewUser = await AsyncStorage.getItem("isNewUser");
+                  const isNewUserValue = storedIsNewUser === "true";
+                  console.log(`🔄 Setting isNewUser from AsyncStorage fallback: ${isNewUserValue}`);
+                  setIsNewUser(isNewUserValue);
+                } catch (error) {
+                  console.log("🔄 No isNewUser flag found in fallback, defaulting to false for existing user");
+                  setIsNewUser(false);
+                  await AsyncStorage.setItem("isNewUser", "false");
+                }
               }
             } else {
               console.log(
@@ -201,6 +226,18 @@ export function AuthProvider({ children }) {
           if (localUser && localUser.isAuthenticated) {
             console.log("✅ Emergency fallback: Found user in AsyncStorage");
             safelySetUser(localUser);
+            
+            // Check AsyncStorage for isNewUser flag, default to false for existing users
+            try {
+              const storedIsNewUser = await AsyncStorage.getItem("isNewUser");
+              const isNewUserValue = storedIsNewUser === "true";
+              console.log(`💥 Emergency fallback: Setting isNewUser: ${isNewUserValue}`);
+              setIsNewUser(isNewUserValue);
+            } catch (error) {
+              console.log("💥 Emergency fallback: No isNewUser flag found, defaulting to false");
+              setIsNewUser(false);
+              await AsyncStorage.setItem("isNewUser", "false");
+            }
           }
         } catch (innerError) {
           console.error("💥 Error loading from AsyncStorage:", innerError);
@@ -611,8 +648,25 @@ export function AuthProvider({ children }) {
                 console.log(
                   "Found existing user with this phone number, marking as returning user"
                 );
+                
+                // Create a complete user object with authentication
+                const authenticatedUser = new User({
+                  ...existingUser,
+                  isAuthenticated: true,
+                  updatedAt: new Date().toISOString(),
+                });
+
+                // Save the authenticated user data
+                await authenticatedUser.save();
+
+                // Set the user in the context
+                await safelySetUser(authenticatedUser);
+                
+                // Set isNewUser to false for existing users
                 setIsNewUser(false);
                 await AsyncStorage.setItem("isNewUser", "false");
+                
+                console.log("✅ Existing user authenticated and loaded successfully");
                 return { success: true, isNewUser: false };
               }
             } catch (err) {
@@ -896,6 +950,7 @@ export function AuthProvider({ children }) {
       // Update basic user fields
       if (profileData.name) userToUpdate.name = profileData.name;
       if (profileData.userType) userToUpdate.userType = profileData.userType;
+      if (profileData.phoneNumber) userToUpdate.phoneNumber = profileData.phoneNumber;
       if (profileData.stanfordEmail)
         userToUpdate.stanfordEmail = profileData.stanfordEmail;
       if (profileData.isStanfordVerified !== undefined)
@@ -1183,6 +1238,21 @@ export function AuthProvider({ children }) {
     }
   };
 
+  /**
+   * Update the isNewUser status
+   * @param {boolean} newUserStatus New value for isNewUser
+   */
+  const updateIsNewUser = async (newUserStatus) => {
+    try {
+      console.log(`🔄 AuthContext: Updating isNewUser to ${newUserStatus}`);
+      setIsNewUser(newUserStatus);
+      await AsyncStorage.setItem("isNewUser", newUserStatus ? "true" : "false");
+      console.log(`✅ AuthContext: isNewUser updated to ${newUserStatus}`);
+    } catch (error) {
+      console.error("💥 Error updating isNewUser status:", error);
+    }
+  };
+
   // Create value object with state and functions
   const value = {
     user,
@@ -1196,6 +1266,7 @@ export function AuthProvider({ children }) {
     verifyCode,
     register,
     updateProfile,
+    updateIsNewUser,
     logout,
     formatPhoneNumber,
     handleAuthResult,
