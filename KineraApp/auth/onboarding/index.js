@@ -80,11 +80,13 @@ export default function OnboardingNavigator({ navigation, route }) {
         console.log(
           "🎉 OnboardingNavigator: User has completed all required steps, going to Profile"
         );
-        
+
         // Instead of trying to navigate to non-existent routes, just update the user status
         // and let _layout.js handle the transition to the main app
         await updateIsNewUser(false);
-        console.log("✅ OnboardingNavigator: Updated isNewUser to false - _layout.js will handle transition");
+        console.log(
+          "✅ OnboardingNavigator: Updated isNewUser to false - _layout.js will handle transition"
+        );
       } catch (error) {
         console.error(
           "💥 OnboardingNavigator: Error checking onboarding status:",

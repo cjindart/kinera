@@ -42,6 +42,7 @@ import {
   logSwipeStructures,
 } from "../utils/swipeUtils";
 import { BlurView } from "expo-blur";
+import { ScrollView } from "react-native-gesture-handler";
 
 const { width, height } = Dimensions.get("window");
 
@@ -594,158 +595,162 @@ export default function AvailabilityScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerTextContainer}>
-        <Text style={styles.title}>You are vouching for</Text>
-      </View>
-      <View style={styles.header}>
-        {/* Friend name display - separate from the carousel */}
-        {currentFriend && (
-          <Text style={styles.currentFriendName}>{currentFriend.name}</Text>
-        )}
-      </View>
-
-      {/* Friend Selector with Fixed Layout */}
-      <View style={styles.newFriendSelector}>
-        {/* Left (previous) friend */}
-        <TouchableOpacity
-          style={styles.sideFriendContainer}
-          onPress={handlePreviousFriend}
-          disabled={friendSelectorLocked}
-          activeOpacity={0.7}
-        >
-          {getPrevFriend() && (
-            <>
-              <Image
-                source={getImageSource(getPrevFriend())}
-                style={styles.sideFriendImage}
-                blurRadius={5}
-              />
-              <View style={[styles.sideOverlay, styles.leftOverlay]} />
-            </>
-          )}
-        </TouchableOpacity>
-
-        {/* Current friend (center) */}
-        <View style={styles.currentFriendContainer}>
+    <ScrollView>
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title}>You are vouching for</Text>
+        </View>
+        <View style={styles.header}>
+          {/* Friend name display - separate from the carousel */}
           {currentFriend && (
-            <Image
-              source={getImageSource(currentFriend)}
-              style={styles.currentFriendImage}
-            />
+            <Text style={styles.currentFriendName}>{currentFriend.name}</Text>
           )}
         </View>
 
-        {/* Right (next) friend */}
-        <TouchableOpacity
-          style={styles.sideFriendContainer}
-          onPress={handleNextFriend}
-          disabled={friendSelectorLocked}
-          activeOpacity={0.7}
-        >
-          {getNextFriend() && (
-            <>
-              <Image
-                source={getImageSource(getNextFriend())}
-                style={styles.sideFriendImage}
-                blurRadius={5}
-              />
-              <View style={[styles.sideOverlay, styles.rightOverlay]} />
-            </>
-          )}
-        </TouchableOpacity>
-
-        {/* Lock/Unlock Button */}
-        <TouchableOpacity
-          style={styles.lockButton}
-          onPress={() => setFriendSelectorLocked(!friendSelectorLocked)}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={friendSelectorLocked ? "lock-closed" : "lock-open"}
-            size={24}
-            color="white"
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Hidden preloaded images for all potential friends */}
-      <View
-        style={{
-          position: "absolute",
-          opacity: 0,
-          width: 1,
-          height: 1,
-          overflow: "hidden",
-        }}
-      >
-        {matchmakerFriends.map((friend, index) =>
-          friend ? (
-            <Image
-              key={`preload-friend-${friend.id}`}
-              source={getImageSource(friend)}
-              style={{ width: 1, height: 1 }}
-            />
-          ) : null
-        )}
-      </View>
-
-      {/* Candidate Card */}
-      <View style={styles.candidateCardContainer}>
-        {currentCandidate ? (
+        {/* Friend Selector with Fixed Layout */}
+        <View style={styles.newFriendSelector}>
+          {/* Left (previous) friend */}
           <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleCardPress}
-            disabled={swipeLoading}
+            style={styles.sideFriendContainer}
+            onPress={handlePreviousFriend}
+            disabled={friendSelectorLocked}
+            activeOpacity={0.7}
           >
-            <View style={styles.shadow}>
-              <Image
-                source={getImageSource(currentCandidate)}
-                style={styles.candidateImage}
-              />
-            </View>
-            <BlurView
-              intensity={0}
-              tint="default"
-              style={styles.candidateOverlay}
-            >
-              <Text style={styles.candidateName}>{currentCandidate.name}</Text>
-              <Text style={styles.candidateDetails}>
-                {currentCandidate.profileData?.age} -{" "}
-                {currentCandidate.profileData?.year}
-              </Text>
-            </BlurView>
+            {getPrevFriend() && (
+              <>
+                <Image
+                  source={getImageSource(getPrevFriend())}
+                  style={styles.sideFriendImage}
+                  blurRadius={5}
+                />
+                <View style={[styles.sideOverlay, styles.leftOverlay]} />
+              </>
+            )}
           </TouchableOpacity>
-        ) : (
-          <View style={styles.noCandidateContainer}>
-            <Text style={styles.noCandidateText}>
-              No more candidates left to swipe, check back later
-            </Text>
+
+          {/* Current friend (center) */}
+          <View style={styles.currentFriendContainer}>
+            {currentFriend && (
+              <Image
+                source={getImageSource(currentFriend)}
+                style={styles.currentFriendImage}
+              />
+            )}
           </View>
-        )}
-      </View>
 
-      {/* Approve/Reject Buttons at Bottom */}
-      <View style={styles.bottomButtonRow}>
-        <TouchableOpacity
-          style={styles.dislikeButton}
-          onPress={handlePreviousCandidate}
-          disabled={swipeLoading || !currentCandidate}
-        >
-          <Ionicons name="close" size={40} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.likeButton}
-          onPress={handleNextCandidate}
-          disabled={swipeLoading || !currentCandidate}
-        >
-          <Ionicons name="heart" size={40} color="#fff" />
-        </TouchableOpacity>
-      </View>
+          {/* Right (next) friend */}
+          <TouchableOpacity
+            style={styles.sideFriendContainer}
+            onPress={handleNextFriend}
+            disabled={friendSelectorLocked}
+            activeOpacity={0.7}
+          >
+            {getNextFriend() && (
+              <>
+                <Image
+                  source={getImageSource(getNextFriend())}
+                  style={styles.sideFriendImage}
+                  blurRadius={5}
+                />
+                <View style={[styles.sideOverlay, styles.rightOverlay]} />
+              </>
+            )}
+          </TouchableOpacity>
 
-      {!hasAccess && <LockedScreen userType={userType} />}
-    </SafeAreaView>
+          {/* Lock/Unlock Button */}
+          <TouchableOpacity
+            style={styles.lockButton}
+            onPress={() => setFriendSelectorLocked(!friendSelectorLocked)}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={friendSelectorLocked ? "lock-closed" : "lock-open"}
+              size={24}
+              color="white"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Hidden preloaded images for all potential friends */}
+        <View
+          style={{
+            position: "absolute",
+            opacity: 0,
+            width: 1,
+            height: 1,
+            overflow: "hidden",
+          }}
+        >
+          {matchmakerFriends.map((friend, index) =>
+            friend ? (
+              <Image
+                key={`preload-friend-${friend.id}`}
+                source={getImageSource(friend)}
+                style={{ width: 1, height: 1 }}
+              />
+            ) : null
+          )}
+        </View>
+
+        {/* Candidate Card */}
+        <View style={styles.candidateCardContainer}>
+          {currentCandidate ? (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleCardPress}
+              disabled={swipeLoading}
+            >
+              <View style={styles.shadow}>
+                <Image
+                  source={getImageSource(currentCandidate)}
+                  style={styles.candidateImage}
+                />
+              </View>
+              <BlurView
+                intensity={0}
+                tint="default"
+                style={styles.candidateOverlay}
+              >
+                <Text style={styles.candidateName}>
+                  {currentCandidate.name}
+                </Text>
+                <Text style={styles.candidateDetails}>
+                  {currentCandidate.profileData?.age} -{" "}
+                  {currentCandidate.profileData?.year}
+                </Text>
+              </BlurView>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.noCandidateContainer}>
+              <Text style={styles.noCandidateText}>
+                No more candidates left to swipe, check back later
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Approve/Reject Buttons at Bottom */}
+        <View style={styles.bottomButtonRow}>
+          <TouchableOpacity
+            style={styles.dislikeButton}
+            onPress={handlePreviousCandidate}
+            disabled={swipeLoading || !currentCandidate}
+          >
+            <Ionicons name="close" size={40} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.likeButton}
+            onPress={handleNextCandidate}
+            disabled={swipeLoading || !currentCandidate}
+          >
+            <Ionicons name="heart" size={40} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {!hasAccess && <LockedScreen userType={userType} />}
+      </SafeAreaView>
+    </ScrollView>
   );
 }
 
