@@ -723,31 +723,25 @@ export default function ProfileScreen({ route }) {
     });
 
     try {
-      // For demo purposes, use the data URL directly first
-      console.log(
-        "🖼️ Setting image directly (skipping Firebase upload for now)"
-      );
+      // Always upload to Firebase Storage and use the download URL
+      const firebaseUrl = await uploadImageToFirebase(imageUri);
 
       if (index === 0) {
-        console.log("🖼️ Setting main photo");
-        setMainPhoto(imageUri);
+        setMainPhoto(firebaseUrl);
       } else {
-        console.log("🖼️ Setting additional photo at index:", index - 1);
         const newPhotos = [...additionalPhotos];
         if (index - 1 === additionalPhotos.length) {
-          newPhotos.push(imageUri);
+          newPhotos.push(firebaseUrl);
         } else {
-          newPhotos[index - 1] = imageUri;
+          newPhotos[index - 1] = firebaseUrl;
         }
         setAdditionalPhotos(newPhotos);
       }
 
-      console.log("✅ Image selection completed successfully");
-
-      // TODO: Later we can add Firebase upload here
-      // const firebaseUrl = await uploadImageToFirebase(imageUri);
+      console.log("✅ Image selection and upload completed successfully");
     } catch (error) {
       console.error("❌ Error handling image selection:", error);
+      Alert.alert("Error", "Failed to upload image. Please try again.");
     }
   };
 
