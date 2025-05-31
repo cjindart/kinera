@@ -65,17 +65,17 @@ export default function AvailabilityScreen() {
 
   // Helper to get image source with fallback
   const getImageSource = (friend) => {
-    if (!friend) return require("../assets/photos/defaultpfp1.jpeg");
+    if (!friend) return null;
 
     // Use preloaded image if available
     if (preloadedImages[friend.id]) {
       return { uri: preloadedImages[friend.id] };
     }
 
-    // Fallback to direct rendering
+    // Return URI if photo exists, otherwise null (will show default icon)
     return friend.profileData?.photos?.[0]
       ? { uri: friend.profileData.photos[0] }
-      : require("../assets/photos/defaultpfp1.jpeg");
+      : null;
   };
 
   // Get the previous, current, and next friends in the list
@@ -619,11 +619,21 @@ export default function AvailabilityScreen() {
           >
             {getPrevFriend() && (
               <>
-                <Image
-                  source={getImageSource(getPrevFriend())}
-                  style={styles.sideFriendImage}
-                  blurRadius={5}
-                />
+                {getImageSource(getPrevFriend()) ? (
+                  <Image
+                    source={getImageSource(getPrevFriend())}
+                    style={styles.sideFriendImage}
+                    blurRadius={5}
+                  />
+                ) : (
+                  <View style={styles.sideFriendImagePlaceholder}>
+                    <Ionicons
+                      name="person"
+                      size={Math.min(width * 0.11, 40)}
+                      color="#A9B7C5"
+                    />
+                  </View>
+                )}
                 <View style={[styles.sideOverlay, styles.leftOverlay]} />
               </>
             )}
@@ -634,10 +644,20 @@ export default function AvailabilityScreen() {
             {currentFriend && (
               <>
                 <View style={styles.currentFriendImageWrapper}>
-                  <Image
-                    source={getImageSource(currentFriend)}
-                    style={styles.currentFriendImage}
-                  />
+                  {getImageSource(currentFriend) ? (
+                    <Image
+                      source={getImageSource(currentFriend)}
+                      style={styles.currentFriendImage}
+                    />
+                  ) : (
+                    <View style={styles.currentFriendImagePlaceholder}>
+                      <Ionicons
+                        name="person"
+                        size={Math.min(width * 0.175, 60)}
+                        color="#A9B7C5"
+                      />
+                    </View>
+                  )}
                 </View>
                 <View style={styles.currentFriendOverlay} />
               </>
@@ -653,11 +673,21 @@ export default function AvailabilityScreen() {
           >
             {getNextFriend() && (
               <>
-                <Image
-                  source={getImageSource(getNextFriend())}
-                  style={styles.sideFriendImage}
-                  blurRadius={5}
-                />
+                {getImageSource(getNextFriend()) ? (
+                  <Image
+                    source={getImageSource(getNextFriend())}
+                    style={styles.sideFriendImage}
+                    blurRadius={5}
+                  />
+                ) : (
+                  <View style={styles.sideFriendImagePlaceholder}>
+                    <Ionicons
+                      name="person"
+                      size={Math.min(width * 0.11, 40)}
+                      color="#A9B7C5"
+                    />
+                  </View>
+                )}
                 <View style={[styles.sideOverlay, styles.rightOverlay]} />
               </>
             )}
@@ -707,10 +737,20 @@ export default function AvailabilityScreen() {
               disabled={swipeLoading}
             >
               <View style={styles.shadow}>
-                <Image
-                  source={getImageSource(currentCandidate)}
-                  style={styles.candidateImage}
-                />
+                {getImageSource(currentCandidate) ? (
+                  <Image
+                    source={getImageSource(currentCandidate)}
+                    style={styles.candidateImage}
+                  />
+                ) : (
+                  <View style={styles.candidateImagePlaceholder}>
+                    <Ionicons
+                      name="person"
+                      size={Math.min(width * 0.2, 80)}
+                      color="#A9B7C5"
+                    />
+                  </View>
+                )}
               </View>
               <View style={styles.candidateOverlay}>
                 <Text style={styles.candidateName}>
@@ -723,10 +763,12 @@ export default function AvailabilityScreen() {
               </View>
             </TouchableOpacity>
           ) : (
-            <View style={styles.noCandidateContainer}>
-              <Text style={styles.noCandidateText}>
-                No more candidates left to swipe, check back later
-              </Text>
+            <View style={styles.shadow}>
+              <View style={styles.noCandidateContainer}>
+                <Text style={styles.noCandidateText}>
+                  No more candidates left to swipe, check back later
+                </Text>
+              </View>
             </View>
           )}
         </View>
@@ -1079,10 +1121,10 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
     borderWidth: 2,
     borderColor: "#325475",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    // shadowColor: "#000",
+    // shadowOffset: { width: 0, height: 6 },
+    // shadowOpacity: 0.3,
+    // shadowRadius: 3,
     elevation: 5,
   },
   shadow: {
@@ -1091,6 +1133,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 5,
+    borderRadius: 20,
   },
   candidateOverlay: {
     position: "absolute",
@@ -1130,6 +1173,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(227, 171, 140, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#ED7E31",
   },
   noCandidateText: {
     color: "#fff",
@@ -1181,5 +1226,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 1,
     elevation: 5,
+  },
+  sideFriendImagePlaceholder: {
+    width: Math.min(width * 0.22, 80),
+    height: Math.min(width * 0.22, 80),
+    borderRadius: Math.min(width * 0.11, 40),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  currentFriendImagePlaceholder: {
+    width: Math.min(width * 0.35, 120),
+    height: Math.min(width * 0.35, 120),
+    borderRadius: Math.min(width * 0.175, 60),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  candidateImagePlaceholder: {
+    width: Math.min(width * 0.9, 400),
+    height: Math.min(width * 0.8, 350),
+    maxHeight: height * 0.4,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#325475",
+    backgroundColor: "rgba(169, 183, 197, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
