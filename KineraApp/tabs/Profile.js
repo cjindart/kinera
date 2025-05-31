@@ -72,6 +72,7 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
     Animated.timing(translateY, {
       toValue: 3, // Reduced from 4 to match the new size
       duration: 100,
+      useNativeDriver: true, // Enable native driver for better performance
     }).start();
   };
 
@@ -79,6 +80,7 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
     Animated.timing(translateY, {
       toValue: 0,
       duration: 100,
+      useNativeDriver: true, // Enable native driver for better performance
     }).start();
 
     // Toggle edit mode when button is released
@@ -116,6 +118,7 @@ const LogoutButton = ({ onLogout }) => {
     Animated.timing(translateY, {
       toValue: 3,
       duration: 100,
+      useNativeDriver: true, // Enable native driver for better performance
     }).start();
   };
 
@@ -123,6 +126,7 @@ const LogoutButton = ({ onLogout }) => {
     Animated.timing(translateY, {
       toValue: 0,
       duration: 100,
+      useNativeDriver: true, // Enable native driver for better performance
     }).start();
 
     // Call logout function when button is released
