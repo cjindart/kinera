@@ -1004,9 +1004,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   currentFriendImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: Math.min(width * 0.35, 120),
+    height: Math.min(width * 0.35, 120),
+    borderRadius: Math.min(width * 0.175, 60),
     resizeMode: "cover",
     borderWidth: 2,
     borderColor: "#ED7E31",
@@ -1020,10 +1020,9 @@ const styles = StyleSheet.create({
   currentFriendOverlay: {
     position: "absolute",
     top: 0,
-    borderRadius: Math.min(width * 0.11, 40),
     bottom: 0,
     width: "100%",
-    borderRadius: Math.min(width * 0.11, 40),
+    borderRadius: Math.min(width * 0.175, 60),
     backgroundColor: "rgba(255, 255, 255, 0)",
   },
   lockButton: {
