@@ -998,6 +998,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 2,
     marginHorizontal: Math.min(width * 0.03, 15),
+    overflow: "hidden",
   },
   currentFriendImage: {
     width: 120,
@@ -1006,6 +1007,8 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
     borderWidth: 2,
     borderColor: "#ED7E31",
+    overflow: "hidden",
+    backgroundColor: "transparent",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
