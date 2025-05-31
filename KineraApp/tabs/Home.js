@@ -65,7 +65,7 @@ export default function AvailabilityScreen() {
 
   // Helper to get image source with fallback
   const getImageSource = (friend) => {
-    if (!friend) return require("../assets/photos/defaultpfp.jpeg");
+    if (!friend) return require("../assets/photos/defaultpfp1.jpeg");
 
     // Use preloaded image if available
     if (preloadedImages[friend.id]) {
@@ -75,7 +75,7 @@ export default function AvailabilityScreen() {
     // Fallback to direct rendering
     return friend.profileData?.photos?.[0]
       ? { uri: friend.profileData.photos[0] }
-      : require("../assets/photos/defaultpfp.jpeg");
+      : require("../assets/photos/defaultpfp1.jpeg");
   };
 
   // Get the previous, current, and next friends in the list
