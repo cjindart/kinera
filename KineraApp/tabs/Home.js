@@ -633,10 +633,12 @@ export default function AvailabilityScreen() {
           <View style={styles.currentFriendContainer}>
             {currentFriend && (
               <>
-                <Image
-                  source={getImageSource(currentFriend)}
-                  style={styles.currentFriendImage}
-                />
+                <View style={styles.currentFriendImageWrapper}>
+                  <Image
+                    source={getImageSource(currentFriend)}
+                    style={styles.currentFriendImage}
+                  />
+                </View>
                 <View style={styles.currentFriendOverlay} />
               </>
             )}
@@ -1003,19 +1005,24 @@ const styles = StyleSheet.create({
     marginHorizontal: Math.min(width * 0.03, 15),
     overflow: "hidden",
   },
-  currentFriendImage: {
+  currentFriendImageWrapper: {
     width: Math.min(width * 0.35, 120),
     height: Math.min(width * 0.35, 120),
     borderRadius: Math.min(width * 0.175, 60),
-    resizeMode: "cover",
     borderWidth: 2,
     borderColor: "#ED7E31",
     overflow: "hidden",
-    backgroundColor: "transparent",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
+  },
+  currentFriendImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+    backgroundColor: "transparent",
   },
   currentFriendOverlay: {
     position: "absolute",
