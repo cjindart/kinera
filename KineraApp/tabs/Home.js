@@ -707,11 +707,7 @@ export default function AvailabilityScreen() {
                   style={styles.candidateImage}
                 />
               </View>
-              <BlurView
-                intensity={0}
-                tint="default"
-                style={styles.candidateOverlay}
-              >
+              <View style={styles.candidateOverlay}>
                 <Text style={styles.candidateName}>
                   {currentCandidate.name}
                 </Text>
@@ -719,7 +715,7 @@ export default function AvailabilityScreen() {
                   {currentCandidate.profileData?.age} -{" "}
                   {currentCandidate.profileData?.year}
                 </Text>
-              </BlurView>
+              </View>
             </TouchableOpacity>
           ) : (
             <View style={styles.noCandidateContainer}>
@@ -1004,9 +1000,9 @@ const styles = StyleSheet.create({
     marginHorizontal: Math.min(width * 0.03, 15),
   },
   currentFriendImage: {
-    width: Math.min(width * 0.35, 120),
-    height: Math.min(width * 0.35, 120),
-    borderRadius: Math.min(width * 0.175, 60),
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     resizeMode: "cover",
     borderWidth: 2,
     borderColor: "#ED7E31",
@@ -1052,7 +1048,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     borderRadius: 20,
-    backgroundColor: "transparent",
+    // backgroundColor: "transparent",
   },
   candidateImage: {
     width: Math.min(width * 0.9, 400),
@@ -1085,6 +1081,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     minWidth: 120,
     borderRadius: 20,
+    backgroundColor: "transparent",
   },
   candidateName: {
     color: "#ffff",
