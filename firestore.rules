@@ -1,0 +1,167 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for authentication and authorization
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidPhoneNumber(phoneNumber) {
+      return phoneNumber is string && 
+             phoneNumber.matches('^\\+1[0-9]{10}$');
+    }
+    
+    function isValidStanfordEmail(email) {
+      return email is string && 
+             email.matches('^[a-zA-Z0-9._%+-]+@stanford\\.edu$');
+    }
+    
+    function isValidUserType(userType) {
+      return userType in ['Dater', 'Match Maker', 'Dater & Match Maker'];
+    }
+    
+    function isValidGender(gender) {
+      return gender in ['male', 'female', 'non-binary', 'other'];
+    }
+    
+    function isValidSexuality(sexuality) {
+      return sexuality in ['straight', 'gay', 'lesbian', 'bisexual', 'pansexual', 'other'];
+    }
+    
+    // Check if user data contains only allowed fields
+    function hasValidUserFields() {
+      let allowedFields = ['id', 'name', 'phoneNumber', 'userType', 'stanfordEmail', 
+                          'isStanfordVerified', 'isAuthenticated', 'profileData', 
+                          'sexuality', 'friends', 'swipingPool', 'swipedPool', 
+                          'matches', 'swipingPools', 'createdAt', 'updatedAt', 
+                          'newUser', 'previousId', 'migratedAt', 'active', 'mergedTo', 
+                          'mergedAt', 'previousIds'];
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+    
+    // Check if profile data contains only allowed fields
+    function hasValidProfileFields() {
+      let allowedProfileFields = ['age', 'gender', 'height', 'year', 'interests', 
+                                 'dateActivities', 'photos', 'updatedAt'];
+      return !('profileData' in request.resource.data) || 
+             request.resource.data.profileData.keys().hasOnly(allowedProfileFields);
+    }
+    
+    // Users collection rules
+    match /users/{userId} {
+      // Read permissions: Users can read their own data and basic info of other users
+      allow read: if isOwner(userId) || 
+                     (isAuthenticated() && 
+                      resource.data.userType in ['Dater', 'Dater & Match Maker']);
+      
+      // Create permissions: Authenticated users can create their own user document
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == userId &&
+                       hasValidUserFields() &&
+                       hasValidProfileFields() &&
+                       // Validate required fields
+                       request.resource.data.id == userId &&
+                       request.resource.data.isAuthenticated == true &&
+                       // Validate phone number format if provided
+                       (!('phoneNumber' in request.resource.data) || 
+                        isValidPhoneNumber(request.resource.data.phoneNumber)) &&
+                       // Validate Stanford email if provided
+                       (!('stanfordEmail' in request.resource.data) || 
+                        request.resource.data.stanfordEmail == null ||
+                        isValidStanfordEmail(request.resource.data.stanfordEmail)) &&
+                       // Validate user type
+                       (!('userType' in request.resource.data) || 
+                        isValidUserType(request.resource.data.userType)) &&
+                       // Validate sexuality
+                       (!('sexuality' in request.resource.data) || 
+                        isValidSexuality(request.resource.data.sexuality)) &&
+                       // Validate profile data gender
+                       (!('profileData' in request.resource.data) || 
+                        !('gender' in request.resource.data.profileData) ||
+                        isValidGender(request.resource.data.profileData.gender));
+      
+      // Update permissions: Users can update their own data with validation
+      allow update: if isOwner(userId) &&
+                       hasValidUserFields() &&
+                       hasValidProfileFields() &&
+                       // Prevent changing ID
+                       request.resource.data.id == resource.data.id &&
+                       // Validate phone number format if being updated
+                       (!('phoneNumber' in request.resource.data) || 
+                        request.resource.data.phoneNumber == resource.data.phoneNumber ||
+                        isValidPhoneNumber(request.resource.data.phoneNumber)) &&
+                       // Validate Stanford email if being updated
+                       (!('stanfordEmail' in request.resource.data) || 
+                        request.resource.data.stanfordEmail == null ||
+                        isValidStanfordEmail(request.resource.data.stanfordEmail)) &&
+                       // Validate user type if being updated
+                       (!('userType' in request.resource.data) || 
+                        isValidUserType(request.resource.data.userType)) &&
+                       // Validate sexuality if being updated
+                       (!('sexuality' in request.resource.data) || 
+                        isValidSexuality(request.resource.data.sexuality)) &&
+                       // Validate profile data gender if being updated
+                       (!('profileData' in request.resource.data) || 
+                        !('gender' in request.resource.data.profileData) ||
+                        isValidGender(request.resource.data.profileData.gender));
+      
+      // Delete permissions: Users can only delete their own account
+      allow delete: if isOwner(userId);
+    }
+    
+    // Activities collection (if you have group activities/events)
+    match /activities/{activityId} {
+      // Anyone authenticated can read activities
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can create activities
+      allow create: if isAuthenticated() &&
+                       request.resource.data.creatorId == request.auth.uid;
+      
+      // Only the creator can update/delete activities
+      allow update, delete: if isAuthenticated() && 
+                               resource.data.creatorId == request.auth.uid;
+    }
+    
+    // Email verification collection
+    match /emailVerifications/{verificationId} {
+      // Users can only access their own email verifications
+      allow read, create, update, delete: if isAuthenticated() && 
+                                             request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Matches collection (if you store matches separately)
+    match /matches/{matchId} {
+      // Users can read matches they're involved in
+      allow read: if isAuthenticated() && 
+                     (request.auth.uid in resource.data.userIds);
+      
+      // System can create matches (you might want to restrict this further)
+      allow create: if isAuthenticated();
+      
+      // Users involved in the match can update it
+      allow update: if isAuthenticated() && 
+                       (request.auth.uid in resource.data.userIds);
+    }
+    
+    // Test collections for development and debugging
+    match /test_users/{testDocId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    match /debug_tests/{testDocId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Deny all other document access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 

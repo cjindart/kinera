@@ -632,10 +632,13 @@ export default function AvailabilityScreen() {
           {/* Current friend (center) */}
           <View style={styles.currentFriendContainer}>
             {currentFriend && (
-              <Image
-                source={getImageSource(currentFriend)}
-                style={styles.currentFriendImage}
-              />
+              <>
+                <Image
+                  source={getImageSource(currentFriend)}
+                  style={styles.currentFriendImage}
+                />
+                <View style={styles.currentFriendOverlay} />
+              </>
             )}
           </View>
 
@@ -1013,6 +1016,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
+  },
+  currentFriendOverlay: {
+    position: "absolute",
+    top: 0,
+    borderRadius: Math.min(width * 0.11, 40),
+    bottom: 0,
+    width: "100%",
+    borderRadius: Math.min(width * 0.11, 40),
+    backgroundColor: "rgba(255, 255, 255, 0)",
   },
   lockButton: {
     position: "absolute",
