@@ -31,10 +31,11 @@ export default function SexualityScreen({ navigation, route }) {
     try {
       console.log("Submitting sexuality:", { sexuality: selected });
 
-      // Save sexuality to profileData using the standard format
+      // Save sexuality to both top-level and profileData to ensure consistency
       await updateProfile({
+        sexuality: selected, // Top-level sexuality field
         profileData: {
-          sexuality: selected,
+          sexuality: selected, // ProfileData sexuality field
         },
       });
 

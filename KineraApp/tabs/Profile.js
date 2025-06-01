@@ -261,6 +261,7 @@ export default function ProfileScreen({ route }) {
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
+  const [sexuality, setSexuality] = useState("");
   const [height, setHeight] = useState("");
   const [year, setYear] = useState("");
   const [city, setCity] = useState("");
@@ -314,6 +315,13 @@ export default function ProfileScreen({ route }) {
         const userDoc = await getDoc(doc(db, "users", user.id));
         if (userDoc.exists()) {
           const userData = { ...userDoc.data(), id: user.id };
+          
+          console.log("🔍 RAW Firebase data retrieved:", {
+            topLevelSexuality: userData.sexuality,
+            profileDataSexuality: userData.profileData?.sexuality,
+            fullProfileData: userData.profileData,
+            hasProfileData: !!userData.profileData
+          });
           
           console.log("Latest Firebase data retrieved, updating local state...");
           
@@ -378,6 +386,7 @@ export default function ProfileScreen({ route }) {
             ? {
                 age: userData.profileData.age,
                 gender: userData.profileData.gender,
+                sexuality: userData.profileData.sexuality,
                 height: userData.profileData.height,
                 year: userData.profileData.year,
                 interestsCount: userData.profileData.interests?.length || 0,
@@ -409,6 +418,11 @@ export default function ProfileScreen({ route }) {
       setGender(
         typeof userData.profileData.gender === "string"
           ? userData.profileData.gender
+          : ""
+      );
+      setSexuality(
+        typeof userData.profileData.sexuality === "string"
+          ? userData.profileData.sexuality
           : ""
       );
       setHeight(
@@ -474,6 +488,7 @@ export default function ProfileScreen({ route }) {
       // Clear all profile data if none exists
       setAge("");
       setGender("");
+      setSexuality("");
       setHeight("");
       setYear("");
       setCity("");
@@ -611,6 +626,7 @@ export default function ProfileScreen({ route }) {
             ...user.profileData,
             age: age ? parseInt(age, 10) : null,
             gender,
+            sexuality,
             height,
             year,
             city,

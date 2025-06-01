@@ -168,7 +168,7 @@ export default function CandidateProfile({ route, navigation }) {
               />
             </View>
             <Text style={styles.summaryText}>
-              {candidateInfo.profileData?.height}cm
+              {candidateInfo.profileData?.height}
             </Text>
           </View>
 
