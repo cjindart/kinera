@@ -52,13 +52,16 @@ export default function OnboardingNavigator({ navigation, route }) {
         );
         const hasUserType = user && user.userType;
         const hasGender = user?.profileData?.gender;
-        const hasSexuality = user?.profileData?.sexuality;
+        const hasSexuality =
+          user?.profileData?.sexuality &&
+          user?.profileData?.sexuality !== "straight";
 
         console.log("📊 Onboarding status check:", {
           onboardingComplete,
           hasUserType,
           hasGender,
           hasSexuality,
+          sexualityValue: user?.profileData?.sexuality,
           forceOnboarding: route?.params?.forceOnboarding,
         });
 
