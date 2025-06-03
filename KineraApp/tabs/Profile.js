@@ -72,6 +72,7 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
     Animated.timing(translateY, {
       toValue: 3, // Reduced from 4 to match the new size
       duration: 100,
+      useNativeDriver: true, // Enable native driver for better performance
     }).start();
   };
 
@@ -79,6 +80,7 @@ const EditButton = ({ isEditing, onToggleEdit }) => {
     Animated.timing(translateY, {
       toValue: 0,
       duration: 100,
+      useNativeDriver: true, // Enable native driver for better performance
     }).start();
 
     // Toggle edit mode when button is released
@@ -116,6 +118,7 @@ const LogoutButton = ({ onLogout }) => {
     Animated.timing(translateY, {
       toValue: 3,
       duration: 100,
+      useNativeDriver: true, // Enable native driver for better performance
     }).start();
   };
 
@@ -123,6 +126,7 @@ const LogoutButton = ({ onLogout }) => {
     Animated.timing(translateY, {
       toValue: 0,
       duration: 100,
+      useNativeDriver: true, // Enable native driver for better performance
     }).start();
 
     // Call logout function when button is released
@@ -257,6 +261,7 @@ export default function ProfileScreen({ route }) {
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
+  const [sexuality, setSexuality] = useState("");
   const [height, setHeight] = useState("");
   const [year, setYear] = useState("");
   const [city, setCity] = useState("");
@@ -304,129 +309,196 @@ export default function ProfileScreen({ route }) {
       }
 
       try {
-        // First sync with Firestore
+        console.log("Syncing user data from Firebase...");
+        
+        // Always fetch the latest data from Firestore
         const userDoc = await getDoc(doc(db, "users", user.id));
         if (userDoc.exists()) {
-          const userData = userDoc.data();
-
-          // Only update if data has actually changed and we don't have profile data
-          if (!user.profileData && userData.profileData) {
-            console.log("Loading initial profile data from Firestore");
-            await setUser(userData);
-            await AsyncStorage.setItem("userData", JSON.stringify(userData));
-          }
-        }
-
-        // Then update local state
-        if (user) {
-          console.log(
-            "Loading user profile data:",
-            JSON.stringify(
-              {
-                name: user.name,
-                userType: user.userType,
-                profileDataExists: !!user.profileData,
-                profileData: user.profileData
-                  ? {
-                      age: user.profileData.age,
-                      gender: user.profileData.gender,
-                      height: user.profileData.height,
-                      year: user.profileData.year,
-                      interestsCount: user.profileData.interests?.length || 0,
-                      activitiesCount:
-                        user.profileData.dateActivities?.length || 0,
-                      photosCount: user.profileData.photos?.length || 0,
-                    }
-                  : null,
-                friendsCount: user.friends?.length || 0,
-              },
-              null,
-              2
-            )
-          );
-
-          // Basic info
-          setName(typeof user.name === "string" ? user.name : "");
-          setUserType(typeof user.userType === "string" ? user.userType : "");
-
-          // Profile data from profileData object
-          if (user.profileData) {
-            setAge(
-              typeof user.profileData.age === "number"
-                ? user.profileData.age.toString()
-                : typeof user.profileData.age === "string"
-                ? user.profileData.age
-                : ""
-            );
-            setGender(
-              typeof user.profileData.gender === "string"
-                ? user.profileData.gender
-                : ""
-            );
-            setHeight(
-              typeof user.profileData.height === "string"
-                ? user.profileData.height
-                : ""
-            );
-            setYear(
-              typeof user.profileData.year === "string"
-                ? user.profileData.year
-                : typeof user.profileData.classYear === "string"
-                ? user.profileData.classYear
-                : ""
-            );
-            setCity(
-              typeof user.profileData.city === "string"
-                ? user.profileData.city
-                : ""
-            );
-
-            // Interests and activities
-            const userInterests = Array.isArray(user.profileData.interests)
-              ? user.profileData.interests
-              : [];
-            setInterests(userInterests);
-
-            const userActivities = Array.isArray(
-              user.profileData.dateActivities
-            )
-              ? user.profileData.dateActivities
-              : Array.isArray(user.profileData.activities)
-              ? user.profileData.activities
-              : [];
-            setDateActivities(userActivities);
-
-            // Load photos
-            if (
-              user.profileData.photos &&
-              Array.isArray(user.profileData.photos) &&
-              user.profileData.photos.length > 0
-            ) {
-              setMainPhoto(
-                typeof user.profileData.photos[0] === "string"
-                  ? user.profileData.photos[0]
-                  : null
-              );
-              setAdditionalPhotos(
-                user.profileData.photos
-                  .slice(1)
-                  .filter((photo) => typeof photo === "string")
-              );
-            }
-
-            // Set default selected interest
-            if (userInterests.length > 0) {
-              setSelectedInterests([userInterests[0]]);
-            }
+          const userData = { ...userDoc.data(), id: user.id };
+          
+          console.log("🔍 RAW Firebase data retrieved:", {
+            topLevelSexuality: userData.sexuality,
+            profileDataSexuality: userData.profileData?.sexuality,
+            fullProfileData: userData.profileData,
+            hasProfileData: !!userData.profileData
+          });
+          
+          console.log("Latest Firebase data retrieved, updating local state...");
+          
+          // Always update with the latest Firebase data
+          await setUser(userData);
+          await AsyncStorage.setItem("userData", JSON.stringify(userData));
+          
+          // Update local component state with the fresh data
+          updateLocalStateFromUserData(userData);
+        } else {
+          console.log("User document not found in Firebase");
+          // Fallback to existing user data if Firebase doc doesn't exist
+          if (user) {
+            updateLocalStateFromUserData(user);
           }
         }
       } catch (error) {
         console.error("Error loading/syncing user data:", error);
+        // Fallback to existing user data on error
+        if (user) {
+          updateLocalStateFromUserData(user);
+        }
       }
     };
 
     loadAndSyncUserData();
   }, []); // Empty dependency array - only run once on mount
+
+  // Add navigation focus listener for real-time updates
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", async () => {
+      if (user?.id) {
+        console.log("Profile screen focused, syncing latest data...");
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.id));
+          if (userDoc.exists()) {
+            const userData = { ...userDoc.data(), id: user.id };
+            await setUser(userData);
+            await AsyncStorage.setItem("userData", JSON.stringify(userData));
+            updateLocalStateFromUserData(userData);
+            console.log("Profile data synced successfully on focus");
+          }
+        } catch (error) {
+          console.error("Error syncing data on focus:", error);
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, user?.id]);
+
+  // Helper function to update local state from user data
+  const updateLocalStateFromUserData = (userData) => {
+    console.log(
+      "Updating local state with user data:",
+      JSON.stringify(
+        {
+          name: userData.name,
+          userType: userData.userType,
+          profileDataExists: !!userData.profileData,
+          profileData: userData.profileData
+            ? {
+                age: userData.profileData.age,
+                gender: userData.profileData.gender,
+                sexuality: userData.profileData.sexuality,
+                height: userData.profileData.height,
+                year: userData.profileData.year,
+                interestsCount: userData.profileData.interests?.length || 0,
+                activitiesCount:
+                  userData.profileData.dateActivities?.length || 0,
+                photosCount: userData.profileData.photos?.length || 0,
+              }
+            : null,
+          friendsCount: userData.friends?.length || 0,
+        },
+        null,
+        2
+      )
+    );
+
+    // Basic info
+    setName(typeof userData.name === "string" ? userData.name : "");
+    setUserType(typeof userData.userType === "string" ? userData.userType : "");
+
+    // Profile data from profileData object
+    if (userData.profileData) {
+      setAge(
+        typeof userData.profileData.age === "number"
+          ? userData.profileData.age.toString()
+          : typeof userData.profileData.age === "string"
+          ? userData.profileData.age
+          : ""
+      );
+      setGender(
+        typeof userData.profileData.gender === "string"
+          ? userData.profileData.gender
+          : ""
+      );
+      setSexuality(
+        typeof userData.profileData.sexuality === "string"
+          ? userData.profileData.sexuality
+          : ""
+      );
+      setHeight(
+        typeof userData.profileData.height === "string"
+          ? userData.profileData.height
+          : ""
+      );
+      setYear(
+        typeof userData.profileData.year === "string"
+          ? userData.profileData.year
+          : typeof userData.profileData.classYear === "string"
+          ? userData.profileData.classYear
+          : ""
+      );
+      setCity(
+        typeof userData.profileData.city === "string"
+          ? userData.profileData.city
+          : ""
+      );
+
+      // Interests and activities
+      const userInterests = Array.isArray(userData.profileData.interests)
+        ? userData.profileData.interests
+        : [];
+      setInterests(userInterests);
+
+      const userActivities = Array.isArray(
+        userData.profileData.dateActivities
+      )
+        ? userData.profileData.dateActivities
+        : Array.isArray(userData.profileData.activities)
+        ? userData.profileData.activities
+        : [];
+      setDateActivities(userActivities);
+
+      // Load photos
+      if (
+        userData.profileData.photos &&
+        Array.isArray(userData.profileData.photos) &&
+        userData.profileData.photos.length > 0
+      ) {
+        setMainPhoto(
+          typeof userData.profileData.photos[0] === "string"
+            ? userData.profileData.photos[0]
+            : null
+        );
+        setAdditionalPhotos(
+          userData.profileData.photos
+            .slice(1)
+            .filter((photo) => typeof photo === "string")
+        );
+      } else {
+        // Clear photos if none exist
+        setMainPhoto(null);
+        setAdditionalPhotos([]);
+      }
+
+      // Set default selected interest
+      if (userInterests.length > 0) {
+        setSelectedInterests([userInterests[0]]);
+      }
+    } else {
+      // Clear all profile data if none exists
+      setAge("");
+      setGender("");
+      setSexuality("");
+      setHeight("");
+      setYear("");
+      setCity("");
+      setInterests([]);
+      setDateActivities([]);
+      setMainPhoto(null);
+      setAdditionalPhotos([]);
+      setSelectedInterests([]);
+    }
+  };
 
   // Request camera and media library permissions on component mount
   useEffect(() => {
@@ -555,6 +627,7 @@ export default function ProfileScreen({ route }) {
             ...user.profileData,
             age: age ? parseInt(age, 10) : null,
             gender,
+            sexuality,
             height,
             year,
             city,
@@ -726,31 +799,25 @@ export default function ProfileScreen({ route }) {
     });
 
     try {
-      // For demo purposes, use the data URL directly first
-      console.log(
-        "🖼️ Setting image directly (skipping Firebase upload for now)"
-      );
+      // Always upload to Firebase Storage and use the download URL
+      const firebaseUrl = await uploadImageToFirebase(imageUri);
 
       if (index === 0) {
-        console.log("🖼️ Setting main photo");
-        setMainPhoto(imageUri);
+        setMainPhoto(firebaseUrl);
       } else {
-        console.log("🖼️ Setting additional photo at index:", index - 1);
         const newPhotos = [...additionalPhotos];
         if (index - 1 === additionalPhotos.length) {
-          newPhotos.push(imageUri);
+          newPhotos.push(firebaseUrl);
         } else {
-          newPhotos[index - 1] = imageUri;
+          newPhotos[index - 1] = firebaseUrl;
         }
         setAdditionalPhotos(newPhotos);
       }
 
-      console.log("✅ Image selection completed successfully");
-
-      // TODO: Later we can add Firebase upload here
-      // const firebaseUrl = await uploadImageToFirebase(imageUri);
+      console.log("✅ Image selection and upload completed successfully");
     } catch (error) {
       console.error("❌ Error handling image selection:", error);
+      Alert.alert("Error", "Failed to upload image. Please try again.");
     }
   };
 

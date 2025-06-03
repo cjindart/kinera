@@ -977,6 +977,19 @@ export function AuthProvider({ children }) {
         userToUpdate.stanfordEmail = profileData.stanfordEmail;
       if (profileData.isStanfordVerified !== undefined)
         userToUpdate.isStanfordVerified = profileData.isStanfordVerified;
+      
+      // Handle sexuality field - update both top-level and profileData
+      if (profileData.sexuality !== undefined) {
+        console.log("🔄 AuthContext: Updating sexuality field:", profileData.sexuality);
+        userToUpdate.sexuality = profileData.sexuality;
+        // Ensure profileData object exists before setting sexuality
+        userToUpdate.profileData = userToUpdate.profileData || {};
+        userToUpdate.profileData.sexuality = profileData.sexuality;
+        console.log("✅ AuthContext: Both sexuality fields updated:", {
+          topLevel: userToUpdate.sexuality,
+          profileData: userToUpdate.profileData.sexuality
+        });
+      }
 
       // Ensure profileData object exists
       userToUpdate.profileData = userToUpdate.profileData || {};

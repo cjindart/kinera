@@ -110,7 +110,7 @@ class User {
         userData.profileData?.sexuality ||
         userData.sexuality ||
         userData.lookingFor ||
-        null,
+        "straight",
       city: userData.profileData?.city || userData.city || null,
       updatedAt: userData.profileData?.updatedAt || new Date().toISOString(),
     };
@@ -120,6 +120,14 @@ class User {
     if (userData.profileData?.sexuality) {
       this.sexuality = userData.profileData.sexuality;
     }
+    
+    console.log("🔍 User constructor sexuality debug:", {
+      inputSexuality: userData.sexuality,
+      inputLookingFor: userData.lookingFor,
+      profileDataSexuality: userData.profileData?.sexuality,
+      finalTopLevel: this.sexuality,
+      finalProfileData: this.profileData.sexuality
+    });
 
     // Social connections - friends might be just names or objects
     this.friends = userData.friends || [];
@@ -532,6 +540,7 @@ class User {
       // Update individual fields
       if (profileData.age) this.profileData.age = profileData.age;
       if (profileData.gender) this.profileData.gender = profileData.gender;
+      if (profileData.sexuality) this.profileData.sexuality = profileData.sexuality;
       if (profileData.height) this.profileData.height = profileData.height;
       if (profileData.year) this.profileData.year = profileData.year;
       if (profileData.interests)
@@ -605,6 +614,11 @@ class User {
       delete this.gender;
     }
 
+    if (this.sexuality && !this.profileData.sexuality) {
+      this.profileData.sexuality = this.sexuality;
+      delete this.sexuality;
+    }
+
     if (this.height && !this.profileData.height) {
       this.profileData.height = this.height;
       delete this.height;
@@ -654,7 +668,7 @@ class User {
 
     // Get user's gender and sexuality
     const userGender = this.profileData?.gender?.toLowerCase();
-    const userSexuality = this.sexuality?.toLowerCase();
+    const userSexuality = this.profileData?.sexuality?.toLowerCase();
 
     console.log(
       `Updating swiping pool for ${
@@ -689,9 +703,7 @@ class User {
       }
 
       const matchGender = potentialMatch.profileData?.gender?.toLowerCase();
-      const matchSexuality =
-        potentialMatch.sexuality?.toLowerCase() ||
-        potentialMatch.profileData?.sexuality?.toLowerCase();
+      const matchSexuality = potentialMatch.profileData?.sexuality?.toLowerCase();
 
       // If either user is missing gender or sexuality, skip matching
       if (!userGender || !userSexuality || !matchGender || !matchSexuality) {

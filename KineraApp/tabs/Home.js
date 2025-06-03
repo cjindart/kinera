@@ -65,17 +65,17 @@ export default function AvailabilityScreen() {
 
   // Helper to get image source with fallback
   const getImageSource = (friend) => {
-    if (!friend) return require("../assets/photos/daniel.png");
+    if (!friend) return null;
 
     // Use preloaded image if available
     if (preloadedImages[friend.id]) {
       return { uri: preloadedImages[friend.id] };
     }
 
-    // Fallback to direct rendering
+    // Return URI if photo exists, otherwise null (will show default icon)
     return friend.profileData?.photos?.[0]
       ? { uri: friend.profileData.photos[0] }
-      : require("../assets/photos/daniel.png");
+      : null;
   };
 
   // Get the previous, current, and next friends in the list
@@ -619,11 +619,21 @@ export default function AvailabilityScreen() {
           >
             {getPrevFriend() && (
               <>
-                <Image
-                  source={getImageSource(getPrevFriend())}
-                  style={styles.sideFriendImage}
-                  blurRadius={5}
-                />
+                {getImageSource(getPrevFriend()) ? (
+                  <Image
+                    source={getImageSource(getPrevFriend())}
+                    style={styles.sideFriendImage}
+                    blurRadius={5}
+                  />
+                ) : (
+                  <View style={styles.sideFriendImagePlaceholder}>
+                    <Ionicons
+                      name="person"
+                      size={Math.min(width * 0.11, 40)}
+                      color="#A9B7C5"
+                    />
+                  </View>
+                )}
                 <View style={[styles.sideOverlay, styles.leftOverlay]} />
               </>
             )}
@@ -632,10 +642,25 @@ export default function AvailabilityScreen() {
           {/* Current friend (center) */}
           <View style={styles.currentFriendContainer}>
             {currentFriend && (
-              <Image
-                source={getImageSource(currentFriend)}
-                style={styles.currentFriendImage}
-              />
+              <>
+                <View style={styles.currentFriendImageWrapper}>
+                  {getImageSource(currentFriend) ? (
+                    <Image
+                      source={getImageSource(currentFriend)}
+                      style={styles.currentFriendImage}
+                    />
+                  ) : (
+                    <View style={styles.currentFriendImagePlaceholder}>
+                      <Ionicons
+                        name="person"
+                        size={Math.min(width * 0.175, 60)}
+                        color="#A9B7C5"
+                      />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.currentFriendOverlay} />
+              </>
             )}
           </View>
 
@@ -648,11 +673,21 @@ export default function AvailabilityScreen() {
           >
             {getNextFriend() && (
               <>
-                <Image
-                  source={getImageSource(getNextFriend())}
-                  style={styles.sideFriendImage}
-                  blurRadius={5}
-                />
+                {getImageSource(getNextFriend()) ? (
+                  <Image
+                    source={getImageSource(getNextFriend())}
+                    style={styles.sideFriendImage}
+                    blurRadius={5}
+                  />
+                ) : (
+                  <View style={styles.sideFriendImagePlaceholder}>
+                    <Ionicons
+                      name="person"
+                      size={Math.min(width * 0.11, 40)}
+                      color="#A9B7C5"
+                    />
+                  </View>
+                )}
                 <View style={[styles.sideOverlay, styles.rightOverlay]} />
               </>
             )}
@@ -702,16 +737,22 @@ export default function AvailabilityScreen() {
               disabled={swipeLoading}
             >
               <View style={styles.shadow}>
-                <Image
-                  source={getImageSource(currentCandidate)}
-                  style={styles.candidateImage}
-                />
+                {getImageSource(currentCandidate) ? (
+                  <Image
+                    source={getImageSource(currentCandidate)}
+                    style={styles.candidateImage}
+                  />
+                ) : (
+                  <View style={styles.candidateImagePlaceholder}>
+                    <Ionicons
+                      name="person"
+                      size={Math.min(width * 0.2, 80)}
+                      color="#A9B7C5"
+                    />
+                  </View>
+                )}
               </View>
-              <BlurView
-                intensity={0}
-                tint="default"
-                style={styles.candidateOverlay}
-              >
+              <View style={styles.candidateOverlay}>
                 <Text style={styles.candidateName}>
                   {currentCandidate.name}
                 </Text>
@@ -719,13 +760,15 @@ export default function AvailabilityScreen() {
                   {currentCandidate.profileData?.age} -{" "}
                   {currentCandidate.profileData?.year}
                 </Text>
-              </BlurView>
+              </View>
             </TouchableOpacity>
           ) : (
-            <View style={styles.noCandidateContainer}>
-              <Text style={styles.noCandidateText}>
-                No more candidates left to swipe, check back later
-              </Text>
+            <View style={styles.shadow}>
+              <View style={styles.noCandidateContainer}>
+                <Text style={styles.noCandidateText}>
+                  No more candidates left to swipe, check back later
+                </Text>
+              </View>
             </View>
           )}
         </View>
@@ -758,24 +801,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "white",
-    paddingTop: height * 0.05,
-    paddingHorizontal: width * 0.05,
+    paddingTop: Math.min(height * 0.05, 40),
+    paddingHorizontal: Math.min(width * 0.05, 20),
     justifyContent: "space-between",
     width: "100%",
   },
   header: {
     alignItems: "center",
-    // marginBottom: height * 0.005,
   },
   title: {
-    fontSize: width * 0.1,
+    fontSize: Math.min(width * 0.1, 36),
     fontWeight: "bold",
     color: "#4B5C6B",
-    paddingTop: height * 0.02,
+    paddingTop: Math.min(height * 0.02, 20),
   },
   temp: {
-    height: height * 0.13,
-    width: width * 0.22,
+    height: Math.min(height * 0.13, 100),
+    width: Math.min(width * 0.22, 80),
     backgroundColor: "black",
   },
   friendSelector: {
@@ -792,28 +834,26 @@ const styles = StyleSheet.create({
   },
   navigationText: {
     textAlign: "center",
-    fontSize: width * 0.035,
+    fontSize: Math.min(width * 0.035, 16),
     color: "#325475",
   },
   friendInfo: {
-    width: width * 0.35,
-    height: height * 0.22,
+    width: Math.min(width * 0.35, 130),
+    height: Math.min(height * 0.22, 150),
     justifyContent: "center",
-    width: 130,
     marginHorizontal: 20,
   },
   cardContainer: {
     alignItems: "center",
-    marginTop: height * 0.01,
+    marginTop: Math.min(height * 0.01, 10),
   },
   card: {
-    width: width * 0.7,
-    height: width * 0.6,
+    width: Math.min(width * 0.7, 300),
+    height: Math.min(width * 0.6, 250),
     borderWidth: 1,
     borderColor: "#325475",
     justifyContent: "center",
     alignItems: "center",
-    // marginBottom: height * 0.01,
     backgroundColor: "white",
     borderRadius: 10,
     shadowColor: "#000",
@@ -823,14 +863,14 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardImage: {
-    width: width * 0.7,
-    height: width * 0.6,
+    width: Math.min(width * 0.7, 300),
+    height: Math.min(width * 0.6, 250),
     borderRadius: 10,
     resizeMode: "cover",
   },
   cardText: {
-    fontSize: width * 0.045,
-    marginTop: height * 0.01,
+    fontSize: Math.min(width * 0.045, 18),
+    marginTop: Math.min(height * 0.01, 10),
     fontWeight: "bold",
     color: "#325475",
   },
@@ -838,11 +878,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    paddingHorizontal: width * 0.025,
+    paddingHorizontal: Math.min(width * 0.025, 15),
   },
   disapprove: {
     color: "#F7C4A5",
-    fontSize: width * 0.035,
+    fontSize: Math.min(width * 0.035, 16),
     fontWeight: "600",
     flex: 1,
   },
@@ -856,35 +896,35 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginBottom: height * 0.025,
+    marginBottom: Math.min(height * 0.025, 20),
     alignItems: "center",
   },
   rejectButton: {
     backgroundColor: "#F7C4A5",
-    width: width * 0.18,
-    height: width * 0.18,
-    borderRadius: width * 0.09,
+    width: Math.min(width * 0.18, 70),
+    height: Math.min(width * 0.18, 70),
+    borderRadius: Math.min(width * 0.09, 35),
     justifyContent: "center",
     alignItems: "center",
   },
   reverseButton: {
     backgroundColor: "#A9B9CC",
-    width: width * 0.15,
-    height: width * 0.15,
-    borderRadius: width * 0.075,
+    width: Math.min(width * 0.15, 60),
+    height: Math.min(width * 0.15, 60),
+    borderRadius: Math.min(width * 0.075, 30),
     justifyContent: "center",
     alignItems: "center",
   },
   acceptButton: {
     backgroundColor: "#A9B9CC",
-    width: width * 0.18,
-    height: width * 0.18,
-    borderRadius: width * 0.09,
+    width: Math.min(width * 0.18, 70),
+    height: Math.min(width * 0.18, 70),
+    borderRadius: Math.min(width * 0.09, 35),
     justifyContent: "center",
     alignItems: "center",
   },
   buttonText: {
-    fontSize: width * 0.06,
+    fontSize: Math.min(width * 0.06, 24),
     color: "white",
   },
   loadingContainer: {
@@ -901,13 +941,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   friendName: {
-    fontSize: width * 0.04,
+    fontSize: Math.min(width * 0.04, 16),
     fontWeight: "bold",
     color: "#325475",
     marginTop: 5,
   },
   friendSubtext: {
-    fontSize: width * 0.035,
+    fontSize: Math.min(width * 0.035, 14),
     color: "#325475",
     marginTop: 2,
   },
@@ -938,15 +978,15 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   explanationText: {
-    fontSize: width * 0.04,
+    fontSize: Math.min(width * 0.04, 16),
     color: "#325475",
     textAlign: "center",
     marginHorizontal: 20,
     marginBottom: 15,
-    lineHeight: width * 0.05,
+    lineHeight: Math.min(width * 0.05, 20),
   },
   orDivider: {
-    fontSize: width * 0.05,
+    fontSize: Math.min(width * 0.05, 20),
     fontWeight: "bold",
     color: "#325475",
     textAlign: "center",
@@ -960,24 +1000,24 @@ const styles = StyleSheet.create({
   },
   newFriendSelector: {
     flexDirection: "row",
-    height: height * 0.18,
+    height: Math.min(height * 0.18, 120),
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: height * 0.03,
+    marginBottom: Math.min(height * 0.03, 20),
     position: "relative",
     backgroundColor: "rgba(255,255,255,0.95)",
   },
   sideFriendContainer: {
-    width: width * 0.22,
-    height: height * 0.15,
+    width: Math.min(width * 0.22, 80),
+    height: Math.min(height * 0.15, 100),
     alignItems: "center",
     justifyContent: "center",
     opacity: 0.8,
   },
   sideFriendImage: {
-    width: width * 0.22,
-    height: width * 0.22,
-    borderRadius: width * 0.11,
+    width: Math.min(width * 0.22, 80),
+    height: Math.min(width * 0.22, 80),
+    borderRadius: Math.min(width * 0.11, 40),
     resizeMode: "cover",
     borderWidth: 1,
     borderColor: "#ccc",
@@ -987,7 +1027,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: "100%",
-    borderRadius: width * 0.11,
+    borderRadius: Math.min(width * 0.11, 40),
     backgroundColor: "rgba(255, 255, 255, 0.5)",
   },
   leftOverlay: {
@@ -999,24 +1039,40 @@ const styles = StyleSheet.create({
     right: 0,
   },
   currentFriendContainer: {
-    width: width * 0.35,
-    height: height * 0.2,
+    width: Math.min(width * 0.35, 120),
+    height: Math.min(height * 0.2, 140),
     alignItems: "center",
     justifyContent: "center",
     zIndex: 2,
-    marginHorizontal: width * 0.03,
+    marginHorizontal: Math.min(width * 0.03, 15),
+    overflow: "hidden",
   },
-  currentFriendImage: {
-    width: width * 0.35,
-    height: width * 0.35,
-    borderRadius: width * 0.175,
-    resizeMode: "cover",
+  currentFriendImageWrapper: {
+    width: Math.min(width * 0.35, 120),
+    height: Math.min(width * 0.35, 120),
+    borderRadius: Math.min(width * 0.175, 60),
     borderWidth: 2,
     borderColor: "#ED7E31",
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
+  },
+  currentFriendImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+    backgroundColor: "transparent",
+  },
+  currentFriendOverlay: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: "100%",
+    borderRadius: Math.min(width * 0.175, 60),
+    backgroundColor: "rgba(255, 255, 255, 0)",
   },
   lockButton: {
     position: "absolute",
@@ -1037,7 +1093,7 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   currentFriendName: {
-    fontSize: width * 0.07,
+    fontSize: Math.min(width * 0.07, 28),
     fontWeight: "bold",
     color: "#4B5C6B",
     marginTop: 5,
@@ -1052,18 +1108,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 7,
     marginBottom: 10,
+    flex: 1,
+    justifyContent: "center",
+    borderRadius: 20,
+    // backgroundColor: "transparent",
   },
   candidateImage: {
-    width: width * 0.9,
-    height: width * 0.8,
+    width: Math.min(width * 0.9, 400),
+    height: Math.min(width * 0.8, 350),
+    maxHeight: height * 0.4,
     borderRadius: 20,
     resizeMode: "cover",
     borderWidth: 2,
     borderColor: "#325475",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    // shadowColor: "#000",
+    // shadowOffset: { width: 0, height: 6 },
+    // shadowOpacity: 0.3,
+    // shadowRadius: 3,
     elevation: 5,
   },
   shadow: {
@@ -1072,6 +1133,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 5,
+    borderRadius: 20,
   },
   candidateOverlay: {
     position: "absolute",
@@ -1082,12 +1144,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     overflow: "hidden",
     minWidth: 120,
-    // backgroundColor: "#F7C4A5",
+    borderRadius: 20,
+    backgroundColor: "transparent",
   },
   candidateName: {
     color: "#ffff",
     fontWeight: "bold",
-    fontSize: 26,
+    fontSize: Math.min(26, width * 0.06),
     textShadowColor: "#ED7E31",
     textShadowOffset: { width: -2, height: 0 },
     textShadowRadius: 2,
@@ -1095,7 +1158,7 @@ const styles = StyleSheet.create({
   },
   candidateDetails: {
     color: "#ffff",
-    fontSize: 18,
+    fontSize: Math.min(18, width * 0.045),
     fontWeight: "600",
     textShadowColor: "#ED7E31",
     textShadowOffset: { width: -2, height: 0 },
@@ -1103,37 +1166,36 @@ const styles = StyleSheet.create({
     paddingLeft: 3,
   },
   noCandidateContainer: {
-    width: width * 0.9,
-    height: width * 0.8,
+    width: Math.min(width * 0.9, 400),
+    height: Math.min(width * 0.8, 350),
+    maxHeight: height * 0.4,
     borderRadius: 20,
     backgroundColor: "rgba(227, 171, 140, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#ED7E31",
   },
   noCandidateText: {
     color: "#fff",
     textShadowOffset: { width: -2, height: 0 },
     textShadowRadius: 2,
     textShadowColor: "#ED7E31",
-    fontSize: 20,
+    fontSize: Math.min(20, width * 0.05),
     fontWeight: "900",
     justifyContent: "center",
     alignItems: "center",
     marginHorizontal: 10,
+    textAlign: "center",
   },
   bottomButtonRow: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
     width: "100%",
-    // position: 'absolute',
-    // bottom: 30,
-    // left: 0,
-    // right: 0,
     paddingHorizontal: 20,
     marginTop: 0,
-    marginBottom: 12,
-    // paddingHorizontal: 40,
+    marginBottom: Math.min(12, height * 0.02),
   },
   dislikeButton: {
     backgroundColor: "#F7C4A5",
@@ -1164,5 +1226,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 1,
     elevation: 5,
+  },
+  sideFriendImagePlaceholder: {
+    width: Math.min(width * 0.22, 80),
+    height: Math.min(width * 0.22, 80),
+    borderRadius: Math.min(width * 0.11, 40),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  currentFriendImagePlaceholder: {
+    width: Math.min(width * 0.35, 120),
+    height: Math.min(width * 0.35, 120),
+    borderRadius: Math.min(width * 0.175, 60),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  candidateImagePlaceholder: {
+    width: Math.min(width * 0.9, 400),
+    height: Math.min(width * 0.8, 350),
+    maxHeight: height * 0.4,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#325475",
+    backgroundColor: "rgba(169, 183, 197, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
