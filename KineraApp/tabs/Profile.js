@@ -550,6 +550,7 @@ export default function ProfileScreen({ route }) {
         // Create updated user data
         const updatedUserData = {
           ...user,
+          sexuality: user.sexuality, // Preserve top-level sexuality
           profileData: {
             ...user.profileData,
             age: age ? parseInt(age, 10) : null,
@@ -560,6 +561,7 @@ export default function ProfileScreen({ route }) {
             interests,
             dateActivities,
             photos: allPhotos,
+            sexuality: user.profileData?.sexuality, // Preserve sexuality in profileData
           },
           userType: userType || user.userType, // Preserve existing userType if not changed
         };
@@ -580,6 +582,7 @@ export default function ProfileScreen({ route }) {
           try {
             const userRef = doc(db, "users", user.id);
             await updateDoc(userRef, {
+              sexuality: user.sexuality, // Preserve top-level sexuality
               profileData: updatedUserData.profileData,
               userType: updatedUserData.userType,
             });

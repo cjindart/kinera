@@ -22,38 +22,68 @@ const OPTIONS = [
 
 export default function SexualityScreen({ navigation, route }) {
   const [selected, setSelected] = useState(null);
-  const { updateProfile, updateIsNewUser } = useAuth();
+  const { updateProfile, updateIsNewUser, user } = useAuth();
   const { width, height } = Dimensions.get("window");
 
   const handleContinue = async () => {
     if (!selected) return;
 
     try {
-      console.log("Submitting sexuality:", { sexuality: selected });
+      console.log("🔍 Sexuality Screen - Current user state:", {
+        userId: user?.id,
+        hasProfileData: !!user?.profileData,
+        currentSexuality: user?.profileData?.sexuality,
+        currentGender: user?.profileData?.gender,
+      });
 
-      // Save sexuality to profileData using the standard format
-      await updateProfile({
+      console.log("📝 Submitting sexuality:", { sexuality: selected });
+
+      // Update both top-level sexuality and profileData.sexuality
+      const updateData = {
+        sexuality: selected,
         profileData: {
+          ...user.profileData,
           sexuality: selected,
         },
+      };
+      console.log("📦 Update data being sent:", updateData);
+
+      const updateResult = await updateProfile(updateData);
+      console.log("✅ Update profile result:", updateResult);
+
+      // Verify the update
+      console.log("🔍 Post-update user state:", {
+        userId: user?.id,
+        hasProfileData: !!user?.profileData,
+        newSexuality: user?.profileData?.sexuality,
+        newGender: user?.profileData?.gender,
       });
 
       // Mark onboarding as complete
       await AsyncStorage.setItem("onboardingComplete", "true");
+      console.log("💾 Set onboardingComplete in AsyncStorage");
 
       // Update the user's isNewUser status to false using the AuthContext function
-      // This will trigger the _layout.js to re-render and show the main app
       await updateIsNewUser(false);
+      console.log("👤 Updated isNewUser to false");
 
-      // Update the profile to mark the user as no longer new
-      await updateProfile({
+      // Update the profile to mark the user as no longer new, while preserving sexuality
+      const finalUpdate = await updateProfile({
+        ...user, // Preserve all existing user data
         newUser: false,
+        sexuality: selected, // Preserve sexuality
+        profileData: {
+          ...user.profileData,
+          sexuality: selected, // Preserve sexuality in profileData
+        },
       });
+      console.log("✅ Final update result:", finalUpdate);
 
-      console.log("✅ Onboarding completed successfully - user should transition to main app");
-
+      console.log(
+        "🎉 Onboarding completed successfully - user should transition to main app"
+      );
     } catch (error) {
-      console.error("Error saving sexuality:", error);
+      console.error("❌ Error saving sexuality:", error);
       Alert.alert("Error", "There was a problem saving your selection.");
     }
   };
@@ -81,7 +111,10 @@ export default function SexualityScreen({ navigation, route }) {
                 styles.optionButton,
                 selected === option.value && styles.selectedButton,
               ]}
-              onPress={() => setSelected(option.value)}
+              onPress={() => {
+                console.log("👆 Selected sexuality option:", option.value);
+                setSelected(option.value);
+              }}
             >
               <Text style={styles.optionText}>{option.label}</Text>
             </TouchableOpacity>

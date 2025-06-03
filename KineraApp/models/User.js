@@ -514,7 +514,6 @@ class User {
     // Update basic profile fields
     if (profileData.name) this.name = profileData.name;
     if (profileData.userType) this.userType = profileData.userType;
-    if (profileData.sexuality) this.sexuality = profileData.sexuality;
 
     // Update nested profile data
     if (profileData.profileData) {
@@ -524,6 +523,11 @@ class User {
         ...profileData.profileData,
         updatedAt: new Date().toISOString(),
       };
+
+      // Sync sexuality from profileData to top-level field
+      if (profileData.profileData.sexuality) {
+        this.sexuality = profileData.profileData.sexuality;
+      }
     } else {
       // Update individual fields
       if (profileData.age) this.profileData.age = profileData.age;
@@ -535,6 +539,10 @@ class User {
       if (profileData.dateActivities)
         this.profileData.dateActivities = profileData.dateActivities;
       if (profileData.photos) this.profileData.photos = profileData.photos;
+      if (profileData.sexuality) {
+        this.profileData.sexuality = profileData.sexuality;
+        this.sexuality = profileData.sexuality;
+      }
 
       // Always update timestamp
       this.profileData.updatedAt = new Date().toISOString();

@@ -117,19 +117,23 @@ export function AuthProvider({ children }) {
             }
 
             safelySetUser(localUser);
-            
+
             // Check AsyncStorage for isNewUser flag, default to false for existing users
             try {
               const storedIsNewUser = await AsyncStorage.getItem("isNewUser");
               const isNewUserValue = storedIsNewUser === "true";
-              console.log(`📱 Setting isNewUser from AsyncStorage: ${isNewUserValue}`);
+              console.log(
+                `📱 Setting isNewUser from AsyncStorage: ${isNewUserValue}`
+              );
               setIsNewUser(isNewUserValue);
             } catch (error) {
-              console.log("📱 No isNewUser flag found, defaulting to false for existing user");
+              console.log(
+                "📱 No isNewUser flag found, defaulting to false for existing user"
+              );
               setIsNewUser(false);
               await AsyncStorage.setItem("isNewUser", "false");
             }
-            
+
             setIsLoading(false);
             return;
           } else {
@@ -193,15 +197,21 @@ export function AuthProvider({ children }) {
                   }
                 );
                 safelySetUser(localUser);
-                
+
                 // Check AsyncStorage for isNewUser flag, default to false for existing users
                 try {
-                  const storedIsNewUser = await AsyncStorage.getItem("isNewUser");
+                  const storedIsNewUser = await AsyncStorage.getItem(
+                    "isNewUser"
+                  );
                   const isNewUserValue = storedIsNewUser === "true";
-                  console.log(`🔄 Setting isNewUser from AsyncStorage fallback: ${isNewUserValue}`);
+                  console.log(
+                    `🔄 Setting isNewUser from AsyncStorage fallback: ${isNewUserValue}`
+                  );
                   setIsNewUser(isNewUserValue);
                 } catch (error) {
-                  console.log("🔄 No isNewUser flag found in fallback, defaulting to false for existing user");
+                  console.log(
+                    "🔄 No isNewUser flag found in fallback, defaulting to false for existing user"
+                  );
                   setIsNewUser(false);
                   await AsyncStorage.setItem("isNewUser", "false");
                 }
@@ -226,15 +236,19 @@ export function AuthProvider({ children }) {
           if (localUser && localUser.isAuthenticated) {
             console.log("✅ Emergency fallback: Found user in AsyncStorage");
             safelySetUser(localUser);
-            
+
             // Check AsyncStorage for isNewUser flag, default to false for existing users
             try {
               const storedIsNewUser = await AsyncStorage.getItem("isNewUser");
               const isNewUserValue = storedIsNewUser === "true";
-              console.log(`💥 Emergency fallback: Setting isNewUser: ${isNewUserValue}`);
+              console.log(
+                `💥 Emergency fallback: Setting isNewUser: ${isNewUserValue}`
+              );
               setIsNewUser(isNewUserValue);
             } catch (error) {
-              console.log("💥 Emergency fallback: No isNewUser flag found, defaulting to false");
+              console.log(
+                "💥 Emergency fallback: No isNewUser flag found, defaulting to false"
+              );
               setIsNewUser(false);
               await AsyncStorage.setItem("isNewUser", "false");
             }
@@ -648,7 +662,7 @@ export function AuthProvider({ children }) {
                 console.log(
                   "Found existing user with this phone number, marking as returning user"
                 );
-                
+
                 // Create a complete user object with authentication
                 const authenticatedUser = new User({
                   ...existingUser,
@@ -661,12 +675,14 @@ export function AuthProvider({ children }) {
 
                 // Set the user in the context
                 await safelySetUser(authenticatedUser);
-                
+
                 // Set isNewUser to false for existing users
                 setIsNewUser(false);
                 await AsyncStorage.setItem("isNewUser", "false");
-                
-                console.log("✅ Existing user authenticated and loaded successfully");
+
+                console.log(
+                  "✅ Existing user authenticated and loaded successfully"
+                );
                 return { success: true, isNewUser: false };
               }
             } catch (err) {
@@ -909,48 +925,54 @@ export function AuthProvider({ children }) {
    */
   const updateProfile = async (profileData) => {
     try {
-      console.log("Starting profile update process...");
+      console.log("🔄 Starting profile update process...");
+      console.log("📝 Update data received:", profileData);
 
       let userToUpdate = null;
 
       // Get user instance to update (from context or AsyncStorage if needed)
       if (user) {
+        console.log("👤 Found user in context:", {
+          id: user.id,
+          hasProfileData: !!user.profileData,
+        });
         userToUpdate = new User({ ...user });
       } else {
         // Try to load from AsyncStorage if no user in context
+        console.log("🔍 No user in context, trying AsyncStorage...");
         const loadedUser = await User.load();
         if (loadedUser) {
+          console.log("✅ Loaded user from AsyncStorage");
           userToUpdate = loadedUser;
         } else {
-          console.error("Cannot update profile: No user is logged in");
+          console.error("❌ Cannot update profile: No user is logged in");
           return false;
         }
       }
 
       // Ensure user has an ID
       if (!userToUpdate.id) {
+        console.log("⚠️ No user ID found, generating one...");
         // If Firebase auth is available, use the UID
         if (auth.currentUser) {
           userToUpdate.id = auth.currentUser.uid;
-          console.log("Set missing ID from Firebase auth:", userToUpdate.id);
+          console.log("✅ Set ID from Firebase auth:", userToUpdate.id);
         } else {
           // Generate a fallback ID if needed
           userToUpdate.id = `user_${Date.now()}_${Math.random()
             .toString(36)
             .substring(2, 9)}`;
-          console.log(
-            "Generated fallback ID for profile update:",
-            userToUpdate.id
-          );
+          console.log("✅ Generated fallback ID:", userToUpdate.id);
         }
       }
 
-      console.log("Updating profile for user:", userToUpdate.id);
+      console.log("🔄 Updating profile for user:", userToUpdate.id);
 
       // Update basic user fields
       if (profileData.name) userToUpdate.name = profileData.name;
       if (profileData.userType) userToUpdate.userType = profileData.userType;
-      if (profileData.phoneNumber) userToUpdate.phoneNumber = profileData.phoneNumber;
+      if (profileData.phoneNumber)
+        userToUpdate.phoneNumber = profileData.phoneNumber;
       if (profileData.stanfordEmail)
         userToUpdate.stanfordEmail = profileData.stanfordEmail;
       if (profileData.isStanfordVerified !== undefined)
@@ -958,15 +980,22 @@ export function AuthProvider({ children }) {
 
       // Ensure profileData object exists
       userToUpdate.profileData = userToUpdate.profileData || {};
+      console.log("📊 Current profileData:", userToUpdate.profileData);
 
       // Update profile data - prioritize structured data
       if (profileData.profileData) {
+        console.log(
+          "📝 Updating with structured profileData:",
+          profileData.profileData
+        );
         // Merge with existing profileData
         userToUpdate.profileData = {
           ...userToUpdate.profileData,
           ...profileData.profileData,
+          updatedAt: new Date().toISOString(),
         };
       } else {
+        console.log("📝 Updating individual profile fields");
         // Handle individual fields - all profile fields should go into profileData
         if (profileData.age !== undefined)
           userToUpdate.profileData.age = profileData.age;
@@ -984,86 +1013,39 @@ export function AuthProvider({ children }) {
           userToUpdate.profileData.photos = profileData.photos;
         if (profileData.activities !== undefined)
           userToUpdate.profileData.dateActivities = profileData.activities;
+
+        // Always update timestamp
+        userToUpdate.profileData.updatedAt = new Date().toISOString();
       }
 
-      // Handle friends separately to ensure they're saved in the right place
-      if (profileData.friends) {
-        // Ensure friends are properly formatted
-        const sanitizedFriends = profileData.friends.map((friend, index) => {
-          if (typeof friend === "string") {
-            return {
-              id: `friend_${Date.now()}_${index}_${Math.floor(
-                Math.random() * 10000
-              )}`,
-              name: friend,
-              avatar: null,
-            };
-          }
-          if (typeof friend === "object" && friend !== null) {
-            return {
-              id:
-                friend.id ||
-                `friend_${Date.now()}_${index}_${Math.floor(
-                  Math.random() * 10000
-                )}`,
-              name: typeof friend.name === "string" ? friend.name : "Unknown",
-              avatar: friend.avatar || null,
-              interests: Array.isArray(friend.interests)
-                ? friend.interests
-                : [],
-              dateActivities: Array.isArray(friend.dateActivities)
-                ? friend.dateActivities
-                : [],
-            };
-          }
-          return {
-            id: `friend_${Date.now()}_${index}_${Math.floor(
-              Math.random() * 10000
-            )}`,
-            name: "Unknown",
-            avatar: null,
-          };
-        });
-
-        userToUpdate.friends = sanitizedFriends;
-        // Also add to profileData to ensure it's accessible in both places
-        userToUpdate.profileData.friends = sanitizedFriends;
-      }
-
-      // Update timestamps
-      userToUpdate.updatedAt = new Date().toISOString();
-      userToUpdate.profileData.updatedAt = new Date().toISOString();
-
-      // Set authentication flag if it's a new user
-      if (profileData.isNewUser) {
-        userToUpdate.isAuthenticated = true;
-      }
+      console.log("📊 Updated profileData:", userToUpdate.profileData);
 
       // Log final user object for debugging
-      console.log("Final user object before saving:", {
+      console.log("📦 Final user object before saving:", {
         id: userToUpdate.id,
         name: userToUpdate.name,
         hasProfileData: !!userToUpdate.profileData,
-        profileDataFields: Object.keys(userToUpdate.profileData || {}).length,
-        friendsCount: (userToUpdate.friends || []).length,
+        profileDataFields: Object.keys(userToUpdate.profileData || {}),
+        sexuality: userToUpdate.profileData?.sexuality,
       });
 
       // Save user data (this will handle both AsyncStorage and Firestore)
-      console.log("Saving updated profile...");
+      console.log("💾 Saving updated profile...");
       const saveResult = await userToUpdate.save();
 
       if (!saveResult && !isDevelopmentMode()) {
-        console.warn("Failed to save user data to Firestore");
+        console.warn("⚠️ Failed to save user data to Firestore");
       } else {
-        console.log("Profile saved successfully");
+        console.log("✅ Profile saved successfully");
       }
 
       // Update the user in state
       safelySetUser(userToUpdate);
+      console.log("👤 Updated user in context");
 
       return true;
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error("❌ Error updating profile:", error);
       return false;
     }
   };

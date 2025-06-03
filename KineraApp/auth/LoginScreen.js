@@ -118,13 +118,18 @@ export default function LoginScreen({ navigation }) {
         const User = require("../models/User").default;
         const userInstance = new User(user);
         await userInstance.save();
-        console.log("📱 LoginScreen: User data saved with phone number:", formattedPhone);
+        console.log(
+          "📱 LoginScreen: User data saved with phone number:",
+          formattedPhone
+        );
 
         // IMPORTANT: Set isNewUser to false for existing users
         // This ensures they go directly to the Profile screen instead of onboarding
         await auth.updateIsNewUser(false);
 
-        console.log("✅ LoginScreen: User state set successfully, isNewUser set to false");
+        console.log(
+          "✅ LoginScreen: User state set successfully, isNewUser set to false"
+        );
       } else {
         console.log("No user found with this phone number");
         // Navigate to registration
