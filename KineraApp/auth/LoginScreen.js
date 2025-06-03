@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth, setIsNewUser } from "../context/AuthContext";
@@ -157,28 +158,89 @@ export default function LoginScreen({ navigation }) {
 
   // Initial welcome screen with login/signup options
   const renderInitialScreen = () => (
-    <View style={styles.contentContainer}>
-      <Text style={styles.appTitle}>Vouch</Text>
-      <Text style={styles.welcomeText}>
-        Find activities and dates with friends
-      </Text>
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={styles.scrollContent}
+    >
+      <View style={styles.contentContainer}>
+        <Text style={styles.appTitle}>Vouch</Text>
+        <Text style={styles.welcomeText}>
+          Find activities and dates with friends
+        </Text>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={navigateToSignup}
-        >
-          <Text style={styles.primaryButtonText}>Sign Up</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={navigateToSignup}
+          >
+            <Text style={styles.primaryButtonText}>Sign Up</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={navigateToLogin}
-        >
-          <Text style={styles.secondaryButtonText}>Log In</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={navigateToLogin}
+          >
+            <Text style={styles.secondaryButtonText}>Log In</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+
+      <View style={styles.infoContainer}>
+        <Text style={styles.infoTitle}>Welcome to Vouch!</Text>
+
+        <Text style={styles.infoSubtitle}>The rules are simple:</Text>
+        <Text style={styles.infoText}>• Login and create a profile</Text>
+        <Text style={styles.infoText}>
+          • Choose if you want to date or just help match your friends
+        </Text>
+        <Text style={styles.infoText}>
+          • Get your friends to join (at least 3 need to vouch for you)
+        </Text>
+        <Text style={styles.infoText}>• Go Vouch!</Text>
+
+        <Text style={styles.infoSubtitle}>Instructions for dating option:</Text>
+        <Text style={styles.infoText}>
+          1. Once you have made your profile, if you have chosen to date, the
+          app will generate a few candidates for you, and your friends will
+          decide your fate!
+        </Text>
+        <Text style={styles.infoText}>
+          2. The more friends you have on the app, the more the decision is
+          distributed between them. If you have a few friends, more of the
+          decision will fall on them, so choose carefully who you want to Vouch
+          for you.
+        </Text>
+        <Text style={styles.infoText}>
+          3. Once enough of your friends and your matches' friends have
+          approved, you will be prompted with a google form to input your
+          availability and a date will be set up for you!
+        </Text>
+        <Text style={styles.infoText}>
+          4. The time and location will be determined by the preferences you
+          have selected and then we will organize the date for you, all you have
+          to do is show up!
+        </Text>
+
+        <Text style={styles.infoSubtitle}>Instructions for vouching:</Text>
+        <Text style={styles.infoText}>
+          1.As soon as you have friends who have selected the date option, your
+          main screen will show you match options for them.
+        </Text>
+        <Text style={styles.infoText}>
+          2. You will see which friend you are vouching for and who their match
+          is and you can click to see additional details.
+        </Text>
+        <Text style={styles.infoText}>
+          3.Then you get to choose yes or no for the match. You won't be able to
+          see other's responses to this match, and others will not see your
+          response either. It is completely anonymous.
+        </Text>
+
+        <Text style={styles.infoText}>
+          You can do both!! Be a dater and a matchmaker.
+        </Text>
+      </View>
+    </ScrollView>
   );
 
   // Phone number input screen
@@ -331,5 +393,42 @@ const styles = StyleSheet.create({
     top: 10,
     left: 10,
     zIndex: 10,
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+  },
+  scrollContent: {
+    alignItems: "center",
+    paddingBottom: 40,
+  },
+  infoContainer: {
+    width: width * 0.85,
+    marginTop: 20,
+    padding: 30,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 20,
+    alignItems: "flex-start",
+  },
+  infoTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: COLORS.white,
+    marginBottom: 20,
+    textAlign: "center",
+    width: "100%",
+  },
+  infoSubtitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: COLORS.white,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  infoText: {
+    fontSize: 16,
+    color: COLORS.white,
+    marginBottom: 10,
+    lineHeight: 22,
   },
 });
